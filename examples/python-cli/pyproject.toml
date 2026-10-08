@@ -1,0 +1,4 @@
+[project]
+name = "reprise-cli-example"
+version = "0.1.0"
+description = "A CLI fixture for deterministic recognition"

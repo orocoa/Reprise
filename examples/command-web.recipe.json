@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "adapter": "command-web",
+  "root": ".",
+  "commands": {
+    "install": [["npm", "ci"]],
+    "build": [["npm", "run", "build"]],
+    "start": ["npm", "run", "preview", "--", "--host", "127.0.0.1", "--port", "{port}"]
+  },
+  "readiness": {"path": "/", "timeout_ms": 30000},
+  "captures": [{"id": "home", "route": "/", "viewport": {"width": 1440, "height": 900, "scale": 2}, "full_page": false, "steps": []}],
+  "network": "local"
+}

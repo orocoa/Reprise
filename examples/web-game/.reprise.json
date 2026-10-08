@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "adapter": "static-web",
+  "root": ".",
+  "readiness": {"path": "/", "selector": "#game", "timeout_ms": 15000},
+  "network": "local",
+  "captures": [{
+    "id": "play",
+    "route": "/",
+    "viewport": {"width": 1280, "height": 900, "scale": 2},
+    "full_page": false,
+    "record": true,
+    "record_ms": 1000,
+    "steps": [
+      {"action": "click", "selector": "#start"},
+      {"action": "press", "selector": "#game", "key": "ArrowRight"},
+      {"action": "press", "selector": "#game", "key": "ArrowDown"}
+    ]
+  }]
+}

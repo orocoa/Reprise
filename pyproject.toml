@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reprise-local"
+version = "0.2.0"
+description = "Local Git history, deterministic project detection and reproducible browser evidence"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+reprise = "reprise.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+reprise = ["*.mjs"]
+
+[tool.setuptools.data-files]
+"share/reprise/web" = ["web/index.html", "web/app.js", "web/styles.css"]
