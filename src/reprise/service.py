@@ -29,7 +29,7 @@ class Reprise:
             difference = repository.diff(sha)
         except ValueError as error:
             difference = {'available': False, 'error': str(error), 'target': sha, 'base': commit['parents'][0] if commit['parents'] else None, 'parents': commit['parents'], 'files': [], 'counts': {}}
-        return {'commit': commit, 'diff': difference, 'detection': project['detected'], 'recipe': project['recipe'], 'recipe_source': project['recipe_source'], 'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'), 'evidence': self.evidence.list(identifier, sha)}
+        return {'commit': commit, 'diff': difference, 'detection': project['detected'], 'recipe': project['recipe'], 'recipe_source': project['recipe_source'], 'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'), 'legacy_recipe': project.get('legacy_recipe'), 'evidence': self.evidence.list(identifier, sha)}
 
     def execute(self, identifier, operation, body):
         # Resolve refs and recipe before queuing so new commits/config edits cannot
@@ -37,6 +37,7 @@ class Reprise:
         project = self.projects.get(identifier, body.get('sha', 'HEAD'))
         repository = self.projects.repository(identifier)
         sha, recipe, approved = project['revision'], project['recipe'], project['recipe_approved']
+        base = None
         if not sha:
             raise ValueError('项目还没有提交。')
         if operation in ('run', 'capture') and (not recipe or recipe['adapter'] == 'manual'):
@@ -44,10 +45,13 @@ class Reprise:
         if operation in ('run', 'capture') and recipe['adapter'] == 'command-web' and not approved:
             raise ValueError('这个配方将执行项目命令，请先打开配方编辑器、核对并保存。')
         if operation == 'run':
-            callback = lambda: self.runtimes.start(repository, sha, recipe, approved=approved)
+            callback = lambda cancel: self.runtimes.start(repository, sha, recipe, approved=approved, cancel=cancel)
         elif operation == 'capture':
             base = repository.resolve(body['base']) if body.get('base') else None
-            callback = lambda: self.evidence.public(self.captures.capture(repository, identifier, sha, recipe, base=base, approved=approved))
+            baseline = self.projects.get(identifier, base) if base else None
+            if baseline and (not baseline['recipe'] or baseline['recipe']['adapter'] == 'manual' or (baseline['recipe']['adapter'] == 'command-web' and not baseline['recipe_approved'])):
+                raise ValueError('请先选择比较基准版本 %s，为它保存并确认运行配置，然后返回当前比较。' % base[:8])
+            callback = lambda cancel: self.evidence.public(self.captures.capture(repository, identifier, sha, recipe, base=base, approved=approved, base_recipe=baseline['recipe'] if baseline else None, base_approved=baseline['recipe_approved'] if baseline else False, cancel=cancel))
         elif operation == 'ai/suggest':
             diff = repository.diff(sha)
             tree = repository.tree(sha)
@@ -68,11 +72,11 @@ class Reprise:
             callback = lambda: self.ai.suggest(context)
         else:
             raise ValueError('不支持的任务操作。')
-        return self.jobs.submit(identifier, operation, callback, request={key: value for key, value in {'sha': sha, 'base': body.get('base')}.items() if value is not None})
+        return self.jobs.submit(identifier, operation, callback, request={key: value for key, value in {'sha': sha, 'base': base}.items() if value is not None}, cancellable=operation in ('run', 'capture'))
 
     def runtime_list(self):
         projects = {record['path']: record['id'] for record in self.projects.records()}
         return [dict(runtime, project_id=projects.get(runtime.get('source'))) for runtime in self.runtimes.list()]
 
     def close(self):
-        self.jobs.close()
+        self.jobs.close(cancel=True)

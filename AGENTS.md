@@ -9,3 +9,4 @@
 - All media binds to exact SHA and capture input. Missing historical assets are reported, never substituted from another revision.
 - Run `PYTHONPATH=src python3 -m unittest discover -s tests -v`. Browser tests opt in with `REPRISE_BROWSER_TESTS=1` and optional environment paths.
 - Source-only Python runs with `python3 run.py`; the core uses no third-party Python package.
+- UI navigation must retain a clear return path. Prefer in-place +/− expansion for related details; keep switcher options visible when content is empty, provide an explicit empty state, and preserve the originating context when closing or collapsing.

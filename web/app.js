@@ -16,10 +16,12 @@ const iconPaths = {
 };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${iconPaths[name] || iconPaths.file}"/></svg>`;
 const pill = (text, tone = '') => `<span class="pill ${tone}">${esc(text)}</span>`;
-const state = {token:'',projects:[],project:null,history:[],hasMore:false,nextOffset:0,ref:'--all',refs:[],version:null,selected:'',base:'',runtimes:[],ai:{},jobs:[],busy:false,loading:false,error:'',selection:0,compareCapture:true,media:[],mediaIndex:0,mediaZoom:'fit',aiProposal:null};
+const state = {token:'',projects:[],project:null,history:[],hasMore:false,nextOffset:0,ref:'--all',refs:[],version:null,selected:'',base:'',runtimes:[],ai:{},jobs:[],busy:false,loading:false,error:'',selection:0,compareCapture:true,media:[],mediaIndex:0,mediaZoom:'fit',aiProposal:null,jobWarnings:[]};
 const app = $('#app');
 const dialog = $('#dialog');
 const mediaDialog = $('#media-dialog');
+const activeJobStates = ['queued','running','cancelling'];
+const terminalJobStates = ['complete','failed','cancelled'];
 const jobLabels = {run:'启动版本',capture:'采集版本预览','ai/suggest':'AI 分析配置'};
 function normalizeJob(raw, previous = {}) {
   const kind = raw.operation || raw.kind || previous.kind;
@@ -56,8 +58,8 @@ function safeUrl(url) {
 }
 function projectType(project) { return project?.detected?.label || project?.detection?.label || 'Git 项目'; }
 function aiEnabled() { return Boolean(state.ai.enabled ?? state.ai.config?.enabled ?? state.ai.settings?.enabled); }
-function sourceLabel(source) { return ({project:'项目配置',user:'项目配置',override:'项目配置',repository:'仓库内配置',committed:'仓库内配置',detected:'自动识别',auto:'自动识别',none:'尚未配置'})[source] || (source ? '项目配置' : '尚未配置'); }
-function activeRecipe() { return state.version?.recipe || state.project?.recipe || state.version?.detection?.recipe || null; }
+function sourceLabel(source) { return ({version:'当前版本配置',project:'旧项目配置',user:'项目配置',override:'项目配置',repository:'仓库内配置',committed:'仓库内配置',detected:'自动识别',auto:'自动识别',none:'尚未配置'})[source] || (source ? '项目配置' : '尚未配置'); }
+function activeRecipe() { return state.version ? state.version.recipe : state.project?.recipe || null; }
 function approvedRecipe() { return state.version?.recipe_approved ?? state.project?.recipe_approved ?? false; }
 function runnable() { const r = activeRecipe(); return Boolean(r && r.adapter !== 'manual' && (r.adapter !== 'command-web' || approvedRecipe())); }
 function captureReady() { return runnable() && (activeRecipe().captures || []).length > 0; }
@@ -76,7 +78,7 @@ function sidebar() {
 }
 function render() {
   state.media = [];
-  app.innerHTML = `<div class="app-shell">${sidebar()}<main class="main"><header class="topbar"><div class="breadcrumb">工作空间 ${icon('chevron')}<span>${esc(state.project?.name || '所有项目')}</span></div><div class="topbar-actions"><button class="button subtle" data-action="ai-settings">${icon('spark')}AI ${aiEnabled() ? '已启用' : '可选'}</button><button class="button outline" data-action="import">${icon('plus')}导入项目</button></div></header><div class="content">${state.error ? `<div class="inline-notice error">${icon('info')}<span>${esc(state.error)}</span></div>` : ''}${state.project ? projectView() : emptyView()}</div></main></div>`;
+  app.innerHTML = `<div class="app-shell">${sidebar()}<main class="main"><header class="topbar"><div class="breadcrumb">工作空间 ${icon('chevron')}<span>${esc(state.project?.name || '所有项目')}</span></div><div class="topbar-actions"><button class="button subtle" data-action="ai-settings">${icon('spark')}AI ${aiEnabled() ? '已启用' : '可选'}</button><button class="button outline" data-action="import">${icon('plus')}导入项目</button></div></header><div class="content">${state.error ? `<div class="inline-notice error">${icon('info')}<span>${esc(state.error)}</span></div>` : ''}${state.jobWarnings.map(w => `<div class="inline-notice warn">${icon('info')}<span>${esc(w.message)} <code>${esc(w.file)}</code></span></div>`).join('')}${state.project ? projectView() : emptyView()}</div></main></div>`;
 }
 function emptyView() {
   return `<section class="empty-main"><div class="empty-illustration" aria-hidden="true"><div class="empty-sheet"></div><div class="empty-branch">${icon('git')}</div></div><div class="eyebrow">A clearer history of your work</div><h1 style="margin-top:12px">每个项目，<br>都有值得看见的过程。</h1><p>连接本地 Git 仓库，读取真实版本记录。<br>为网页、游戏和其他项目配置合适的运行与预览方式。</p><button class="button primary" data-action="import">${icon('plus')}导入第一个 Git 项目</button><div class="empty-features"><article class="empty-feature"><span>01 / READ</span><h2>先读懂 Git 历史</h2><p>分支、提交、真实父版本与文件变化。导入时保持源码不变。</p></article><article class="empty-feature"><span>02 / RUN</span><h2>按项目能力运行</h2><p>静态网页自动识别。框架、游戏及原生项目使用独立的配置。</p></article><article class="empty-feature"><span>03 / VERIFY</span><h2>让预览有据可查</h2><p>截图绑定精确提交与采集场景；也支持导入已有图片和录像。</p></article></div></section>`;
@@ -87,7 +89,7 @@ function projectView() {
   return `<section class="project-heading"><div><div class="eyebrow">Project workspace</div><h1>${esc(p.name)}</h1><div class="path-row">${icon('folder')}<code>${esc(p.path)}</code></div></div><div class="heading-status">${pill(repo.bare ? '裸仓库' : repo.work_tree ? '工作仓库' : 'Git 仓库')}${repo.shallow ? pill('浅克隆','warn') : ''}${pill('源码只读','good')}</div></section>
     <div class="overview-strip"><div class="overview-item"><span class="overview-icon">${icon('git')}</span><div><p class="overview-label">Git 原生读取</p><p class="overview-value">${esc(repo.branch || (repo.head ? '分离 HEAD' : '尚无提交'))}</p><p class="overview-detail">${repo.head ? `HEAD ${esc(short(repo.head))}` : '首次提交后可查看历史'}</p></div></div><div class="overview-item"><span class="overview-icon cyan">${icon('layers')}</span><div><p class="overview-label">识别到的项目类型</p><p class="overview-value">${esc(detection.label || projectType(p))}</p><p class="overview-detail">根据提交中的文件与配置识别</p></div></div><div class="overview-item"><span class="overview-icon orange">${icon('camera')}</span><div><p class="overview-label">运行与采集能力</p><p class="overview-value">${esc(rs.text)}</p><p class="overview-detail">AI ${aiEnabled() ? '仅在请求时参与' : '未启用 · 基础流程独立工作'}</p></div></div></div>
     <div id="jobs-region">${jobsView()}</div><div class="workspace"><section class="panel history-panel"><div class="panel-header"><h2>${icon('git')}提交历史</h2><button class="icon-button" data-action="refresh" aria-label="刷新 Git 历史" title="刷新 Git 历史">${icon('refresh')}</button></div><label class="ref-filter"><span class="sr-only">选择分支或引用</span><select id="ref-select"><option value="--all">所有分支与标签</option>${state.refs.map(r => `<option value="${esc(r.name)}" ${r.name === state.ref ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label><div class="history-list">${state.loading && !state.history.length ? '<div class="section-loading"><span class="spinner"></span>读取 Git…</div>' : state.history.length ? state.history.map(commitRow).join('') : '<p class="empty-inline">仓库中还没有提交。<br>创建首次提交后，点击刷新即可读取。</p>'}</div>${state.hasMore ? '<div class="history-more"><button class="button subtle" data-action="load-more">加载更早的提交</button></div>' : ''}</section>
-    <div class="detail-column">${state.loading ? '<div class="panel loading"><span class="spinner"></span>读取精确版本…</div>' : state.version ? versionView() : '<div class="panel empty-inline">选择一条提交，查看变化与预览。<br>没有提交时仍可保存项目运行配置。<br><button class="button outline" style="margin-top:16px" data-action="recipe">配置项目</button></div>'}</div></div>
+    <div class="detail-column">${state.loading ? '<div class="panel loading"><span class="spinner"></span>读取精确版本…</div>' : state.version ? versionView() : '<div class="panel empty-inline">选择一条提交，查看变化与预览。<br>首次提交后可为该版本保存运行配置。</div>'}</div></div>
     ${runtimesView()}<footer class="footer-note"><span>Git 提供版本事实 · 适配器负责运行 · 采集结果绑定版本与配置</span><span>Reprise / Local workspace</span></footer>`;
 }
 function commitRow(c) {
@@ -99,8 +101,8 @@ function versionView() {
   const author = typeof c.author === 'object' ? c.author.name : c.author;
   return `<section class="panel version-summary"><div class="version-topline"><span class="eyebrow">Selected revision</span><code title="${esc(c.sha)}">${esc(short(c.sha))}</code>${c.parents?.length > 1 ? pill(`${c.parents.length} 个真实父提交`,'orange') : !c.parents?.length ? pill('首次提交') : ''}</div><h2>${esc(c.subject || '无提交说明')}</h2><div class="version-byline"><span>${esc(author || '未知作者')}</span><span>${esc(date(c.committed_at || c.authored_at))}</span><span>${esc(d.label || projectType(state.project))}</span></div><div class="version-actions"><button class="button primary" data-action="run">${icon('play')}${runnable() ? '运行这个版本' : '配置运行方式'}</button><button class="button outline" data-action="capture">${icon('camera')}${captureReady() ? '自动采集预览' : '配置自动采集'}</button><button class="button subtle" data-action="recipe">${icon('settings')}项目配置</button></div>${warnings.slice(0,3).map(w => `<div class="inline-notice warn">${icon('info')}<span>${esc(typeof w === 'string' ? w : w.message || JSON.stringify(w))}</span></div>`).join('')}</section>
     <section class="panel detail-section"><div class="section-title"><h3>${icon('layers')}项目能力</h3><span class="small muted">${esc(sourceLabel(v.recipe_source || state.project.recipe_source))}</span></div><div class="recipe-status"><div><div class="capability-list">${pill('历史可读','good')}${pill('变化可比','good')}${pill(rs.text,rs.tone)}${pill('支持手工资料')}</div><p>${esc(rs.description)}</p></div><button class="button outline" data-action="ai-suggest" title="AI 只提出建议，运行配置须由你保存">${icon('spark')}AI 建议</button></div>${d.signals?.length ? `<div class="detection-signals">${d.signals.slice(0,5).map(s => `<span>${esc(typeof s === 'string' ? s : s.path || s.message || JSON.stringify(s))}</span>`).join('')}</div>` : ''}</section>
-    <section class="panel detail-section"><div class="section-title"><h3>${icon('file')}这个版本改了什么</h3>${diffCounts(v.diff)}</div><div class="compare-controls"><label for="base-select">比较基准</label><select id="base-select">${(c.parents || v.diff?.parents || []).length ? (c.parents || v.diff.parents).map((sha,i) => `<option value="${esc(sha)}" ${sha === state.base ? 'selected' : ''}>父提交 ${i+1} · ${esc(short(sha))}${i === 0 ? '（第一父提交）' : ''}</option>`).join('') : '<option value="">空树（这是首次提交）</option>'}</select></div>${diffView(v.diff)}</section>
-    <section class="panel detail-section"><div class="section-title"><h3>${icon('camera')}版本预览与证据</h3><span class="small muted">${(v.evidence || []).length} 次采集记录</span></div><p class="section-subtitle">图片、录像绑定提交与场景。两个版本使用同一份采集配置进行对比。</p><div class="evidence-toolbar"><label class="capture-option"><input id="compare-capture" type="checkbox" ${state.compareCapture ? 'checked' : ''} ${state.base ? '' : 'disabled'}>同时采集所选父版本${state.base ? ` ${esc(short(state.base))}` : '（无父版本）'}</label><button class="button outline" data-action="manual">${icon('upload')}导入已有资料</button></div>${evidenceView(v.evidence || [])}</section>`;
+    <section class="panel detail-section"><div class="section-title"><h3>${icon('file')}这个版本改了什么</h3>${diffCounts(v.diff)}</div><div class="compare-controls"><label for="base-select">比较基准</label><select id="base-select">${state.base && !(c.parents || []).includes(state.base) ? `<option value="${esc(state.base)}" selected>所选基准 · ${esc(short(state.base))}</option>` : ''}${(c.parents || []).length ? c.parents.map((sha,i) => `<option value="${esc(sha)}" ${sha === state.base ? 'selected' : ''}>父提交 ${i+1} · ${esc(short(sha))}</option>`).join('') : !state.base ? '<option value="">空树（首次提交）</option>' : ''}</select><button class="button outline" data-action="compare">选择两个版本</button>${state.base ? '<button class="button subtle" data-action="swap-comparison" title="交换基准和目标版本">交换</button>' : ''}</div><p class="comparison-summary">基准 ${state.base ? `<code>${esc(short(state.base))}</code>` : '空树'} → 目标 <code>${esc(short(state.selected))}</code></p>${diffView(v.diff)}</section>
+    <section class="panel detail-section"><div class="section-title"><h3>${icon('camera')}版本预览与证据</h3><span class="small muted">${(v.evidence || []).length} 次采集记录</span></div><p class="section-subtitle">图片、录像绑定提交与场景。两边使用各自版本的运行配置，以及相同的截图场景。</p><div class="evidence-toolbar"><label class="capture-option"><input id="compare-capture" type="checkbox" ${state.compareCapture ? 'checked' : ''} ${state.base ? '' : 'disabled'}>同时采集比较基准${state.base ? ` ${esc(short(state.base))}` : '（未选择基准）'}</label><button class="button outline" data-action="manual">${icon('upload')}导入已有资料</button></div>${evidenceView(v.evidence || [])}</section>`;
 }
 function diffCounts(diff) {
   if (!diff || diff.available === false) return '';
@@ -115,7 +117,12 @@ function diffView(diff) {
   if (!files.length) return '<div class="empty-inline">与所选基准相比，文件内容没有变化。</div>';
   return `<div class="file-list">${files.map(f => `<div class="file-row"><span class="file-status ${esc(String(f.status).slice(0,1))}" title="${esc(f.status)}">${esc(String(f.status).slice(0,1))}</span><div class="file-path">${f.old_path ? `<del>${esc(f.old_path)} →</del>` : ''}<code>${esc(f.path)}</code></div></div>`).join('')}</div>${diff.truncated ? '<p class="small muted" style="margin-top:8px">文件列表已截断，详情以 Git 原始记录为准。</p>' : ''}`;
 }
-function evidenceView(records) {
+function evidenceView(records, filterBase = true) {
+  if (filterBase) {
+    const relevant = records.filter(r => !r.base || r.base === state.base);
+    const other = records.filter(r => r.base && r.base !== state.base);
+    if (other.length) return evidenceView(relevant, false) + `<details class="older-evidence"><summary>其他比较基准的历史记录（${other.length}）</summary>${evidenceView(other, false)}</details>`;
+  }
   if (!records.length) return `<div class="empty-evidence"><span class="empty-icon">${icon('image')}</span><div><h3>这个版本还没有预览资料</h3><p>${captureReady() ? '点击「自动采集预览」，从精确提交启动项目并截图。基础采集无需 AI。' : '先配置适合此项目的运行与采集方式；原生游戏、命令行工具也可以导入手工截图、录像或文件。'}</p></div></div>`;
   // The API returns newest first. Render every retained item once so media
   // indexes remain stable when native <details> reveals earlier records.
@@ -131,7 +138,7 @@ function evidenceView(records) {
       let group = groups.find(g => g.key === key); if (!group) {group = {key,label,category,items:[]}; groups.push(group);} group.items.push(item);
     }
     const errors = record.errors || [];
-    return `<article class="evidence-record"><div class="evidence-record-header"><span>${pill(manual ? '手工导入 · 未自动验证' : legacy ? '历史资料导入' : record.status === 'failed' ? '采集失败' : record.status === 'partial' ? '部分采集完成' : '自动采集',manual || legacy ? 'warn' : record.status === 'failed' ? 'bad' : 'good')} <span>${esc(date(record.created_at || record.completed_at || record.at))}</span></span><code title="${esc(record.recipe_hash || '')}">${record.recipe_hash ? `配置 ${esc(String(record.recipe_hash).slice(0,8))}` : esc(short(record.sha))}</code></div>${legacy ? '<p class="section-subtitle" style="margin-top:3px">此记录来自旧版资料库，保留原有来源，不视为新采集结果。</p>' : ''}${errors.length ? `<div class="evidence-errors">${errors.map(e => esc(typeof e === 'string' ? e : e.error || e.message || JSON.stringify(e))).join('<br>')}</div>` : ''}${groups.map(group => `${identicalImagePair(group,record) ? '<div class="inline-notice" style="margin-bottom:10px">两版在此采集场景中画面相同</div>' : ''}<div class="evidence-pair ${group.items.length === 1 ? 'single' : ''}" style="margin-bottom:10px">${group.items.map(item => mediaTile(item, record, group.label)).join('')}</div>`).join('') || '<div class="evidence-missing">此记录没有可显示的图片或录像。<br>请查看采集错误，修正配置后重试。</div>'}</article>`;
+    return `<article class="evidence-record"><div class="evidence-record-header"><span>${pill(manual ? '手工导入 · 未自动验证' : legacy ? '历史资料导入' : record.status === 'cancelled' ? '采集已取消' : record.status === 'failed' ? '采集失败' : record.status === 'partial' ? '部分采集完成' : '自动采集',manual || legacy ? 'warn' : record.status === 'cancelled' ? 'warn' : record.status === 'failed' ? 'bad' : 'good')} <span>${esc(date(record.created_at || record.completed_at || record.at))}</span></span><code title="${esc(record.recipe_hash || '')}">${record.recipe_hash ? `配置 ${esc(String(record.recipe_hash).slice(0,8))}` : esc(short(record.sha))}</code></div>${record.base ? `<p class="comparison-summary">基准 <code>${esc(short(record.base))}</code> → 目标 <code>${esc(short(record.sha))}</code></p>` : ''}${legacy ? '<p class="section-subtitle" style="margin-top:3px">此记录来自旧版资料库，保留原有来源，不视为新采集结果。</p>' : ''}${errors.length ? `<div class="evidence-errors">${errors.map(e => esc(typeof e === 'string' ? e : e.error || e.message || JSON.stringify(e))).join('<br>')}</div>` : ''}${groups.map(group => `${identicalImagePair(group,record) ? '<div class="inline-notice" style="margin-bottom:10px">两版在此采集场景中画面相同</div>' : ''}<div class="evidence-pair ${group.items.length === 1 ? 'single' : ''}" style="margin-bottom:10px">${group.items.map(item => mediaTile(item, record, group.label)).join('')}</div>`).join('') || '<div class="evidence-missing">此记录没有可显示的图片或录像。<br>请查看采集错误，修正配置后重试。</div>'}</article>`;
   });
   return rendered[0] + (rendered.length > 1 ? `<details class="older-evidence"><summary>较早的采集记录（${rendered.length - 1}）</summary><div class="older-evidence-records">${rendered.slice(1).join('')}</div></details>` : '');
 }
@@ -143,14 +150,14 @@ function identicalImagePair(group,record) {
 function mediaTile(item, record, key) {
   const mediaType = item.media_type || item.kind || '', url = item.missing ? '' : safeUrl(item.url || ''), poster = safeUrl(item.poster || ''), isVideo = /video|webm|mp4/i.test(mediaType), isImage = /image|png|jpg|jpeg|webp|gif/i.test(mediaType);
   const isBase = ['base','before','previous'].includes(item.side) || (record.base && item.sha === record.base);
-  const side = isBase ? '父版本' : '当前版本', label = item.title || key || '预览', dimensions = item.width && item.height ? `${item.width} × ${item.height}` : '';
+  const side = isBase ? '基准版本' : '目标版本', label = item.title || key || '预览', dimensions = item.width && item.height ? `${item.width} × ${item.height}` : '';
   const index = state.media.push({...item,url,poster,isVideo,isImage,title:`${side} · ${label}`,record}) - 1;
   const diagnostics = item.diagnostics || item.warnings || [];
   return `<figure class="evidence-tile" style="margin:0"><div class="evidence-tile-header"><strong>${esc(side)} · ${esc(short(item.sha || record.sha))}</strong><span>${esc(label)}</span></div>${url && isImage ? `<button class="evidence-open" data-media="${index}" aria-label="放大 ${esc(label)}"><img src="${esc(url)}" alt="${esc(side)} ${esc(label)}" loading="lazy" ${item.width && item.height ? `width="${Number(item.width)}" height="${Number(item.height)}"` : ''}></button>` : url && isVideo ? `<video src="${esc(url)}" ${poster ? `poster="${esc(poster)}"` : ''} controls preload="metadata" playsinline aria-label="${esc(label)}"></video>` : url ? `<div class="evidence-missing">${icon('file')}<p style="margin-top:9px">文件资料</p><a class="button outline" href="${esc(url)}" target="_blank" rel="noopener" style="margin-top:10px">打开文件 ${icon('arrow')}</a></div>` : `<div class="evidence-missing">${item.missing ? '该版本没有可用的场景资料' : '没有可访问的资料地址'}${item.error ? `<br>${esc(item.error)}` : ''}</div>`}${diagnostics.length ? `<div class="evidence-errors" style="padding:0 10px">采集诊断：${esc(typeof diagnostics === 'string' ? diagnostics : diagnostics.map(d => typeof d === 'string' ? d : d.message || JSON.stringify(d)).join('；'))}</div>` : ''}<figcaption class="evidence-tile-footer"><span>${esc(dimensions || (isVideo ? '原始录像' : '版本资料'))}</span><span>${url && (isImage || isVideo) ? `<button data-media="${index}">${icon('zoom')}放大</button>` : ''}${url ? ` <a href="${esc(url)}" target="_blank" rel="noopener">原文件 ↗</a>` : ''}</span></figcaption></figure>`;
 }
 function jobsView() {
   const jobs = state.jobs.filter(j => j.projectId === state.project?.id && !j.dismissed);
-  return jobs.length ? `<section class="jobs" aria-label="操作进度">${jobs.map(j => `<article class="job ${j.status === 'failed' ? 'failed' : ''}">${['running','queued'].includes(j.status) ? '<span class="spinner"></span>' : icon(j.status === 'failed' ? 'info' : 'check')}<div class="job-copy"><strong>${esc(j.label)} · ${{queued:'等待执行',running:'正在执行',complete:'已完成',failed:'失败'}[j.status] || esc(j.status)}${j.body?.sha ? ` · ${esc(short(j.body.sha))}` : ''}</strong><p>${esc(j.connection_error || j.error || j.progress?.message || (j.status === 'complete' ? '结果已保留，可继续查看。' : '在独立目录中执行，日志和产物会保留。'))}</p></div>${j.status === 'complete' && j.kind === 'ai/suggest' ? `<button class="button outline" data-review-job="${esc(j.id)}">查看提案</button>` : ''}${j.status === 'failed' && j.body?.sha ? `<button class="button outline" data-retry-job="${esc(j.id)}">重试</button>` : ''}${j.status === 'complete' || j.status === 'failed' ? `<button class="icon-button" data-dismiss-job="${esc(j.id)}" aria-label="收起操作结果">${icon('close')}</button>` : ''}</article>`).join('')}</section>` : '';
+  return jobs.length ? `<section class="jobs" aria-label="操作进度">${jobs.map(j => `<article class="job ${j.status === 'failed' ? 'failed' : ''}">${activeJobStates.includes(j.status) ? '<span class="spinner"></span>' : icon(j.status === 'complete' ? 'check' : 'info')}<div class="job-copy"><strong>${esc(j.label)} · ${{queued:'等待执行',running:'正在执行',cancelling:'正在取消',cancelled:'已取消',complete:'已完成',failed:'失败'}[j.status] || esc(j.status)}${j.body?.sha ? ` · ${esc(short(j.body.sha))}` : ''}</strong><p>${esc(j.connection_error || j.error || (j.status === 'cancelling' ? '正在停止此任务的进程，已有日志与资料保留。' : j.status === 'complete' ? '结果已保留，可继续查看。' : '在独立目录中执行，日志和产物会保留。'))}</p></div>${j.cancellable && activeJobStates.includes(j.status) ? `<button class="button outline" data-cancel-job="${esc(j.id)}" ${j.status === 'cancelling' ? 'disabled' : ''}>${j.status === 'cancelling' ? '正在取消' : '取消任务'}</button>` : ''}${j.status === 'complete' && j.kind === 'ai/suggest' ? `<button class="button outline" data-review-job="${esc(j.id)}">查看提案</button>` : ''}${['failed','cancelled'].includes(j.status) && j.body?.sha ? `<button class="button outline" data-retry-job="${esc(j.id)}">重试</button>` : ''}${terminalJobStates.includes(j.status) ? `<button class="icon-button" data-dismiss-job="${esc(j.id)}" aria-label="收起操作结果">${icon('close')}</button>` : ''}</article>`).join('')}</section>` : '';
 }
 function runtimesView() {
   const runtimes = state.runtimes.filter(r => (!r.project_id || r.project_id === state.project?.id) && (r.alive || r.running || ['running','starting'].includes(r.status)));
@@ -160,11 +167,11 @@ function runtimesView() {
 
 async function bootstrap() {
   try {
-    const data = await api('/bootstrap'); state.token = data.token; state.projects = data.projects || []; state.runtimes = data.runtimes || []; state.ai = data.ai || {}; state.error = ''; recoverJobs(data.jobs);
+    const data = await api('/bootstrap'); state.token = data.token; state.projects = data.projects || []; state.runtimes = data.runtimes || []; state.ai = data.ai || {}; state.error = ''; recoverJobs(data.jobs); state.jobWarnings = data.job_warnings || [];
     let saved; try { saved = localStorage.getItem('reprise.project'); } catch (_) {}
     const next = state.projects.find(p => p.id === state.project?.id) || state.projects.find(p => p.id === saved) || state.projects[0];
     render(); if (next) await selectProject(next.id);
-    for (const job of state.jobs) if (['queued','running'].includes(job.status)) pollJob(job);
+    for (const job of state.jobs) if (activeJobStates.includes(job.status)) pollJob(job);
   } catch (e) { state.error = e.message; render(); }
 }
 async function selectProject(id) {
@@ -178,13 +185,14 @@ async function selectProject(id) {
     render(); if (state.history[0]) await selectVersion(state.history[0].sha);
   } catch (e) { if (seq !== state.selection) return; state.loading = false; state.error = e.message; render(); }
 }
-async function selectVersion(sha) {
+async function selectVersion(sha, base = null) {
   const seq = ++state.selection, projectId = state.project.id;
   state.selected = sha; state.loading = true; state.error = ''; render();
   try {
     const v = await api(`/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(sha)}`);
+    if (base !== null) v.diff = await api(`/projects/${encodeURIComponent(projectId)}/diff?target=${encodeURIComponent(sha)}&base=${encodeURIComponent(base)}`);
     if (seq !== state.selection) return;
-    state.version = v; state.base = v.diff?.base || v.commit?.parents?.[0] || ''; state.loading = false; render();
+    state.selected = v.commit.sha; state.version = v; state.base = v.diff?.base || v.commit?.parents?.[0] || ''; state.loading = false; render();
   } catch (e) { if (seq !== state.selection) return; state.loading = false; state.version = null; state.error = e.message; render(); }
 }
 async function loadHistory(more = false) {
@@ -202,6 +210,16 @@ async function chooseBase(base) {
   const seq = ++state.selection, sha = state.selected, projectId = state.project.id;
   try { const diff = await api(`/projects/${encodeURIComponent(projectId)}/diff?target=${encodeURIComponent(sha)}${base ? `&base=${encodeURIComponent(base)}` : ''}`); if (seq !== state.selection) return; state.base = diff.base || ''; state.version.diff = diff; render(); } catch (e) { toast(e.message,true); }
 }
+function compareDialog() {
+  const projectId = state.project.id;
+  const suggestions = new Map(state.history.map(c => [c.sha, c.subject || short(c.sha)]));
+  for (const ref of state.refs) suggestions.set(ref.name, ref.name);
+  showDialog('选择两个版本比较', `<p class="dialog-description">可以选择历史提交，或输入完整 / 简短 SHA、分支名、标签名。比较方向是基准 → 目标。</p><datalist id="compare-versions">${[...suggestions].map(([value,label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('')}</datalist><label class="field"><span class="field-label">基准版本 A</span><input name="base_ref" list="compare-versions" value="${esc(state.base)}" required placeholder="提交 SHA、分支或标签" autocomplete="off"></label><label class="field"><span class="field-label">目标版本 B</span><input name="target_ref" list="compare-versions" value="${esc(state.selected)}" required placeholder="提交 SHA、分支或标签" autocomplete="off"></label>`, '<button class="button primary" type="submit">比较版本</button>', {onSubmit:async form => {
+    const diff = await api(`/projects/${encodeURIComponent(projectId)}/diff?target=${encodeURIComponent(form.get('target_ref').trim())}&base=${encodeURIComponent(form.get('base_ref').trim())}`);
+    dialog.close();
+    if (state.project?.id === projectId) await selectVersion(diff.target, diff.base);
+  }});
+}
 function showDialog(title, body, footer = '', {onSubmit} = {}) {
   if (dialog.open) dialog.close();
   dialog.innerHTML = `<form id="dialog-form"><header class="dialog-header"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-button" data-close-dialog aria-label="关闭">${icon('close')}</button></header><div class="dialog-body">${body}<div id="form-error" class="form-error" role="alert"></div></div><footer class="dialog-footer"><button type="button" class="button subtle" data-close-dialog>取消</button>${footer}</footer></form>`;
@@ -217,9 +235,13 @@ const recipeTemplates = {
   manual:{schema:1,adapter:'manual',root:'.',captures:[],network:'local'},
 };
 function recipeDialog(proposal = null) {
+  if (!state.project || !state.selected) { toast('先选择一个已提交的版本。', true); return; }
+  const projectId = state.project.id, sha = state.selected, base = state.base;
+  const legacy = state.version?.legacy_recipe || state.project?.legacy_recipe;
   const existing = proposal?.recipe || proposal?.proposal?.recipe || activeRecipe() || recipeTemplates['manual'];
   const explanation = proposal?.summary || proposal?.explanation || proposal?.reason || '';
-  showDialog(proposal ? '审阅 AI 提出的配置' : '项目运行与采集配置', `${proposal ? `<div class="dialog-callout">AI 提案尚未生效。请核对命令、目录、页面和等待条件；只有明确保存后，后续运行或采集才会使用它。</div>${explanation ? `<div class="ai-proposal">${esc(explanation)}</div>` : ''}` : '<p class="dialog-description">每个项目独立配置运行适配器和采集场景。同一场景会用于两个精确版本。AI 可帮助提出配置，基础运行和截图无需 AI。</p>'}<label class="field"><span class="field-label">使用配置模板 <span class="muted">切换会替换下方草稿</span></span><select id="recipe-template"><option value="">保留当前配置</option value="static-web">静态网页 / 已构建的 Web 游戏</option><option value="command-web">需启动命令的网页 / Web 游戏</option><option value="manual">原生应用 / 游戏 / CLI（手工资料）</option></select></label><p class="recipe-help"><code>root</code> 相对于提交根目录。命令使用参数数组，端口填写 <code>{port}</code>。<code>captures</code> 定义路由、视口、就绪条件与操作步骤。</p><label class="field"><span class="field-label">配置 JSON</span><textarea class="recipe-editor" name="recipe" spellcheck="false" required>${esc(JSON.stringify(existing,null,2))}</textarea></label><label class="checkbox-field"><input type="checkbox" name="reviewed" required><span>我已核对这份配置，授权后续点击「运行」或「采集」时执行其中的命令。<small>保存配置本身不会运行项目。执行使用独立副本，保留日志和产物。</small></span></label>`, '<button class="button primary" type="submit">保存并确认配置</button>', {onSubmit:async form => { let recipe; try {recipe = JSON.parse(form.get('recipe'));} catch(e){throw new Error(`JSON 格式不正确：${e.message}`);} const project = await api(`/projects/${encodeURIComponent(state.project.id)}/recipe`,{method:'PUT',body:{recipe}}); state.project = project; state.projects = state.projects.map(p => p.id === project.id ? project : p); dialog.close(); if (state.selected) await selectVersion(state.selected); else render(); toast('配置已保存。可点击运行或采集开始执行。'); }});
+  showDialog(proposal ? '审阅 AI 提出的配置' : '当前版本运行与采集配置', `${proposal ? `<div class="dialog-callout">AI 提案尚未生效。请核对命令、目录、页面和等待条件；只有明确保存后，后续运行或采集才会使用它。</div>${explanation ? `<div class="ai-proposal">${esc(explanation)}</div>` : ''}` : '<p class="dialog-description">配置只保存到当前提交，不会覆盖其他版本。比较时两边使用相同截图场景。AI 可帮助提出配置，基础运行和截图无需 AI。</p>'}<p class="recipe-help">保存目标：<code>${esc(short(sha))}</code> ${legacy ? '<button type="button" class="button subtle" id="load-legacy-recipe">载入旧项目配置作为草稿</button>' : ''}</p><label class="field"><span class="field-label">使用配置模板 <span class="muted">切换会替换下方草稿</span></span><select id="recipe-template"><option value="">保留当前配置</option value="static-web">静态网页 / 已构建的 Web 游戏</option><option value="command-web">需启动命令的网页 / Web 游戏</option><option value="manual">原生应用 / 游戏 / CLI（手工资料）</option></select></label><p class="recipe-help"><code>root</code> 相对于提交根目录。命令使用参数数组，端口填写 <code>{port}</code>。<code>captures</code> 定义路由、视口、就绪条件与操作步骤。</p><label class="field"><span class="field-label">配置 JSON</span><textarea class="recipe-editor" name="recipe" spellcheck="false" required>${esc(JSON.stringify(existing,null,2))}</textarea></label><label class="checkbox-field"><input type="checkbox" name="reviewed" required><span>我已核对这份配置，授权后续点击「运行」或「采集」时执行其中的命令。<small>保存配置本身不会运行项目。执行使用独立副本，保留日志和产物。</small></span></label>`, '<button class="button primary" type="submit">保存并确认配置</button>', {onSubmit:async form => { let recipe; try {recipe = JSON.parse(form.get('recipe'));} catch(e){throw new Error(`JSON 格式不正确：${e.message}`);} const project = await api(`/projects/${encodeURIComponent(projectId)}/recipe`,{method:'PUT',body:{recipe,sha}}); state.projects = state.projects.map(p => p.id === project.id ? project : p); dialog.close(); if (state.project?.id === projectId) { state.project = project; await selectVersion(sha, base || null); } toast(`配置已保存到版本 ${short(sha)}。`); }});
+  $('#load-legacy-recipe')?.addEventListener('click', () => { $('[name="recipe"]',dialog).value = JSON.stringify(legacy,null,2); });
   $('#recipe-template').addEventListener('change',event => { if (recipeTemplates[event.target.value]) $('[name="recipe"]',dialog).value = JSON.stringify(recipeTemplates[event.target.value],null,2); });
   $('[name="recipe"]',dialog).addEventListener('keydown',event => { if (event.key === 'Tab') {event.preventDefault();const el=event.target,start=el.selectionStart,end=el.selectionEnd;el.setRangeText('  ',start,end,'end');} });
 }
@@ -237,30 +259,32 @@ async function startAction(kind) {
   if (kind === 'ai/suggest' && !aiEnabled()) { await aiSettingsDialog(); return; }
   const projectId = state.project.id, sha = state.selected;
   const body = {sha,...(kind === 'capture' && state.compareCapture && state.base ? {base:state.base} : {})};
-  const existing = state.jobs.find(j => j.projectId === projectId && j.kind === kind && j.body?.sha === sha && ['running','queued'].includes(j.status));
+  const existing = state.jobs.find(j => j.projectId === projectId && j.kind === kind && j.body?.sha === sha && activeJobStates.includes(j.status));
   if (existing) {toast('这个版本已有相同操作正在进行。');return;}
-  try { const result = await api(`/projects/${encodeURIComponent(projectId)}/${kind}`,{method:'POST',body}); const job = normalizeJob(result,{projectId,kind,body}); state.jobs.push(job); render(); if (['complete','failed'].includes(job.status)) await onJobFinished(job); else pollJob(job); } catch(e) { toast(e.message,true); }
+  try { const result = await api(`/projects/${encodeURIComponent(projectId)}/${kind}`,{method:'POST',body}); const job = normalizeJob(result,{projectId,kind,body}); state.jobs.push(job); render(); if (terminalJobStates.includes(job.status)) await onJobFinished(job); else pollJob(job); } catch(e) { toast(e.message,true); }
 }
 async function pollJob(job) {
   if (job.polling) return;
   job.polling = true;
   try {
-    while (['queued','running'].includes(job.status)) {
+    while (activeJobStates.includes(job.status)) {
+      const previousMarkup = jobsView();
       await new Promise(resolve => setTimeout(resolve, Math.min(15000,1000 * (1 + (job.pollErrors || 0)))));
       try {
         const result = await api(`/jobs/${encodeURIComponent(job.id)}`); Object.assign(job,normalizeJob(result,job)); job.pollErrors = 0; job.connection_error = '';
-        if (['complete','failed'].includes(job.status)) { render(); await onJobFinished(job); return; }
+        if (terminalJobStates.includes(job.status)) { render(); await onJobFinished(job); return; }
       } catch(e) { job.pollErrors = (job.pollErrors || 0) + 1; job.connection_error = `正在重新连接本地服务；原任务状态尚未确认。${e.message}`; }
-      const region = $('#jobs-region'); if (region) region.innerHTML = jobsView();
+      const region = $('#jobs-region'), markup = jobsView();
+      if (region && markup !== previousMarkup) region.innerHTML = markup;
     }
   } finally { job.polling = false; }
 }
 async function onJobFinished(job) {
-  if (job.status === 'failed') {
+  if (['failed','cancelled'].includes(job.status)) {
     if (job.kind === 'capture' && state.project?.id === job.projectId && state.selected === job.body?.sha) {
       try { await refreshEvidence(); } catch (_) {}
     }
-    toast(job.error || `${job.label}失败，请检查日志和项目配置。`,true); return;
+    toast(job.error || `${job.label}已结束，资料已保留。`,job.status === 'failed'); return;
   }
   if (job.kind === 'ai/suggest') {
     state.aiProposal = job.result;
@@ -305,12 +329,15 @@ document.addEventListener('click',async event => {
   if (target.dataset.sha) {await selectVersion(target.dataset.sha);return;}
   if (target.dataset.dismissJob) {const job=state.jobs.find(j=>j.id===target.dataset.dismissJob);if(job)job.dismissed=true;try{localStorage.setItem('reprise.dismissedJobs',JSON.stringify(state.jobs.filter(j=>j.dismissed).map(j=>j.id).slice(-100)));}catch(_){}render();return;}
   if (target.dataset.reviewJob) {const job=state.jobs.find(j=>j.id===target.dataset.reviewJob);if(job){if(job.body?.sha && state.selected !== job.body.sha)await selectVersion(job.body.sha);recipeDialog(job.result);}return;}
-  if (target.dataset.retryJob) {const job=state.jobs.find(j=>j.id===target.dataset.retryJob);if(job?.body?.sha){target.disabled=true;try{const result=await api(`/projects/${encodeURIComponent(job.projectId)}/${job.kind}`,{method:'POST',body:job.request || job.body});job.dismissed=true;const retry=normalizeJob(result,{projectId:job.projectId,kind:job.kind,body:job.request || job.body});state.jobs.push(retry);render();if(['complete','failed'].includes(retry.status))await onJobFinished(retry);else pollJob(retry);}catch(e){toast(e.message,true);target.disabled=false;}}return;}
+  if (target.dataset.cancelJob) { const job = state.jobs.find(j => j.id === target.dataset.cancelJob); if (job) { target.disabled = true; try { Object.assign(job, normalizeJob(await api(`/jobs/${encodeURIComponent(job.id)}/cancel`, {method:'POST',body:{}}), job)); render(); pollJob(job); } catch(e) {toast(e.message,true);target.disabled=false;} } return; }
+  if (target.dataset.retryJob) {const job=state.jobs.find(j=>j.id===target.dataset.retryJob);if(job?.body?.sha){target.disabled=true;try{const result=await api(`/projects/${encodeURIComponent(job.projectId)}/${job.kind}`,{method:'POST',body:job.request || job.body});job.dismissed=true;const retry=normalizeJob(result,{projectId:job.projectId,kind:job.kind,body:job.request || job.body});state.jobs.push(retry);render();if(terminalJobStates.includes(retry.status))await onJobFinished(retry);else pollJob(retry);}catch(e){toast(e.message,true);target.disabled=false;}}return;}
   if (target.dataset.stop) {target.disabled=true;try{await api(`/runtimes/${encodeURIComponent(target.dataset.stop)}/stop`,{method:'POST',body:{}});const data=await api('/bootstrap');state.runtimes=data.runtimes||[];render();toast('已停止预览服务，运行副本与日志保留。');}catch(e){toast(e.message,true);target.disabled=false;}return;}
   const action = target.dataset.action;
   if (action === 'import') importDialog();
   else if (action === 'refresh') {await selectProject(state.project.id);toast('已从 Git 重新读取历史。');}
   else if (action === 'load-more') await loadHistory(true);
+  else if (action === 'compare') compareDialog();
+  else if (action === 'swap-comparison' && state.base) await selectVersion(state.base, state.selected);
   else if (action === 'recipe') recipeDialog();
   else if (action === 'manual') manualDialog();
   else if (action === 'ai-settings') await aiSettingsDialog();

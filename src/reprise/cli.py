@@ -26,6 +26,8 @@ def main(argv=None):
         item = commands.add_parser(name); item.add_argument('path'); item.add_argument('--ref', default='--all' if name == 'history' else 'HEAD')
     history = commands.choices['history']; history.add_argument('--limit', type=int, default=50); history.add_argument('--offset', type=int, default=0)
     recipe = commands.add_parser('recipe'); recipe.add_argument('project'); recipe.add_argument('file', help='JSON recipe file; explicit configuration, commands execute only on run/capture')
+    recipe.add_argument('--sha', default='HEAD', help='Commit whose recipe is saved (resolved to exact SHA)')
+    cancel = commands.add_parser('cancel'); cancel.add_argument('job', help='Run/capture job ID to cancel')
     for name in ('run', 'capture'):
         item = commands.add_parser(name); item.add_argument('project'); item.add_argument('--sha', default='HEAD')
         if name == 'capture': item.add_argument('--base')
@@ -51,24 +53,31 @@ def main(argv=None):
             projects = ProjectStore(args.data)
             if args.command == 'import': result = projects.add(args.path, args.name)
             elif args.command == 'projects': result = projects.list()
-            else: result = projects.save_recipe(args.project, json.loads(Path(args.file).read_text()))
+            else: result = projects.save_recipe(args.project, json.loads(Path(args.file).read_text()), args.sha)
         else:
             from .service import Reprise
             app = Reprise(args.data)
             try:
                 if args.command == 'runtimes': result = app.runtimes.list()
+                elif args.command == 'cancel': result = app.jobs.cancel(args.job)
                 elif args.command == 'stop': result = app.runtimes.stop(args.runtime)
                 elif args.command == 'evidence': result = app.evidence.manual(app.projects.repository(args.project), args.project, vars(args))
                 else:
                     job = app.execute(args.project, args.command, vars(args))
-                    while job['status'] in ('queued', 'running'):
-                        time.sleep(.1)
-                        job = app.jobs.get(job['id'])
+                    try:
+                        while job['status'] in ('queued', 'running', 'cancelling'):
+                            time.sleep(.1)
+                            job = app.jobs.get(job['id'])
+                    except KeyboardInterrupt:
+                        app.jobs.cancel(job['id'])
+                        while job['status'] in ('queued', 'running', 'cancelling'):
+                            time.sleep(.1)
+                            job = app.jobs.get(job['id'])
                     result = job
             finally:
                 app.close()
         print(json.dumps(result, ensure_ascii=True, indent=2))
-        return 1 if isinstance(result, dict) and result.get('status') == 'failed' else 0
+        return (130 if result.get('status') == 'cancelled' else 1 if result.get('status') == 'failed' else 0) if isinstance(result, dict) else 0
     except (ValueError, OSError, KeyError) as error:
         print(str(error), file=sys.stderr)
         return 1

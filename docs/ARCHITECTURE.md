@@ -34,7 +34,7 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 无须能够识别框架，才能浏览仓库。未知类型仍有 history/diff/manual 能力。识别到框架也不代表它当前可运行；只有实际配方和运行结果能说明运行能力。Canvas 是绘图技术，单独出现不能证明项目是游戏。
 
-配方优先级：人工保存的项目覆盖配置 > 当前提交的 `.reprise.json` > 自动静态识别。提交里的命令型配方是未批准输入，必须在工作台核对保存。历史版本可以有不同入口和配置；执行任务前锁定 SHA 与规范化配方副本，避免排队期间 HEAD 或配置变化改写请求。
+配方优先级：当前完整 SHA 的人工配置 > 当前提交的 `.reprise.json` > 自动静态识别。提交里的命令型配方是未批准输入，必须在工作台核对保存。历史版本可以有不同入口和配置；执行任务前锁定 SHA 与规范化配方副本，避免排队期间 HEAD 或配置变化改写请求。
 
 ### 3. 运行适配与生命周期
 
@@ -46,7 +46,7 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 ### 4. 确定性采集与证据
 
-采集输入是 `project_id + target SHA + base SHA + normalized recipe + runner version`。同一个对比任务在两个 SHA 上使用完全相同的根目录、路由、视口、等待条件和操作序列。根目录/路由在旧提交不存在时保留失败诊断，不从新版本回填资源。
+采集输入是 `project_id + target SHA + base SHA + target recipe hash + effective base recipe hash + runner version`。两个版本分别使用各自的适配器、根目录、启动命令与就绪条件；路由、视口、操作、录屏和网络策略使用目标版本定义的同一组采集场景。基准配置缺失或未批准时拒绝执行并指出需配置的 SHA；缺资源保留诊断，不从其他版本回填。
 
 浏览器从独立上下文启动，等待页面、fonts、图片 decode、媒体 metadata 与指定的 app-ready 选择器。全页采集先触发可见范围内的懒加载，再恢复位置；交互按有限步骤执行。PNG 保留像素尺寸；录像记录自己的宽高。HTTP 失败、脚本错误、缺图和阻断请求会降低记录状态，诊断截图不标成通过。
 
@@ -62,7 +62,7 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 ```text
 <application data>/
-  projects.json                 项目注册 + 人工配方
+  projects.json                 项目注册 + version_recipes（完整 SHA）+ 配方保存历史
   jobs/<id>.json                任务和恢复状态
   runtimes/<id>/runtime.json    进程身份与配置哈希
   runtimes/<id>/source/         精确提交的独立副本
@@ -74,3 +74,11 @@ web/ ↔ server.py┘       │              ├─ detection.py
 ```
 
 应用数据应放在源仓库以外。读取 Git、刷新列表、切换项目不创建预览副本。只有运行、采集、人工导入等具体操作才写相应托管内容。
+
+## 版本配置与取消任务
+
+人工配置只对保存时解析出的完整 SHA 生效。`HEAD` 前进后不继承上一提交的批准。已有 `recipe` 字段原样保留并通过 `legacy_recipe` 暴露为草稿，不再跨版本自动生效；用户可在指定版本载入并保存。清除某版本覆盖配置使用 `recipe:null`，保留保存历史后回退到提交配置/识别。
+
+运行与采集使用持久取消请求和协作式检查，状态为 queued → running → cancelling → cancelled（清理失败则 failed）。排队取消释放项目锁；运行中取消覆盖快照、安装/构建、服务就绪、采集锁等待及浏览器阶段。只停止具有匹配进程身份的自有进程；部分输出与日志保留。任务完成后取消为幂等操作，不停止已经交付的预览；此时使用运行实例的停止接口。CLI 与服务共享取消请求。
+
+每份任务记录独立校验；损坏 JSON、结构、编码或读取错误通过 `job_warnings` 显示，跳过该条但保留原文件，不阻止其他任务和工作台启动。

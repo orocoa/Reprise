@@ -20,29 +20,33 @@ Canonical source lives in this repository. Python 3.9+, standard library server/
 ## Runtime & capture — `src/reprise/runtime.py`, `recipes.py`, `capture.py`
 `validate_recipe(dict)` -> normalized dict or ValueError.
 Recipe v1: {schema:1, adapter:'static-web'|'command-web'|'manual', root:'.', commands:{install?:[[argv]],build?:[[argv]],start?:[argv]}, readiness:{path:'/',selector?:str,timeout_ms:15000}, captures:[{id,route:'/',viewport:{width:1440,height:900,scale:2},full_page:bool,wait_for?:str,record_ms?:1000,steps:[{action:'click'|'press'|'fill'|'wait', selector?:str,key?:str,value?:str,ms?:number}],record?:bool}], network:'local'|'allow'}.
-Commands use argv and `{port}` substitution, no shell. Local host PORT/HOST env; explicit recipe save grants command execution on later Run/Capture only. Static import/detect never executes code. Recipe resolution user override > committed `.reprise.json` (requires explicit save before command execution) > detected static recipe. Runtime must not read source worktree as historical state.
+Commands use argv and `{port}` substitution, no shell. Local host PORT/HOST env; explicit recipe save grants command execution on later Run/Capture only. Static import/detect never executes code. Recipe resolution exact-SHA user override > committed `.reprise.json` (requires explicit save before command execution) > detected static recipe. Runtime must not read source worktree as historical state.
 `RuntimeManager(data_dir)`:
 - `.start(repository, sha, recipe, approved=False)` -> {id,sha,url,path,adapter,...}. Stored durable metadata/logs, owned process identity, materialize into unique data_dir/runtimes directory.
 - `.stop(runtime_id)` -> state; stop only owned process/group; no files deleted.
 - `.list()` -> states with live status.
 `CaptureService(data_dir, runtime_manager)`:
-- `.capture(repository, project_id, sha, recipe, base=None, approved=False)` -> evidence record {id,project_id,sha,base,recipe_hash,status,items:[{capture_id,side,sha,path,media_type,width,height,...}],errors:[],...}; automatic uses same recipe/scenario for both sides, key includes project+SHA+base+recipe+runner version. Must release runtime after capture, preserve artifacts and failed logs. No AI required. No browser installed -> actionable error/manual fallback. Provider path from environment/normal dependency resolution, not machine hardcode.
+- `.capture(repository, project_id, sha, recipe, base=None, approved=False)` -> evidence record {id,project_id,sha,base,recipe_hash,status,items:[{capture_id,side,sha,path,media_type,width,height,...}],errors:[],...}; automatic uses revision-specific run recipes with shared target capture scenarios/network for both sides; key includes project+SHA+base+both effective recipe hashes+runner version. Must release runtime after capture, preserve artifacts and failed logs. No AI required. No browser installed -> actionable error/manual fallback. Provider path from environment/normal dependency resolution, not machine hardcode.
 - `.list(project_id, sha=None)` -> evidence records.
 `base` null => single-side capture; explicit SHA => paired compare. Independent screenshots + optional video, readiness fonts/images/app selector, report missing assets rather than claim successful capture.
 
 ## HTTP API used by web frontend
-All endpoints prefix /api; JSON. GET /bootstrap -> {token,projects,runtimes,jobs,ai:{...}}. Mutations `X-Reprise-Token` same-origin, JSON. Errors {error}.
+All endpoints prefix /api; JSON. GET /bootstrap -> {token,projects,runtimes,jobs,job_warnings,ai:{...}}. Mutations `X-Reprise-Token` same-origin, JSON. Errors {error}.
 GET /projects -> {projects}; POST /projects {path,name?} -> project.
 Project: {id,name,path,repository:info,head,detected:detectResult,recipe,recipe_source,recipe_approved,created_at}.
 GET /projects/:id -> project; GET /projects/:id/history?ref=...&offset=0&limit=50 -> history.
 GET /projects/:id/refs -> {refs}; GET /projects/:id/status -> repository status.
 GET /projects/:id/versions/:sha -> {commit,diff,detection,recipe,recipe_source,recipe_approved,evidence:[]}.
 GET /projects/:id/diff?target=sha&base=sha -> diff.
-PUT /projects/:id/recipe {recipe} -> project (explicit user configuration).
+PUT /projects/:id/recipe {recipe,sha?:revision} -> project at resolved SHA (default HEAD). Null recipe restores committed/detected configuration only for that SHA. Legacy project-wide recipes are retained as drafts.
 POST /projects/:id/run {sha} -> job; POST /projects/:id/capture {sha,base?:sha} -> job.
-POST /runtimes/:id/stop {} -> runtime; GET /jobs/:id -> {id,status:'queued'|'running'|'complete'|'failed',result?,error?}.
+POST /runtimes/:id/stop {} -> runtime; GET /jobs/:id -> {id,status:'queued'|'running'|'cancelling'|'cancelled'|'complete'|'failed',result?,error?}.
 GET /projects/:id/evidence?sha=... -> {evidence}.
 POST /projects/:id/evidence/manual {sha,path,kind:'image'|'video'|'file',title,base?,capture_id?} -> evidence (copy local artifact into owned storage, do not move original; bind exact revision, mark manual/unverified).
 Evidence file URL in returned `items[].url`, open native media dialog with fit/100%/200% and controls.
 GET /ai -> public settings/state. PUT /ai {enabled,provider:'compatible',endpoint,model,api_key?} -> state; settings private 0600, no secret returned. POST /projects/:id/ai/suggest {sha} -> job with structured recipe proposal, never apply/run automatically.
 GET /health -> {ok:true,version}.
+
+POST /jobs/:id/cancel {} -> job (202). Supported for cancellable run/capture jobs; terminal requests are idempotent. Durable request can be submitted from another local CLI/service instance. Corrupt task records stay on disk and appear in bootstrap job_warnings, while valid tasks remain available.
+
+`RuntimeManager.start(..., cancel=None)` and `Repository.materialize(..., cancel=None)` support cooperative cancellation. `CaptureService.capture(..., base_recipe=None, base_approved=False, cancel=None)` validates each side independently. A supplied base recipe uses its own runner fields and target captures/network; approval is not inherited from the target. All normalized recipes and hashes are retained in the evidence record.

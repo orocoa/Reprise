@@ -61,8 +61,9 @@ class ProjectStore:
             return json.loads(json.dumps(self.cache[key]))
 
     def resolve_recipe(self, record, repository, sha, detection=None):
-        if record.get('recipe') is not None:
-            return {'recipe': validate_recipe(record['recipe']), 'recipe_source': 'project', 'recipe_approved': True, 'recipe_error': None}
+        entry = record.get('version_recipes', {}).get(sha, {})
+        if entry.get('recipe') is not None:
+            return {'recipe': validate_recipe(entry['recipe']), 'recipe_source': 'version', 'recipe_approved': True, 'recipe_error': None}
         if sha:
             try:
                 exists = any(item['path'] == '.reprise.json' and item['type'] == 'blob' for item in repository.tree(sha))
@@ -83,7 +84,7 @@ class ProjectStore:
         info = repository.info()
         resolved = repository.resolve(sha) if sha else info['head']
         detection = self.detected(repository, resolved)
-        return {**record, 'repository': info, 'head': info['head'], 'revision': resolved, 'detected': detection, **self.resolve_recipe(record, repository, resolved, detection)}
+        return {**record, 'legacy_recipe': record.get('recipe'), 'repository': info, 'head': info['head'], 'revision': resolved, 'detected': detection, **self.resolve_recipe(record, repository, resolved, detection)}
 
     def list(self):
         projects = []
@@ -94,14 +95,16 @@ class ProjectStore:
                 projects.append({**record, 'unavailable': True, 'error': str(error), 'head': None})
         return projects
 
-    def save_recipe(self, identifier, value):
+    def save_recipe(self, identifier, value, sha='HEAD'):
         normalized = validate_recipe(value) if value is not None else None
+        revision = self.repository(identifier).resolve(sha)
         with self.lock, locked(self.lockfile):
             records = self.records()
             record = next((p for p in records if p['id'] == identifier), None)
             if record is None:
                 raise KeyError('找不到这个项目。')
-            record['recipe'] = normalized
-            record['recipe_saved_at'] = now()
+            entry = {'recipe': normalized, 'saved_at': now()}
+            record.setdefault('version_recipes', {})[revision] = entry
+            record.setdefault('recipe_history', []).append({'sha': revision, **entry})
             write_json(self.file, {'schema': 1, 'projects': records})
-        return self.get(identifier)
+        return self.get(identifier, revision)

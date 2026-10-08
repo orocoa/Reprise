@@ -102,7 +102,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/health' and reading:
             return self.send_json({'ok': True, 'version': __version__})
         if path == '/api/bootstrap' and reading:
-            return self.send_json({'token': self.server.token, 'projects': app.projects.list(), 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list()})
+            return self.send_json({'token': self.server.token, 'projects': app.projects.list(), 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
         if path == '/api/projects':
             if reading:
                 return self.send_json({'projects': app.projects.list()})
@@ -117,6 +117,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({'runtimes': app.runtime_list()})
         if len(parts) == 3 and parts[:2] == ['api', 'jobs'] and reading:
             return self.send_json(app.jobs.get(parts[2]))
+        if len(parts) == 4 and parts[:2] == ['api', 'jobs'] and parts[3] == 'cancel' and method == 'POST':
+            return self.send_json(app.jobs.cancel(parts[2]), 202)
         if len(parts) == 4 and parts[:2] == ['api', 'runtimes'] and parts[3] == 'stop' and method == 'POST':
             return self.send_json(app.runtimes.stop(parts[2]))
         if len(parts) >= 3 and parts[:2] == ['api', 'projects']:
@@ -136,7 +138,7 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 5 and parts[3] == 'versions' and reading:
                 return self.send_json(app.version(identifier, parts[4]))
             if suffix == 'recipe' and method == 'PUT':
-                return self.send_json(app.projects.save_recipe(identifier, body.get('recipe')))
+                return self.send_json(app.projects.save_recipe(identifier, body.get('recipe'), body.get('sha', 'HEAD')))
             if suffix in ('run', 'capture', 'ai/suggest') and method == 'POST':
                 return self.send_json(app.execute(identifier, suffix, body), 202)
             if suffix == 'evidence' and reading:

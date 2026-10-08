@@ -7,8 +7,14 @@ import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-const output = { items: [], errors: [], warnings: [], runner: 'reprise-playwright-v2' };
+const output = { items: [], errors: [], warnings: [], runner: 'reprise-playwright-v3' };
 let browser, browserServer;
+let cancelled = false;
+process.on('SIGTERM', () => {
+  cancelled = true;
+  // Closing the browser interrupts long waits and lets finally retain results.
+  if (browserServer) browserServer.close().catch(() => {});
+});
 function identityFor(pid) {
   try {
     if (fs.existsSync(`/proc/${pid}/stat`)) {
@@ -128,15 +134,18 @@ try {
   if (!chromium) throw new Error('The configured Playwright module does not provide chromium.');
   const options = { headless: true, args: ['--enable-unsafe-swiftshader'] };
   if (process.env.REPRISE_BROWSER) options.executablePath = process.env.REPRISE_BROWSER;
+  if (cancelled) throw new Error('Capture cancelled');
   try {
     browserServer = await chromium.launchServer(options);
     const pid = browserServer.process().pid;
     fs.writeFileSync(input.browser_process_path, JSON.stringify({pid, process_identity: identityFor(pid)}));
+    if (cancelled) throw new Error('Capture cancelled');
     browser = await chromium.connect(browserServer.wsEndpoint());
   }
   catch (error) { throw new Error(`Chromium could not start. Install it with npx playwright install chromium or set REPRISE_BROWSER. ${message(error)}`); }
   output.browser_version = browser.version();
   for (const scenario of input.recipe.captures) {
+    if (cancelled) break;
     let context, page, video;
     let mediaReadiness = [];
     const errors = [], blocked = new Set(), responses = new Set(), pageErrors = new Set();
@@ -170,6 +179,7 @@ try {
       if (scenario.wait_for) await page.locator(scenario.wait_for).first().waitFor({ state: 'visible' });
       await ready(page, input.recipe.readiness.timeout_ms);
       for (const step of scenario.steps) {
+        console.log(`Capture step started: ${step.action}`);
         if (step.action === 'click') await page.locator(step.selector).first().click();
         else if (step.action === 'fill') await page.locator(step.selector).first().fill(step.value);
         else if (step.action === 'press') {

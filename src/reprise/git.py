@@ -279,7 +279,9 @@ class Repository:
                     submodule_worktree_changes_included=False,
                     note='Nested submodule worktree modifications are not scanned.')
 
-    def materialize(self, revision, destination):
+    def materialize(self, revision, destination, cancel=None):
+        from .cancellation import check
+        check(cancel)
         sha = self.resolve(revision)
         requested = Path(destination).expanduser()
         if os.path.lexists(requested):
@@ -309,6 +311,7 @@ class Repository:
             timeout.start()
             try:
                 for item in entries:
+                    check(cancel)
                     path = destination.joinpath(*item['path'].split('/'))
                     path.parent.mkdir(parents=True, exist_ok=True)
                     if item['type'] == 'commit':
@@ -338,6 +341,7 @@ class Repository:
                         with os.fdopen(os.open(path, flags, 0o600), 'wb') as stream:
                             prefix = b''
                             while remaining:
+                                check(cancel)
                                 chunk = process.stdout.read(min(1024 * 1024, remaining))
                                 if not chunk:
                                     raise ValueError('Truncated Git object: %s' % item['path'])
@@ -377,6 +381,7 @@ class Repository:
                 for name, target in symlinks:
                     validate_link(name, target, set())
                 for name, target in symlinks:
+                    check(cancel)
                     os.symlink(target, destination.joinpath(*name.split('/')))
                     files_written += 1
                 process.stdin.close()

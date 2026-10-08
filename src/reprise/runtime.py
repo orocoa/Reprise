@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 from .recipes import recipe_hash, validate_recipe
+from .cancellation import Cancelled, check, wait_process
 
 
 def utcnow():
@@ -147,7 +148,8 @@ class RuntimeManager:
         except (ProcessLookupError, subprocess.TimeoutExpired):
             return True
 
-    def start(self, repository, sha, recipe, approved=False):
+    def start(self, repository, sha, recipe, approved=False, cancel=None):
+        check(cancel)
         recipe = validate_recipe(recipe)
         if recipe['adapter'] == 'manual':
             raise ValueError('This project uses manual evidence; configure a browser adapter to run it')
@@ -164,7 +166,10 @@ class RuntimeManager:
                  'source': repository.info().get('path'), 'url': None, 'warnings': []}
         self._save(state)
         try:
-            materialized = repository.materialize(resolved, snapshot)
+            if cancel is not None:
+                cancel.cleanups.append(lambda: self.stop(rid))
+            materialized = repository.materialize(resolved, snapshot, cancel=cancel)
+            check(cancel)
             if isinstance(materialized, dict):
                 state['materialization'] = materialized
                 state['warnings'] = materialized.get('warnings', [])
@@ -185,10 +190,11 @@ class RuntimeManager:
             with open(state['log_path'], 'ab', buffering=0) as log:
                 for phase in ('install', 'build'):
                     for command in recipe['commands'].get(phase, []):
+                        check(cancel)
                         state['status'] = phase
                         process = self._launch(expand(command), root, env, state, log)
                         try:
-                            code = process.wait(timeout=int(os.environ.get('REPRISE_COMMAND_TIMEOUT', '600')))
+                            code = wait_process(process, int(os.environ.get('REPRISE_COMMAND_TIMEOUT', '600')), cancel)
                         except subprocess.TimeoutExpired:
                             self._terminate(state)
                             raise RuntimeError('%s timed out; see %s' % (phase, state['log_path']))
@@ -199,11 +205,13 @@ class RuntimeManager:
                 else:
                     argv = expand(recipe['commands']['start'])
                 state['status'] = 'starting'
+                check(cancel)
                 process = self._launch(argv, root, env, state, log)
                 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                 deadline = time.monotonic() + recipe['readiness']['timeout_ms'] / 1000
                 last_error = 'no response'
                 while time.monotonic() < deadline:
+                    check(cancel)
                     if process.poll() is not None:
                         raise RuntimeError('Preview process exited with code %s; see %s' % (process.returncode, state['log_path']))
                     try:
@@ -216,12 +224,13 @@ class RuntimeManager:
                     time.sleep(.08)
                 else:
                     raise RuntimeError('Preview readiness failed at %s: %s; see %s' % (recipe['readiness']['path'], last_error, state['log_path']))
+            check(cancel)
             state.update({'status': 'running', 'running': True, 'started_at': utcnow()})
             self._save(state)
             return dict(state)
         except Exception as error:
             self._terminate(state)
-            state.update({'status': 'failed', 'running': False, 'error': str(error), 'finished_at': utcnow()})
+            state.update({'status': 'cancelled' if isinstance(error, Cancelled) else 'failed', 'running': False, 'error': str(error), 'finished_at': utcnow()})
             self._save(state)
             raise
 
@@ -233,7 +242,7 @@ class RuntimeManager:
             state = read_json(path)
             alive = self._alive(state)
             terminated = self._terminate(state)
-            state.update({'status': 'stopped' if terminated or state.get('status') != 'failed' else 'failed',
+            state.update({'status': state['status'] if state.get('status') in ('failed', 'cancelled') else 'stopped',
                           'running': False, 'stopped_at': utcnow()})
             if state.get('pid') and not alive and not terminated:
                 state['stop_note'] = 'Owned process already exited; no process was signalled'
