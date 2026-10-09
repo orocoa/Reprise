@@ -123,33 +123,46 @@ let uiLanguage;
 try {uiLanguage=new URLSearchParams(location.search).get('lang') || localStorage.getItem('reprise.language') || 'zh';}catch(_){uiLanguage='zh';}
 if(!['zh','en'].includes(uiLanguage))uiLanguage='zh';
 const i18nMissing = new Set();
+let uiDictionary;
+const uiTextCache=new Map();
+function compileUICopy(){
+  const reverse=new Map();
+  for(const [zh,en] of Object.entries(uiCopy))if(!reverse.has(en))reverse.set(en,zh);
+  uiDictionary={reverse,english:new Set(Object.values(uiCopy)),entries:Object.entries({...uiCopy,...uiTerms}).sort((a,b)=>b[0].length-a[0].length)};
+  uiTextCache.clear();
+}
 function uiText(value) {
   const text=String(value),trim=text.trim();
-  if(uiLanguage!=='en'){
-    const pair=Object.entries(uiCopy).find(([zh,en])=>en===trim);
-    if(pair)return text.replace(trim,pair[0]);
-    return text.replace(/^Web app \((.*)\)$/, '网页应用 ($1)').replace('references missing committed assets:', '引用的资源未包含在提交中：');
-  }
-  if(uiCopy[trim])return text.replace(trim,uiCopy[trim]);
+  if(!uiDictionary)compileUICopy();
+  const key=uiLanguage+'|'+text;
+  if(uiTextCache.has(key))return uiTextCache.get(key);
   let result=text;
-  for(const [zh,en] of Object.entries({...uiCopy,...uiTerms}).sort((a,b)=>b[0].length-a[0].length))result=result.replaceAll(zh,en);
-  if(/[\u3400-\u9fff]/.test(result)){i18nMissing.add(text);return result;}
+  if(uiLanguage!=='en'){
+    const original=uiDictionary.reverse.get(trim);
+    result=original?text.replace(trim,original):text.replace(/^Web app \((.*)\)$/, '网页应用 ($1)').replace('references missing committed assets:', '引用的资源未包含在提交中：');
+  }else if(uiCopy[trim])result=text.replace(trim,uiCopy[trim]);
+  else if(!uiDictionary.english.has(trim)){
+    for(const [zh,en] of uiDictionary.entries)result=result.replaceAll(zh,en);
+    if(/[\u3400-\u9fff]/.test(result)&&i18nMissing.size<256)i18nMissing.add(text);
+  }
+  if(text.length<=2000){if(uiTextCache.size>=512)uiTextCache.delete(uiTextCache.keys().next().value);uiTextCache.set(key,result);}
   return result;
 }
 const originalTexts=new WeakMap(),originalAttrs=new WeakMap();
 function localizeDOM(root=document.body) {
-  document.documentElement.lang=uiLanguage==='en'?'en':'zh-CN';const description=document.querySelector('meta[name=description]');if(description)description.content=uiLanguage==='en'?'Reprise — from Git history to verifiable revision previews.':'Reprise — 从 Git 记录到可验证的版本预览。';const title=uiLanguage==='en'?'Reprise · Git workspace':'Reprise · Git 版本工作台';if(document.title!==title)document.title=title;
+  document.documentElement.lang=uiLanguage==='en'?'en':'zh-CN';const description=document.querySelector('meta[name=description]');if(description)description.content=uiLanguage==='en'?'Reprise — from Git history to verifiable revision previews.':'Reprise — 从 Git 记录到可验证的版本预览。';const name=document.querySelector('#project-name')?.textContent;const title=name?name+' · '+(uiLanguage==='en'?'Versions':'版本'):(uiLanguage==='en'?'Reprise · Git workspace':'Reprise · Git 版本工作台');if(document.title!==title)document.title=title;
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
   const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
   for(const node of nodes){
-    if(node.parentElement?.closest('[data-user-content],code,textarea,script,style,.commit-subject,.project-name,.ai-proposal'))continue;
+    if(node.parentElement?.closest('[data-user-content],code,pre,textarea,script,style,.commit-subject,.project-name,.ai-proposal,#quick-project option,#project-picker option,#main-picker option'))continue;
     const old=originalTexts.get(node);
     const original=old&&node.nodeValue===old.translated?old.original:node.nodeValue;
     const translated=uiText(original);
     if(node.nodeValue!==translated)node.nodeValue=translated;
     originalTexts.set(node,{original,translated});
   }
-  for(const element of root.querySelectorAll('[placeholder],[title],[aria-label]')){
+  const attributes='[placeholder],[title],[aria-label]';
+  for(const element of [...(root.matches?.(attributes)?[root]:[]),...root.querySelectorAll(attributes)]){
     if(element.closest('[data-user-content]')||element.hasAttribute('data-user-label'))continue;
     const originals=originalAttrs.get(element)||{};
     for(const key of ['placeholder','title','aria-label'])if(element.hasAttribute(key)){
@@ -158,6 +171,19 @@ function localizeDOM(root=document.body) {
     }
     originalAttrs.set(element,originals);
   }
+  document.querySelectorAll('[data-action=language]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.language===uiLanguage));
 }
 let localizeQueued=false;
-new MutationObserver(()=>{if(!localizeQueued){localizeQueued=true;queueMicrotask(()=>{localizeDOM();localizeQueued=false;});}}).observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+const localizeRoots=new Set();
+new MutationObserver(records=>{
+  for(const record of records){
+    if(record.type==='characterData'&&originalTexts.get(record.target)?.translated===record.target.nodeValue)continue;
+    const root=record.type==='characterData'?record.target.parentElement:record.target;
+    if(root?.isConnected)localizeRoots.add(root);
+  }
+  if(localizeRoots.size&&!localizeQueued){localizeQueued=true;queueMicrotask(()=>{
+    const roots=[...localizeRoots];localizeRoots.clear();
+    for(const root of roots)if(root.isConnected&&!roots.some(other=>other!==root&&other.contains(root)))localizeDOM(root);
+    localizeQueued=false;
+  });}
+}).observe(document.body,{childList:true,subtree:true,characterData:true});

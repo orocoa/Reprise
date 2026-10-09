@@ -55,7 +55,7 @@ class ProjectStore:
     def detected(self, repository, sha):
         if not sha:
             return {'kind': 'empty', 'label': '空仓库', 'confidence': 'certain', 'signals': [], 'capabilities': {'history': True, 'diff': True, 'run': False, 'capture': False, 'manual': True}, 'recipe': None, 'warnings': ['还没有提交；首次提交后刷新即可读取。'], 'candidates': []}
-        key = (repository.info()['path'], sha)
+        key = (str(repository.path), sha)
         with self.lock:
             if key not in self.cache:
                 if len(self.cache) >= 128:
@@ -82,9 +82,9 @@ class ProjectStore:
             recipe = validate_recipe(recipe)
         return {'recipe': recipe, 'recipe_source': 'detected' if recipe else 'none', 'recipe_approved': False, 'recipe_error': None}
 
-    def get(self, identifier, sha=None):
+    def get(self, identifier, sha=None, *, repository=None):
         record = self.record(identifier)
-        repository = Repository(record['path'], status_directory=self.directory / 'git-status')
+        repository = repository or self.repository(identifier)
         info = repository.info()
         resolved = repository.resolve(sha) if sha else info['head']
         detection = self.detected(repository, resolved)

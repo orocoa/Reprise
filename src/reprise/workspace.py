@@ -4,35 +4,23 @@ import json
 
 
 def repository_snapshot(service, identifier):
-    project = service.projects.get(identifier)
     repository = service.projects.repository(identifier)
+    project = service.projects.get(identifier, repository=repository)
     refs = repository.refs()
     tips = list(dict.fromkeys(([project['head']] if project['head'] else []) +
                 [r['sha'] for r in refs if r.get('target_type') == 'commit']))
-    commits, warnings = {}, []
+    warnings = []
     if len(tips) > 64:
         tips = tips[:64]
         warnings.append('引用较多，本次最多读取 64 个不同引用顶点。')
-    for tip in tips:
-        offset = 0
-        while offset < 2000:
-            page = repository.history(tip, limit=200, offset=offset)
-            for commit in page['commits']:
-                commits[commit['sha']] = commit
-            if not page['has_more']:
-                break
-            offset = page['next_offset']
-        else:
-            warnings.append('部分引用超过 2000 个提交，未加载的父节点作为边界显示。')
-    decorated = {}
-    for ref in refs:
-        decorated.setdefault(ref['sha'], []).append(ref['name'])
-    for commit in commits.values():
-        commit['refs'] = decorated.get(commit['sha'], [])
+    history = repository.history_tips(tips, refs=refs, shallow=project['repository']['shallow'])
+    if history['truncated_tips']:
+        warnings.append('部分引用超过 2000 个提交，未加载的父节点作为边界显示。')
+    for commit in history['commits']:
         commit['notes'] = project.get('version_notes', {}).get(commit['sha'])
         commit['source_project_id'] = identifier
-    ordered = sorted(commits.values(), key=lambda c: (c['committed_at'], c['sha']), reverse=True)
-    fingerprint = hashlib.sha256(json.dumps(tips).encode()).hexdigest()
+    ordered = sorted(history['commits'], key=lambda c: (c['committed_at'], c['sha']), reverse=True)
+    fingerprint = hashlib.sha256(json.dumps([ordered, refs], sort_keys=True).encode()).hexdigest()
     return {'project': project, 'refs': refs, 'commits': ordered, 'snapshot': fingerprint,
             'warnings': warnings + project['repository'].get('warnings', []),
             'status': repository.status()}
@@ -70,7 +58,9 @@ def snapshot(service, identifier, history_identifiers=(), history_catalog=None):
     result['commits'] = sorted(commits.values(), key=lambda c: (c['committed_at'], c['sha']), reverse=True)
     result['refs'] = list(refs.values())
     result['history_sources'] = sources
-    result['snapshot'] = hashlib.sha256(json.dumps(fingerprints).encode()).hexdigest()
+    # Catalog membership and provenance can change without moving a Git tip.
+    result['snapshot'] = hashlib.sha256(json.dumps(
+        [fingerprints, result['commits'], result['refs']], sort_keys=True).encode()).hexdigest()
     return result
 
 

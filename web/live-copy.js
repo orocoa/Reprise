@@ -10,20 +10,10 @@ Object.assign(uiCopy,{'前后对照':'Before and after','交互演示':'Interact
 uiCopy['打开原文件 ↗']='Open original file ↗';
 Object.assign(uiCopy,{'保存':'Save','收藏此版本':'Bookmark this revision','取消收藏':'Remove bookmark','列表显示':'List display','简洁列表':'Compact list','历史存档':'History archive','重命名':'Rename','重命名版本':'Rename revision','编辑简介':'Edit summary','名称':'Name','简介':'Summary','更新说明（每行一条）':'Release notes (one per line)','编辑':'Edit','AI 设置':'AI settings','返回设置':'Back to settings','分析当前版本':'Analyze this revision','配置 AI':'Configure AI','配置当前版本':'Configure this revision','运行与采集':'Run and capture','未启用':'Disabled','已启用':'Enabled','历史线路':'History routes','Reprise 专注于启动时所在的仓库。':'Reprise focuses on the repository it was launched from.','未读取到启动仓库':'The launch repository could not be read.','编辑对象已经变化，请重新打开。':'The revision has changed; open the editor again.'});
 Object.assign(uiCopy,{'修改版本信息':'Edit revision details','修改更新说明':'Edit release notes','保存修改':'Save changes','编辑更新说明':'Edit release notes','暂无更新说明。':'No release notes yet.','已收藏此版本。':'Revision bookmarked.','已取消收藏。':'Bookmark removed.','正在比较所选版本…':'Comparing the selected revisions…','查看当前改动':'View working changes','取消':'Cancel','任务已启动，可在设置中查看进度。':'Task started. View progress in Settings.','此版本已有保存的配置。':'Settings have been saved for this revision.','此版本尚未保存配置。':'No settings saved for this revision yet.','历史资料':'Historical records'});
-uiText=function(value){const s=String(value);if(uiLanguage!=='en')return sharedUiText(s);if(Object.values(uiCopy).includes(s.trim()))return s;return sharedUiText(s
+uiText=function(value){const s=String(value);if(uiLanguage!=='en')return sharedUiText(s);return sharedUiText(s
  .replace(/(\d+) 条历史存档/g,'$1 archived records').replace(/(\d+) 个提交/g,'$1 commits').replace(/(\d+) 项未提交改动/g,'$1 uncommitted changes').replace(/(\d+) 个文件/g,'$1 files').replace(/(\d+) 个匹配 · 其余为关系节点/g,'$1 matches · other nodes show relationships').replace(/(\d+) 个运行或待确认的服务 · (\d+) 条保留记录/g,'$1 running or unconfirmed services · $2 retained records')
  .replace(/说明保存到本机版本资料，绑定 ([a-f0-9]+)。/g,'Notes are saved locally for revision $1.').replace(/复制资料并绑定 ([a-f0-9]+)。原文件会保留，来源标记为手工提供。/g,'Copy evidence for revision $1. Originals are retained and the source is marked as manual.').replace(/A \/ ([a-f0-9—]+) → B \/ ([a-f0-9]+) · 两侧完整文本（单侧上限 64 KB）/g,'A / $1 → B / $2 · complete texts (64 KB maximum per side)'));
 };
-// Preserve the detected project title and raw user content while localizing the shell.
-localizeDOM=function(root=document.body){
- document.documentElement.lang=uiLanguage==='en'?'en':'zh-CN';
- const title=(document.querySelector('#project-name')?.textContent||'Reprise')+' · '+(uiLanguage==='en'?'Versions':'版本');if(document.title!==title)document.title=title;
- const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
- for(const node of nodes){if(node.parentElement?.closest('[data-user-content],code,pre,textarea,script,style,#quick-project option,#project-picker option,#main-picker option'))continue;const old=originalTexts.get(node),original=old&&node.nodeValue===old.translated?old.original:node.nodeValue,translated=uiText(original);if(node.nodeValue!==translated)node.nodeValue=translated;originalTexts.set(node,{original,translated});}
- for(const element of root.querySelectorAll('[placeholder],[title],[aria-label]')){if(element.closest('[data-user-content]')||element.hasAttribute('data-user-label'))continue;const originals=originalAttrs.get(element)||{};for(const key of ['placeholder','title','aria-label'])if(element.hasAttribute(key)){const value=element.getAttribute(key),old=originals[key],original=old&&value===old.translated?old.original:value,translated=uiText(original);if(value!==translated)element.setAttribute(key,translated);originals[key]={original,translated};}originalAttrs.set(element,originals);}
- document.querySelectorAll('[data-action=language]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.language===uiLanguage));
-};
-
 Object.assign(uiCopy,{'编辑版本信息':'Edit revision details'});
 
 Object.assign(uiCopy,{'详细视图':'Detailed view','紧凑视图':'Compact view','界面语言':'Interface language','收藏':'Bookmarks','已收藏':'Bookmarked','定位收藏版本，保留分叉关系':'Locate bookmarks while retaining branch relationships','同时查看更多版本，保留分叉与收藏标记':'See more revisions with branch relationships and bookmark markers','个收藏 · 保留版本关系':'bookmarks · revision relationships retained','还没有收藏版本':'No bookmarked revisions yet','点击版本右侧的星标，即可在这里定位。':'Star a revision to locate it here.'});
@@ -31,3 +21,6 @@ Object.assign(uiCopy,{'详细视图':'Detailed view','紧凑视图':'Compact vie
 Object.assign(uiCopy,{'独立历史':'Separate history','与上方无连接':'No link above','与上一段历史没有已记录的父子连接':'No recorded parent connection to the preceding history.'});
 
 Object.assign(uiCopy,{'添加预览资料':'Add previews','生成此版本预览':'Capture this revision','在项目目录运行 reprise .，即可打开这个仓库。':'Run reprise . in a project directory to open that repository.'});
+Object.assign(uiCopy,{'这份任务记录无法读取，已保留原文件，其他任务可继续使用。':'This job record cannot be read. Its original file is retained; other jobs remain available.'});
+compileUICopy();
+localizeDOM();

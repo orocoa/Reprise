@@ -53,7 +53,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         if self.command != 'HEAD':
-            self.wfile.write(data)
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
     def do_HEAD(self):
         self.dispatch()
@@ -117,7 +120,10 @@ class Handler(BaseHTTPRequestHandler):
             threading.Thread(target=self.server.shutdown, daemon=True).start()
             return
         if path == '/api/bootstrap' and reading:
-            projects = [app.projects.get(query['project'][0])] if query.get('project', [''])[0] else app.projects.list()
+            if query.get('include_projects', ['1'])[0] == '0':
+                projects = []  # Project metadata is loaded once, in the workspace snapshot.
+            else:
+                projects = [app.projects.get(query['project'][0])] if query.get('project', [''])[0] else app.projects.list()
             return self.send_json({'token': self.server.token, 'projects': projects, 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
         if path == '/api/workspace/context' and reading:
             return self.send_json(workspace.context(app, query.get('project', [None])[0]))
@@ -182,10 +188,7 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == 'evidence/manual' and method == 'POST':
                 return self.send_json(app.evidence.manual(repository, identifier, body), 201)
         if reading and path.startswith('/artifacts/'):
-            root = (app.directory / 'evidence').resolve()
-            candidate = (root / path[len('/artifacts/'):]).resolve()
-            if root not in candidate.parents or not candidate.is_file() or candidate.name == 'record.json':
-                raise KeyError('找不到证据文件。')
+            candidate = app.evidence.file(path[len('/artifacts/'):])
             attachment = candidate.suffix.lower() not in ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.webm', '.mov')
             return serve_file(self, candidate, cache='private, max-age=31536000, immutable', attachment=attachment)
         if reading:

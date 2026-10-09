@@ -7,6 +7,7 @@ name = "reprise-local"
 version = "0.3.0"
 description = "Local Git history, deterministic project detection and reproducible browser evidence"
 readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.9"
 dependencies = []
 
@@ -15,6 +16,7 @@ reprise = "reprise.cli:main"
 
 [tool.setuptools]
 packages = ["reprise", "reprise.web"]
+license-files = ["LICENSE", "THIRD-PARTY-NOTICES.md"]
 
 [tool.setuptools.package-dir]
 "" = "src"

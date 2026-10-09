@@ -1,0 +1,71 @@
+name: Reprise checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.9'
+            browser: '0'
+          - os: ubuntu-latest
+            python: '3.13'
+            browser: '1'
+          - os: macos-latest
+            python: '3.9'
+            browser: '1'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: src
+      REPRISE_BROWSER_TESTS: ${{ matrix.browser }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Prepare check dependencies
+        shell: bash
+        run: |
+          python -m pip install 'setuptools>=61' wheel
+          mkdir -p work/test-artifacts/ci
+          echo "REPRISE_NODE=$(command -v node)" >> "$GITHUB_ENV"
+      - name: Prepare optional browser
+        if: matrix.browser == '1'
+        shell: bash
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          echo "REPRISE_PLAYWRIGHT=$GITHUB_WORKSPACE/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+      - name: Git graph and workspace contracts
+        shell: bash
+        run: node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs | tee work/test-artifacts/ci/node.log
+      - name: Full regression
+        shell: bash
+        run: python -m unittest discover -s tests -v 2>&1 | tee work/test-artifacts/ci/python.log
+      - name: Fresh installation checks
+        shell: bash
+        run: python scripts/check_distribution.py 2>&1 | tee work/test-artifacts/ci/distribution.log
+      - name: Retain diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reprise-${{ matrix.os }}-py${{ matrix.python }}-${{ github.run_attempt }}
+          path: work/test-artifacts/
+          if-no-files-found: warn
+          retention-days: 90

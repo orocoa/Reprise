@@ -1,4 +1,4 @@
-include README.md CHANGELOG.md AGENTS.md run.py package.json
+include README.md CHANGELOG.md AGENTS.md LICENSE THIRD-PARTY-NOTICES.md run.py package.json
 recursive-include web *.html *.js *.css *.svg *.ico *.woff2 *.ttf *.txt *LICENSE
 recursive-include docs *.md
 recursive-include examples *

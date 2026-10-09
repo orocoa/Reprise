@@ -21,6 +21,7 @@ class Jobs:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix='reprise')
         self.lock = threading.RLock()
+        self.changed = threading.Condition(self.lock)
         self.busy = set()
         self.controls = {}
         self.stopping = threading.Event()
@@ -72,7 +73,9 @@ class Jobs:
             except (ValueError, OSError, KeyError, TypeError) as error:
                 errors[path.name] = str(error)
         self.recovery_errors = errors
-        return sorted(items, key=lambda item: item.get('created_at', ''), reverse=True)[:30]
+        ordered = sorted(items, key=lambda item: item.get('finished_at') or item.get('created_at', ''), reverse=True)
+        return [item for item in ordered if item['status'] in ACTIVE] + [
+            item for item in ordered if item['status'] in TERMINAL][:30]
 
     def warnings(self):
         return [{'file': name, 'message': '这份任务记录无法读取，已保留原文件，其他任务可继续使用。'} for name in sorted(self.recovery_errors)]
@@ -91,13 +94,20 @@ class Jobs:
         return item
 
     def _watch_cancellations(self):
-        while not self.stopping.wait(.1):
-            with self.lock:
-                controls = list(self.controls.values())
+        while True:
+            with self.changed:
+                # Idle services need no periodic filesystem checks or wakeups.
+                self.changed.wait_for(lambda: self.stopping.is_set() or any(
+                    c.get('future') and c['cancellable'] for c in self.controls.values()))
+                if self.stopping.is_set():
+                    return
+                controls = [c for c in self.controls.values() if c['cancellable']]
             for control in controls:
                 future = control.get('future')
                 if future and control['cancel'].requested():
                     future.cancel()
+            if self.stopping.wait(.1):
+                return
 
     def submit(self, project_id, operation, callback, request=None, cancellable=False):
         with self.lock:
@@ -114,7 +124,7 @@ class Jobs:
             item = {'id': secrets.token_hex(12), 'project_id': project_id, 'operation': operation, 'request': request or {}, 'status': 'queued', 'created_at': now(), 'owner_pid': os.getpid(), 'owner_identity': process_identity(os.getpid()), 'cancellable': cancellable}
             path = self._path(item['id'])
             cancel = Cancellation(self._request_path(item['id']))
-            control = {'cancel': cancel}
+            control = {'cancel': cancel, 'cancellable': cancellable}
             self.controls[item['id']] = control
             try:
                 write_json(path, item)
@@ -145,6 +155,7 @@ class Jobs:
                     self.busy.discard(project_id)
                     self.controls.pop(item['id'], None)
                     stream.close()
+                    self.changed.notify_all()
 
         def execute():
             result, error = None, None
@@ -160,8 +171,14 @@ class Jobs:
             finally:
                 finish(result, error)
 
-        future = self.executor.submit(execute)
-        control['future'] = future
+        try:
+            future = self.executor.submit(execute)
+        except Exception as error:
+            finish(error=error)
+            raise
+        with self.changed:
+            control['future'] = future
+            self.changed.notify_all()
         future.add_done_callback(lambda completed: finish(error=Cancelled()) if completed.cancelled() else None)
         return self.get(item['id'])
 
@@ -177,4 +194,6 @@ class Jobs:
                     pass
         self.executor.shutdown(wait=True)
         self.stopping.set()
+        with self.changed:
+            self.changed.notify_all()
         self.watcher.join(timeout=2)

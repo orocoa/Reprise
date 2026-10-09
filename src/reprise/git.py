@@ -188,6 +188,45 @@ class Repository:
             raise ValueError('History limit and offset must be integers')
         if not 1 <= limit <= 200 or not 0 <= offset <= 1000000:
             raise ValueError('History limit must be 1–200 and offset 0–1000000')
+        return self._history(ref, limit, offset, self.refs())
+
+    def history_tips(self, tips, limit=2000, *, refs=None, shallow=None):
+        """Read each tip once, retaining the same per-tip history boundary.
+
+        A global log limit would let busy branches hide another branch's history.
+        Sharing decorations and de-duplicating full SHAs avoids that trade-off.
+        """
+        if not isinstance(tips, (list, tuple)) or len(tips) > 64:
+            raise ValueError('Expected at most 64 history tips')
+        if not isinstance(limit, int) or not 1 <= limit <= 2000:
+            raise ValueError('History tip limit must be 1–2000')
+        refs = self.refs() if refs is None else refs
+        if shallow is None:
+            shallow = self._run('rev-parse', '--is-shallow-repository').strip() == b'true'
+        commits, truncated = {}, []
+        for tip in dict.fromkeys(tips):
+            # Many refs point inside a history we already loaded. Reuse it only
+            # when every ancestor is present and the per-tip budget is intact.
+            # Missing boundaries or larger ancestry still use Git's own walker.
+            pending, seen = [tip], set()
+            while pending and len(seen) <= limit:
+                sha = pending.pop()
+                if sha in seen:
+                    continue
+                if sha not in commits:
+                    break
+                seen.add(sha)
+                pending.extend(commits[sha]['parents'])
+            else:
+                if not pending and len(seen) <= limit:
+                    continue
+            page = self._history(tip, limit, 0, refs, shallow)
+            commits.update((item['sha'], item) for item in page['commits'])
+            if page['has_more']:
+                truncated.append(tip)
+        return {'commits': list(commits.values()), 'truncated_tips': truncated}
+
+    def _history(self, ref, limit, offset, refs, shallow=None):
         selection = '--all' if ref == '--all' else self.resolve(ref)
         data = self._run('log', selection, '--topo-order', '-z', '--format=%H%x00%P%x00%s%x00%an%x00%aI%x00%cI',
                          '--max-count=%d' % (limit + 1), '--skip=%d' % offset, '--')
@@ -197,7 +236,7 @@ class Repository:
         if len(fields) % 6:
             raise ValueError('Unexpected Git log output')
         decorations = {}
-        for ref_item in self.refs():
+        for ref_item in refs:
             decorations.setdefault(ref_item['sha'], []).append(ref_item['name'])
         result = []
         for n in range(0, len(fields), 6):
@@ -208,9 +247,11 @@ class Repository:
         result = result[:limit]
         # Git's revision walker hides shallow-boundary parents. Read commit
         # headers at these boundaries so parent identity is never fabricated.
-        if result and self._run('rev-parse', '--is-shallow-repository').strip() == b'true':
+        if result and (shallow if shallow is not None else
+                       self._run('rev-parse', '--is-shallow-repository').strip() == b'true'):
             for item in result:
-                item['parents'] = self._parents(item['sha'])
+                if not item['parents']:
+                    item['parents'] = self._parents(item['sha'])
         return dict(commits=result, has_more=has_more, next_offset=offset + len(result) if has_more else None)
 
     def tree(self, revision):

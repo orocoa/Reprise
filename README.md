@@ -4,7 +4,18 @@
 
 ## 启动
 
-需要 Python 3.9+ 和 Git，当前支持 macOS / Linux。Git 读取与 Web 工作台使用 Python 标准库。
+需要 Python 3.9+ 和 Git。macOS 已完成本机回归，Linux 的自动检查结果见 GitHub Actions。Git 读取与 Web 工作台使用 Python 标准库。
+
+从 GitHub 获取并安装命令：
+
+```sh
+git clone https://github.com/orocoa/Reprise.git
+python3 -m venv ~/.venvs/reprise
+~/.venvs/reprise/bin/python -m pip install ./Reprise
+source ~/.venvs/reprise/bin/activate
+```
+
+随后进入要查看的 Git 仓库，执行下面的命令。每个新终端先激活上面的环境；AI 或脚本也可以直接调用 `~/.venvs/reprise/bin/reprise`。
 
 安装命令后，在平时执行 Git 的仓库目录中直接打开：
 
@@ -53,14 +64,14 @@ python3 run.py detect /path/to/project --ref HEAD
 ```sh
 python3 -m venv /path/to/reprise-venv
 /path/to/reprise-venv/bin/python -m pip install /path/to/reprise_local-0.3.0-py3-none-any.whl
-/path/to/reprise-venv/bin/reprise serve --port 51582
+/path/to/reprise-venv/bin/reprise /path/to/project
 ```
 
 也支持允许用户安装的基础 Python 环境，使用模块入口可以避免命令目录未加入 PATH 的问题：
 
 ```sh
 python3 -m pip install --user /path/to/reprise_local-0.3.0-py3-none-any.whl
-python3 -m reprise serve --port 51582
+python3 -m reprise /path/to/project
 ```
 
 wheel 内含工作台网页和采集 worker，运行不依赖原源码位置；`web/` 是唯一的前端编辑源，构建时映射到包内资源。源码发行包另含 `run.py`、浏览器依赖清单、示例、迁移脚本及文档。Git 使用本机已安装的可执行程序；基础安装不需要 Node 或浏览器采集依赖。
@@ -129,6 +140,8 @@ reprise . --history /path/to/related/archive.git --history-catalog /path/to/cata
 
 ## AI 的位置
 
+当前发行范围是本地命令行基础版。AI 兼容接口可选；Codex app-server 专用接入仍在计划中，未实现，不属于基础版发布条件。AI 可以直接调用 `reprise . --no-browser` 获取页面地址。
+
 AI 默认关闭。设置里填入兼容 Chat Completions 的 HTTPS 端点、模型原名与密钥；本机端点可用 HTTP。只有点击「AI 建议配置」才发送当前提交中有限的清单文件、路径及变更文件名，不发送未提交文件或整个仓库。模型保持用户指定值，不自动替换。
 
 返回的 JSON 经过配方和文件依据校验，只成为待审核提案。用户可编辑并保存到项目配置，然后仍由确定性的运行/采集系统执行。AI 没有直接执行命令、提交 Git、删除副本或伪造证据的接口。密钥存储为权限 `0600` 的本地设置，API 不返回密钥。未配置、模型失败或输出无效不会阻塞核心功能。
@@ -144,6 +157,8 @@ AI 默认关闭。设置里填入兼容 Chat Completions 的 HTTPS 端点、模�
 - `python3 scripts/create_demo_projects.py`：在 `work/` 新建三组独立 Git 示例，各含两次提交；不会改已有项目。
 
 ## 验证
+
+[发布验收范围](docs/RELEASE-CHECKLIST.md) 明确区分已验证能力和待执行的跨平台检查。`.github/workflows/ci.yml` 已配置 macOS/Linux 回归、Git 图与缓存契约、浏览器和全新环境安装检查；远端 CI 结果需在正式发布前确认。
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
@@ -161,6 +176,8 @@ python3 scripts/check_distribution.py
 检查过程不联网：先在保留的源码副本中构建 wheel 和源码包，再由源码包重建 wheel，分别装入全新 venv 和独立用户目录，从构建源码目录外启动，验证命令入口、网页内容及 API。报告、构建包、安装环境和失败日志均保存在 `work/test-artifacts/distribution-*/`。它不代替真实浏览器采集测试。
 
 ## 已确认的视觉档案
+
+代码采用 [MIT 许可证](LICENSE)。字体与图标保留各自原许可，见 [第三方说明](THIRD-PARTY-NOTICES.md)；导入的仓库和人工媒体保留原权属。
 
 [Reprise Paper Grid · 白纸线框](docs/visual-archives/reprise-paper-grid-2026-10-08/index.html) 保存了用户在 2026-10-08 确认的排版、VI、交互状态与动画，包括必要时竖线并入真实右边框的最终规则。档案保留原样源码、真实截图、动画片段、原始参考录屏、独立交互演示与通用复用示例；视觉规范见 [DESIGN.md](docs/visual-archives/reprise-paper-grid-2026-10-08/DESIGN.md)。
 

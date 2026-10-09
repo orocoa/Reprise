@@ -70,23 +70,26 @@ class WorkspaceTests(unittest.TestCase):
             self.app.projects.save_histories(self.project['id'], [imported['id']])
         self.assertNotIn('history_project_ids', self.app.projects.record(self.project['id']))
 
-    def test_snapshot_paginates_exact_tips_and_preserves_notes(self):
+    def test_snapshot_reads_each_tip_once_and_tracks_metadata_changes(self):
+        original = project_snapshot(self.app, self.project['id'])['snapshot']
         notes = {lang: {'title': 'custom', 'summary': 'saved', 'changes': ['change']} for lang in ('zh', 'en')}
         self.app.projects.save_notes(self.project['id'], notes, self.first)
         repository = self.app.projects.repository(self.project['id'])
-        commits = repository.history()['commits']
         calls = []
-
-        def pages(ref, limit, offset):
-            calls.append((ref, offset))
-            return {'commits': commits[offset:offset + 1], 'has_more': offset == 0, 'next_offset': offset + 1}
-
-        with patch.object(self.app.projects, 'repository', return_value=repository), patch.object(repository, 'history', side_effect=pages):
+        run = repository._run
+        def counted(*args, **kwargs):
+            calls.append(args)
+            return run(*args, **kwargs)
+        with patch.object(self.app.projects, 'repository', return_value=repository), patch.object(repository, '_run', side_effect=counted):
             result = project_snapshot(self.app, self.project['id'])
         self.assertEqual(len(result['commits']), 2)
         self.assertEqual(next(c for c in result['commits'] if c['sha'] == self.first)['notes']['localizations'], notes)
-        self.assertTrue(all(ref == self.second for ref, _ in calls))
-        self.assertIn((self.second, 1), calls)
+        self.assertEqual([args[1] for args in calls if args[0] == 'log'], [self.second])
+        self.assertNotEqual(original, result['snapshot'], 'Saved notes are part of the displayed snapshot')
+        git(self.repo.work_tree, 'update-ref', 'refs/heads/another-name', self.second)
+        self.before = self.fingerprint()
+        renamed = project_snapshot(self.app, self.project['id'])
+        self.assertNotEqual(result['snapshot'], renamed['snapshot'], 'Ref changes matter even when tips are unchanged')
 
     def test_file_comparison_uses_requested_base_and_rejects_unlisted_paths(self):
         result = file_comparison(self.app, self.project['id'], self.second, 'index.html', self.first)

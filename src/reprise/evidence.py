@@ -6,7 +6,7 @@ import shutil
 import urllib.parse
 
 from .http_files import media_type
-from .storage import now, write_json
+from .storage import now, write_json, read_json
 
 
 class EvidenceStore:
@@ -32,6 +32,21 @@ class EvidenceStore:
 
     def list(self, project_id, sha=None):
         return [self.public(item) for item in self.captures.list(project_id, sha)]
+
+    def file(self, relative):
+        """Only recorded media are public; retained inputs and logs stay private."""
+        candidate = (self.directory / relative).resolve()
+        try:
+            parts = candidate.relative_to(self.directory).parts
+            if len(parts) < 2 or not candidate.is_file() or candidate.name == 'record.json':
+                raise ValueError('Not an evidence item')
+            record = read_json(self.directory / parts[0] / 'record.json')
+            if not any(isinstance(item, dict) and item.get('path') and Path(item['path']).resolve() == candidate
+                       for item in record['items']):
+                raise ValueError('Unregistered evidence file')
+        except (OSError, ValueError, KeyError, TypeError):
+            raise KeyError('找不到证据文件。') from None
+        return candidate
 
     def manual(self, repository, project_id, values):
         sha = repository.resolve(values.get('sha', 'HEAD'))

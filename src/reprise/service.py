@@ -21,8 +21,8 @@ class Reprise:
         self.jobs = Jobs(self.directory)
 
     def version(self, identifier, revision):
-        project = self.projects.get(identifier, revision)
         repository = self.projects.repository(identifier)
+        project = self.projects.get(identifier, revision, repository=repository)
         sha = project['revision']
         commit = repository.history(sha, limit=1)['commits'][0]
         try:
@@ -34,8 +34,8 @@ class Reprise:
     def execute(self, identifier, operation, body):
         # Resolve refs and recipe before queuing so new commits/config edits cannot
         # silently change what the user just requested.
-        project = self.projects.get(identifier, body.get('sha', 'HEAD'))
         repository = self.projects.repository(identifier)
+        project = self.projects.get(identifier, body.get('sha', 'HEAD'), repository=repository)
         sha, recipe, approved = project['revision'], project['recipe'], project['recipe_approved']
         base = None
         if not sha:

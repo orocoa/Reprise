@@ -85,6 +85,22 @@ class GitTests(unittest.TestCase):
         self.assertEqual(tagged['sha'], merged)
         self.assertIn('refs/tags/release', repo.history()['commits'][0]['refs'])
 
+    def test_bulk_tips_preserve_each_branch_budget_and_full_ordered_parents(self):
+        self.commit()
+        repo = Repository(self.source)
+        tree = git(self.source, 'rev-parse', 'HEAD^{tree}')
+        chain = [repo.resolve('HEAD')]
+        for n in range(10):
+            chain.append(git(self.source, 'commit-tree', tree, '-p', chain[-1], '-m', str(n)))
+        # The older tip must still get its own four commits, outside the busy tip's budget.
+        tips = [chain[-1], chain[4]]
+        expected = {c['sha']: c for tip in tips for c in repo.history(tip, limit=4)['commits']}
+        actual = repo.history_tips(tips + tips, limit=4)
+        self.assertEqual({c['sha']: c for c in actual['commits']}, expected)
+        self.assertEqual(actual['truncated_tips'], tips)
+        self.assertEqual(len(actual['commits']), 8)
+        self.assertEqual(next(c for c in actual['commits'] if c['sha'] == chain[-4])['parents'], [chain[-5]])
+
     def test_filenames_and_renames_roundtrip(self):
         odd = 'folder/a file\twith\nnewline.txt'
         original = self.commit(odd, 'not empty' * 20)

@@ -1,7 +1,6 @@
 import base64
 import http.client
 import json
-import tempfile
 import threading
 import unittest
 from pathlib import Path
@@ -9,12 +8,12 @@ from pathlib import Path
 from reprise.server import LocalServer
 from reprise.service import Reprise
 from test_git import git
+from test_runtime import fixture
 
 
 class APITests(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name)
+        self.root = fixture('api')
         self.source = self.root / 'source'
         self.source.mkdir()
         git(self.source, 'init', '-b', 'main')
@@ -32,7 +31,6 @@ class APITests(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
         self.app.close()
-        self.tmp.cleanup()
 
     def request(self, method, path, body=None, headers=None, authorized=True, raw=False):
         conn = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=10)
@@ -96,6 +94,20 @@ class APITests(unittest.TestCase):
         status, _, _ = self.request('POST', '/api/projects', {'path': str(self.source)}, headers={'Content-Type': 'text/plain'})
         self.assertEqual(status, 415)
         self.assertEqual(self.app.projects.records(), [])
+
+    def test_workspace_bootstrap_does_not_inspect_other_repositories(self):
+        # A moved source should not prevent the launch workspace from obtaining
+        # its token, runtime controls and per-record recovery warnings.
+        project = self.import_project()
+        from reprise.storage import write_json
+        records = self.app.projects.records()
+        records[0]['path'] = str(self.root / 'unavailable-source')
+        write_json(self.app.projects.file, {'schema': 1, 'projects': records})
+        status, _, bootstrap = self.request('GET', '/api/bootstrap?include_projects=0')
+        self.assertEqual(status, 200)
+        self.assertEqual(bootstrap['projects'], [])
+        self.assertEqual(bootstrap['token'], self.token)
+        self.assertEqual(self.request('GET', '/api/projects/' + project['id'])[0], 400)
 
     def test_import_refresh_unknown_and_empty_history(self):
         empty = self.import_project()
@@ -183,6 +195,12 @@ class APITests(unittest.TestCase):
         self.assertEqual(status, 404)
         status, _, _ = self.request('GET', url.rsplit('/', 1)[0] + '/record.json')
         self.assertEqual(status, 404)
+        private = Path(evidence['items'][0]['path']).parent / 'capture-input.json'
+        private.write_text('{"private": "retained input"}')
+        for method in ('GET', 'HEAD'):
+            status, _, _ = self.request(method, url.rsplit('/', 1)[0] + '/' + private.name)
+            self.assertEqual(status, 404)
+        self.assertTrue(private.exists(), 'Private diagnostics remain available locally')
 
 
 if __name__ == '__main__':

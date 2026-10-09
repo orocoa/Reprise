@@ -60,6 +60,11 @@ def check_wheel(wheel, expected):
                 raise AssertionError('Wheel asset differs from canonical web/' + name)
         if 'reprise/browser_worker.mjs' not in archive.namelist():
             raise AssertionError('Wheel lacks browser worker')
+        for notice in ('LICENSE', 'THIRD-PARTY-NOTICES.md'):
+            bundled = [name for name in archive.namelist()
+                       if '.dist-info/' in name and name.endswith('/' + notice)]
+            if len(bundled) != 1 or archive.read(bundled[0]) != (ROOT / notice).read_bytes():
+                raise AssertionError('Wheel lacks the canonical license notice: ' + notice)
 
 
 def unpack_sdist(archive_path, target):
@@ -168,7 +173,8 @@ def main():
             raise RuntimeError('Run with a base Python interpreter so --user installation can be checked.')
         source = output / 'source'
         source.mkdir()
-        for name in ('pyproject.toml', 'MANIFEST.in', 'README.md', 'AGENTS.md', 'run.py', 'package.json'):
+        for name in ('pyproject.toml', 'MANIFEST.in', 'README.md', 'CHANGELOG.md', 'AGENTS.md',
+                     'LICENSE', 'THIRD-PARTY-NOTICES.md', 'run.py', 'package.json'):
             shutil.copy2(ROOT / name, source / name)
         for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts'):
             shutil.copytree(ROOT / name, source / name,

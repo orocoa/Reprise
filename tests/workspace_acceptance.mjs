@@ -11,6 +11,8 @@ const snapshot=()=>page.evaluate(()=>repriseWorkspace.snapshot());
 try {
  await page.goto(`${url}?project=${project}&sha=${sha}&lang=en`);
  await page.waitForFunction(()=>state.commits.length===2&&detail(state.selected)&&!state.loading);
+ assert.equal(await page.locator('#search').getAttribute('placeholder'),'Search commits, files or changes…');
+ assert.equal(await page.locator('[data-density=compact]').innerText(),'Compact view');
  const initialGraph=await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph()));
  const graphStyle=await page.locator('#route-map').evaluate(svg=>({
    nodes:[...svg.querySelectorAll('[data-node]')].map(n=>[n.dataset.node,n.getAttribute('cx'),n.getAttribute('stroke')]),
@@ -55,6 +57,13 @@ try {
  await verifyGraphView();
  await page.click(`[data-action=select][data-id="${sha}"]`);
  await page.waitForFunction(()=>detail(state.selected));
+ await page.click('[data-action=settings]');
+ assert.equal(await page.locator('#settings-management').innerText().then(t=>t.includes('This job record cannot be read.')),true);
+ assert.equal(await page.locator('#settings-management code').first().innerText(),'broken-record.json');
+ await page.evaluate(()=>reviewAI({id:'legacy',project_id:state.project.id,result:{sha:state.selected,model:'legacy-model',title:'old'}}));
+ assert.equal(await page.locator('#dialog [role=alert]').innerText(),'This legacy proposal has only one language. Request a new bilingual proposal.');
+ assert.equal(await page.locator('[data-action=review-ai-notes]').count(),0);
+ await page.click('#dialog [data-action=close]');
  await page.click('[data-action=settings]');
  await page.click('[data-language=zh]');
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),true);

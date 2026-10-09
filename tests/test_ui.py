@@ -53,6 +53,7 @@ class BrowserUITests(unittest.TestCase):
         app=Reprise(root/'state');adapter=Stub();app.ai.adapter=adapter
         app.ai.save({'enabled':True,'endpoint':'https://fixture.invalid/v1','model':'exact-test-model','api_key':'test-key'})
         project=app.projects.add(str(repo.work_tree))
+        (app.jobs.directory / 'broken-record.json').write_text('{broken JSON')
         server=LocalServer(('127.0.0.1',0),app)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
