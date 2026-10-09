@@ -1,5 +1,5 @@
 /*
- * Reprise Git graph layout prototype, 2026-10-09.
+ * Reprise Git graph layout. Contract: docs/GIT-GRAPH.md.
  * Browser: window.RepriseGraph.layout(commits, options)
  * Node:    const { layout } = require('./graph-layout.js')
  *
@@ -13,7 +13,7 @@
  * for a rounded polyline. A crossing without a commit node is not a junction.
  *
  * A route is a layout first-parent chain, NOT a Git branch identity. This
- * prototype is deterministic for a fixed graph; adding history can change its
+ * layout is deterministic for a fixed graph; adding history can change its
  * columns, route heads and color indexes. It does not claim a minimum-width
  * layout or stable colors across changing repository snapshots.
  */

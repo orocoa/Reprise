@@ -136,6 +136,7 @@ AI 默认关闭。设置里填入兼容 Chat Completions 的 HTTPS 端点、模�
 ## 配方和扩展
 
 - [架构与数据流](docs/ARCHITECTURE.md)
+- [Git 版本关系图：功能、逻辑、实现与回归契约](docs/GIT-GRAPH.md)
 - [配方与采集说明](docs/RECIPES.md)
 - [边界、迁移及验证](docs/VALIDATION.md)
 - [模块与 HTTP 接口](docs/implementation-contract.md)

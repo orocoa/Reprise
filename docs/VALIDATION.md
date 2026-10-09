@@ -1,5 +1,17 @@
 # 实现范围、迁移与验收
 
+## 2026-10-09 Git 关系图契约与回归
+
+正式语义与实现说明见 [GIT-GRAPH.md](GIT-GRAPH.md)，README、架构说明和项目贡献规则均指向这一契约。节点只按完整 SHA 去重，父边与父序保持真实 Git 数据，轨道/颜色属于布局；筛选保留全部关系节点。
+
+- `tests/graph-layout.test.cjs`：18 个测试通过，包含固定种子的 30 组 DAG、100 次输入乱序、多父合并、合入后继续开发、16 条并行路径、独立根、缺失边界、ref 别名/改名和 40/64 位身份。
+- 完整测试：**126 项通过，0 项跳过**，开启真实 Chrome 测试；日志 `work/test-artifacts/git-graph-contract-20261009/full-tests.log`，耗时 126.046 秒。
+- 真实 Git 集成测试通过普通/空/裸/detached/linked worktree、时间倒置、中文与远端 ref、annotated tag、浅克隆和 SHA-256；逐文件指纹确认导入与快照读取不改源仓库。
+- 浏览器用真实七父合并和七条支线验证 SVG 边数、密度切换、零匹配、窄窗口及圆点对齐。测试临时启用多行摘要，复现宽度重新分配导致先前 y 测量失效；正式修复将 gutter 分配移到 DOM 测量之前。最终浏览器报告与截图保留在 `work/test-artifacts/graph-ui-mqiuv2s5/`。
+- 离线发行验证 4 组通过；报告 `work/test-artifacts/git-graph-contract-20261009/distribution-20261009T141814Z-4775dda2/report.json`。直接 wheel、源码包重建 wheel 均在独立 venv/user-site 从源码外启动；源码包确实包含新图文档与全部 CJS/浏览器/Python 测试。
+
+原工作目录图测试和早期语义审查保留，正式测试从 `tests/` 执行。新增与原有失败诊断均未删除；没有修改用户导入的仓库或当前模型设置。
+
 ## 本次重构
 
 旧版是一个围绕已有 PersonalWeb 存档和人工截图目录的原型。旧服务、原仓库、61 个历史版本、原截图/录像及此前 QA 文件都保留。新源码位于 Reprise 自己的目录，旧版文件不参与新核心的执行。

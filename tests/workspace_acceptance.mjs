@@ -11,6 +11,26 @@ const snapshot=()=>page.evaluate(()=>repriseWorkspace.snapshot());
 try {
  await page.goto(`${url}?project=${project}&sha=${sha}&lang=en`);
  await page.waitForFunction(()=>state.commits.length===2&&detail(state.selected)&&!state.loading);
+ const initialGraph=await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph()));
+ const graphStyle=await page.locator('#route-map').evaluate(svg=>({
+   nodes:[...svg.querySelectorAll('[data-node]')].map(n=>[n.dataset.node,n.getAttribute('cx'),n.getAttribute('stroke')]),
+   edges:[...svg.querySelectorAll('path')].map(e=>[e.dataset.child,e.dataset.parent,e.getAttribute('stroke')])
+ }));
+ async function verifyGraphView(){
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   assert.equal(await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph())),initialGraph,'UI actions must preserve the full DAG');
+   const rendered=await page.locator('#route-map').evaluate(svg=>({
+     nodes:[...svg.querySelectorAll('[data-node]')].map(n=>[n.dataset.node,n.getAttribute('cx'),n.getAttribute('stroke')]),
+     edges:[...svg.querySelectorAll('path')].map(e=>[e.dataset.child,e.dataset.parent,e.getAttribute('stroke')])
+   }));
+   assert.deepEqual(rendered,graphStyle,'Columns, colors and parent endpoints survive filtering and density changes');
+   assert.equal(await page.evaluate(()=>state.graph.rows.every(n=>{
+     const row=document.querySelector(`.version-row[data-id="${n.id}"]`);
+     const label=row.querySelector(state.prefs.density==='compact'?'.version-title':'.version-meta');
+     const circle=document.querySelector(`[data-node="${n.id}"]`);
+     return Math.abs(Number(circle.getAttribute('cy'))-(row.offsetTop+label.offsetTop+label.offsetHeight/2))<.1;
+   })),true,'Circles align with their actual DOM rows');
+ }
  assert.equal(await page.locator('button[data-action=run]').innerText(),'Run this revision');
  assert.equal(await page.locator('.chrome [data-action=language]').count(),0);
  assert.equal(await page.locator('[data-action=edit-version]').innerText(),'');
@@ -20,10 +40,21 @@ try {
  await page.click('[data-density=compact]');
  assert.equal(await page.locator('.version-row.selected').evaluate(e=>e.getBoundingClientRect().height),32);
  assert.equal(await page.locator('.version-row').count(),2);
+ await verifyGraphView();
  await page.click('[data-action=filter]');
  assert.equal(await page.locator('.version-row').count(),2);
  assert.equal(await page.locator('.version-row.context-row').count(),1);
+ await verifyGraphView();
  await page.click('[data-action=clear-search]');
+ await page.fill('#search','no-such-graph-revision-8271');
+ await page.waitForFunction(()=>!state.searching&&document.querySelectorAll('.version-row.context-row').length===2);
+ await verifyGraphView();
+ await page.click('[data-action=clear-search]');
+ await page.click(`[data-action=select][data-id="${await page.evaluate(()=>state.commits.find(c=>c.sha!==state.selected).sha)}"]`);
+ await page.waitForFunction(()=>detail(state.selected));
+ await verifyGraphView();
+ await page.click(`[data-action=select][data-id="${sha}"]`);
+ await page.waitForFunction(()=>detail(state.selected));
  await page.click('[data-action=settings]');
  await page.click('[data-language=zh]');
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),true);
@@ -58,6 +89,7 @@ try {
  await page.click('#dialog [data-action=settings]');
  await page.waitForSelector('[data-action=review-ai]',{timeout:20000});
  await page.click('[data-action=review-ai]');
+ await page.waitForSelector('[data-action=review-ai-notes]');
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),true);
  assert.equal(await page.evaluate(()=>detail(state.selected).recipe_approved),false);
  await page.click('[data-action=review-ai-notes]');
