@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 import time
+from .processes import ProcessCleanupError
 
 
 def default_directory():
@@ -15,11 +16,39 @@ def default_directory():
     return str(Path(os.environ.get('XDG_DATA_HOME', str(Path.home() / '.local/share'))) / 'reprise')
 
 
+def port_number(value):
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError('port must be an integer') from None
+    if not 0 <= number <= 65535:
+        raise argparse.ArgumentTypeError('port must be between 0 and 65535')
+    return number
+
+
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    known = {'open', 'serve', 'shutdown', 'import', 'projects', 'history', 'detect', 'recipe', 'cancel', 'run', 'capture', 'runtimes', 'stop', 'evidence'}
+    position = 0
+    while position < len(argv) and (argv[position] == '--data' or argv[position].startswith('--data=')):
+        if argv[position] == '--data' and position + 1 >= len(argv):
+            break  # argparse reports the missing value, without indexing past argv
+        position += 1 if '=' in argv[position] else 2
+    if position == len(argv):
+        argv[position:] = ['open', '.']
+    elif argv[position] not in known and not argv[position].startswith('-'):
+        argv.insert(position, 'open')
     parser = argparse.ArgumentParser(prog='reprise', description='Local Git history and reproducible preview evidence')
     parser.add_argument('--data', default=default_directory(), help='State and retained artifacts directory, outside source repositories')
     commands = parser.add_subparsers(dest='command', required=True)
-    server = commands.add_parser('serve'); server.add_argument('--port', type=int, default=51582)
+    server = commands.add_parser('serve'); server.add_argument('--port', type=port_number, default=51582)
+    server.add_argument('--fallback-port', action='store_true', help=argparse.SUPPRESS)
+    opening = commands.add_parser('open'); opening.add_argument('path', nargs='?', default='.')
+    opening.add_argument('--port', type=port_number, default=0); opening.add_argument('--no-browser', action='store_true')
+    opening.add_argument('--lang', choices=('zh', 'en'))
+    opening.add_argument('--history', action='append', default=[], help='Explicit related read-only Git archive')
+    opening.add_argument('--history-catalog', help='Saved version catalog, excluding archive metadata commits')
+    commands.add_parser('shutdown')
     register = commands.add_parser('import'); register.add_argument('path'); register.add_argument('--name')
     commands.add_parser('projects')
     for name in ('history', 'detect'):
@@ -38,9 +67,14 @@ def main(argv=None):
     try:
         if args.command == 'serve':
             from .server import serve
-            serve(args.data, args.port)
+            serve(args.data, args.port, fallback_port=args.fallback_port)
             return 0
-        if args.command in ('history', 'detect'):
+        if args.command in ('open', 'shutdown'):
+            from .launcher import open_repository, shutdown
+            result = (shutdown(args.data) if args.command == 'shutdown' else
+                      open_repository(args.data, args.path, args.port, not args.no_browser, args.lang,
+                                      args.history, args.history_catalog))
+        elif args.command in ('history', 'detect'):
             from .git import Repository
             repository = Repository(args.path)
             if args.command == 'history':
@@ -78,6 +112,6 @@ def main(argv=None):
                 app.close()
         print(json.dumps(result, ensure_ascii=True, indent=2))
         return (130 if result.get('status') == 'cancelled' else 1 if result.get('status') == 'failed' else 0) if isinstance(result, dict) else 0
-    except (ValueError, OSError, KeyError) as error:
+    except (ValueError, OSError, KeyError, ProcessCleanupError) as error:
         print(str(error), file=sys.stderr)
         return 1

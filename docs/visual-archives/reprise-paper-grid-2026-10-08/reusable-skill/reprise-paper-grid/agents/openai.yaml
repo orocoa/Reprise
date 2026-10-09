@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reprise 白纸线框"
+  short_description: "复用 Reprise 已确认的白底黑线排版、视觉识别和自然线框动画"
+  default_prompt: "使用 $reprise-paper-grid 为这个项目复现 Reprise 白纸线框的视觉与动画。"

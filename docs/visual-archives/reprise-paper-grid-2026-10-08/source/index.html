@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Reprise / 倒带 · PersonalWeb</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/ai.css">
+  <link rel="stylesheet" href="/media-viewer.css">
+  <script src="/language.js" defer></script>
+  <link rel="stylesheet" href="/evidence.css">
+  <script src="/browse-motion.js" defer></script>
+  <script src="/media-viewer.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/ai-ui.js" defer></script>
+  <script src="/evidence-ui.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="project-identity"><a class="brand" id="project-name" href="#versions" data-index data-user-content>…</a><div class="language-switch" role="group" aria-label="界面语言"><span aria-hidden="true">[</span><button data-language="zh" aria-pressed="true">中</button><span aria-hidden="true">/</span><button data-language="en" aria-pressed="false">EN</button><span aria-hidden="true">]</span></div></div>
+      <nav aria-label="主导航">
+        <button class="nav-item active" data-view="versions">版本浏览</button>
+        <button class="nav-item" data-view="resources">版本管理</button>
+      </nav>
+    </header>
+    <main>
+      <div class="running-bar" id="running-bar" hidden></div>
+      <section class="view browser-layout is-index" id="versions-view" aria-label="版本浏览">
+        <aside class="version-browser" aria-label="选择版本"><div class="version-browser-contents">
+          <label class="search-box"><input id="search" type="search" placeholder="搜索历史版本" aria-label="搜索历史版本"><span class="search-icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="2"/><path d="m16 16 9 9" stroke="currentColor" stroke-width="2"/></svg></span></label>
+          <button class="current-git-choice" id="current-git-choice" data-current-git><span>当前 Git ↗</span><small id="current-git-status">正在读取…</small></button>
+          <div class="list-heading" hidden><span>历史版本</span><span id="visible-count"></span></div>
+          <div id="version-list" class="version-list" aria-live="polite"></div>
+        </div></aside>
+        <section id="version-detail" class="version-detail" aria-label="版本内容" hidden></section>
+      </section>
+      <div id="versions-caption" class="version-caption" hidden></div>
+      <section class="view management-view" id="resources-view" hidden aria-label="版本管理">
+        <div class="management-heading"><div><h1>版本管理</h1><p>Git 保存版本。已下载的环境可保留或删除。</p></div><button class="subtle-button" id="refresh-resources">刷新</button></div>
+        <div class="managed-section">
+          <div class="section-heading"><h2><span>已下载版本环境</span> <small id="environment-total"></small></h2><button class="text-button" id="clean-all">删除全部环境</button></div>
+          <div id="resource-list"></div>
+        </div>
+        <div class="managed-section"><h2>可选 AI</h2><div id="ai-management"></div></div>
+        <div class="managed-section"><h2>Git 内容</h2><div id="git-management"></div></div>
+      </section>
+    </main>
+  </div>
+  <div id="operation" class="operation" role="status" aria-live="polite" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="modal"><form method="dialog"><button class="close-modal" aria-label="关闭弹窗" value="cancel">×</button></form><div id="modal-body"></div></dialog>
+</body>
+</html>

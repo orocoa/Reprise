@@ -9,6 +9,13 @@ from urllib.parse import unquote, urlsplit
 
 class PreviewHandler(SimpleHTTPRequestHandler):
     def _serve(self, body=True):
+        # Loopback binding alone does not reject a foreign Host that resolves
+        # to this machine. Apply the same boundary as the management server.
+        expected = {'127.0.0.1:' + str(self.server.server_port), 'localhost:' + str(self.server.server_port)}
+        hosts = self.headers.get_all('Host', [])
+        if len(hosts) != 1 or hosts[0] not in expected:
+            self.send_error(403, 'Host is not the local Reprise preview server.')
+            return
         relative = unquote(urlsplit(self.path).path).lstrip('/')
         requested = (self.server.root / relative).resolve()
         try:

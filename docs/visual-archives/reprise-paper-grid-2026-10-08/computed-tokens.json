@@ -1,0 +1,119 @@
+{
+  "viewport": {
+    "width": 1350,
+    "height": 728
+  },
+  "variables": {
+    "--paper": "#fff",
+    "--ink": "#111",
+    "--muted": "#666",
+    "--line": "#000",
+    "--strong-line": "#000",
+    "--secondary-line": "#c8c8c8",
+    "--rule-width": "2px",
+    "--gutter": "calc(8px * 4)",
+    "--aside-gutter": "calc(8px * 4)",
+    "--header-height": "80px",
+    "--current-height": "96px",
+    "--search-height": "56px",
+    "--frame-gutter": "clamp(12px,calc(12.5vw - 80px),160px)"
+  },
+  "components": {
+    ".app-shell": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "23.1px",
+      "color": "rgb(17, 17, 17)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "0px none rgb(17, 17, 17)",
+      "borderRadius": "0px",
+      "padding": "0px",
+      "width": 1161.25
+    },
+    ".app-header": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "23.1px",
+      "color": "rgb(17, 17, 17)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "0px none rgb(17, 17, 17)",
+      "borderRadius": "0px",
+      "padding": "0px",
+      "width": 1161.25
+    },
+    ".brand": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "24px",
+      "fontWeight": "500",
+      "lineHeight": "31.2px",
+      "color": "rgb(0, 0, 0)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "0px none rgb(0, 0, 0)",
+      "borderRadius": "0px",
+      "padding": "0px",
+      "width": 135.8828125
+    },
+    ".nav-item": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "14px",
+      "fontWeight": "600",
+      "lineHeight": "23.1px",
+      "color": "rgb(0, 0, 0)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "0px none rgb(0, 0, 0)",
+      "borderRadius": "0px",
+      "padding": "0px 12px",
+      "width": 96.4375
+    },
+    ".current-git-choice": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "23.1px",
+      "color": "rgb(0, 0, 0)",
+      "background": "rgb(255, 255, 255)",
+      "borderBottom": "2px solid rgb(0, 0, 0)",
+      "borderRadius": "0px",
+      "padding": "24px 32px",
+      "width": 1157.25
+    },
+    ".search-box": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "13px",
+      "fontWeight": "400",
+      "lineHeight": "21.45px",
+      "color": "rgb(0, 0, 0)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "2px solid rgb(0, 0, 0)",
+      "borderRadius": "0px",
+      "padding": "0px 32px",
+      "width": 1157.25
+    },
+    ".version-card": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "23.1px",
+      "color": "rgb(102, 102, 102)",
+      "background": "rgb(255, 255, 255)",
+      "borderBottom": "1px solid rgb(200, 200, 200)",
+      "borderRadius": "0px",
+      "padding": "24px 32px",
+      "width": 1157.25
+    },
+    ".version-card h3": {
+      "fontFamily": "Inter, -apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": "16px",
+      "fontWeight": "600",
+      "lineHeight": "24px",
+      "color": "rgb(102, 102, 102)",
+      "background": "rgba(0, 0, 0, 0)",
+      "borderBottom": "0px none rgb(102, 102, 102)",
+      "borderRadius": "0px",
+      "padding": "0px",
+      "width": 1093.25
+    }
+  }
+}

@@ -162,6 +162,9 @@ class VersionWorkflowTests(unittest.TestCase):
         self.app.projects.save_recipe(project['id'], recipe, sha)
         job = self.app.execute(project['id'], 'run', {'sha': sha})
         self.until(lambda: any(r['status'] == 'starting' for r in self.app.runtimes.list()))
+        pending_runtime = next(r for r in self.app.runtimes.list() if r['status'] == 'starting')
+        with self.assertRaisesRegex(ValueError, '取消任务'):
+            self.app.runtimes.stop(pending_runtime['id'])
         self.app.jobs.cancel(job['id'])
         self.assertEqual(self.finished(job)['status'], 'cancelled')
         self.app.projects.save_recipe(project['id'], {'adapter': 'static-web'}, sha)

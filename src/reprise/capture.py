@@ -3,7 +3,6 @@ import hashlib
 import json
 import os
 import shutil
-import signal
 import subprocess
 import threading
 import uuid
@@ -11,9 +10,10 @@ from pathlib import Path
 
 from .recipes import recipe_hash, validate_recipe
 from .runtime import process_identity, read_json, utcnow, write_json
-from .cancellation import Cancelled, check, wait_process, cancellable_lock
+from .cancellation import Cancelled, check, wait_owned_process, cancellable_lock
+from .processes import OwnedProcessTree, ProcessCleanupError, launch_owned
 
-RUNNER_VERSION = 'reprise-playwright-v3'
+RUNNER_VERSION = 'reprise-playwright-v4'
 
 
 def content_sha256(path):
@@ -37,37 +37,31 @@ def cache_artifacts_valid(record, folder):
 
 
 
-def stop_owned_group(state):
-    pid, identity = state.get('pid'), state.get('process_identity')
-    if not pid or not identity:
-        return False
-    try:
-        if process_identity(pid) == identity and os.getpgid(pid) == pid:
-            os.killpg(pid, signal.SIGKILL)
-            return True
-    except ProcessLookupError:
-        pass
-    return False
-
-
 def stop_browser_from_record(path):
     try:
-        return stop_owned_group(read_json(path))
-    except (OSError, ValueError):
-        return False
+        if not Path(path).exists():
+            return False
+        state = read_json(path)
+        pid, identity = state.get('pid'), state.get('process_identity')
+        if not pid or not identity:
+            raise ValueError('Browser ownership record lacks a process identity')
+        if process_identity(pid) is None:
+            return False  # The worker tree verifies retained descendants.
+        tree = OwnedProcessTree.adopt(pid, identity, Path(path).with_name(Path(path).stem + '-ownership.json'))
+        return tree.terminate()
+    except Exception as error:
+        raise ProcessCleanupError('Browser cleanup could not be confirmed: %s' % error) from error
 
 
-def stop_worker(process, identity, browser_record):
-    if process.poll() is None and process_identity(process.pid) == identity and os.getpgid(process.pid) == process.pid:
+def stop_capture_processes(worker_tree, browser_record):
+    errors = []
+    for cleanup in (lambda: stop_browser_from_record(browser_record), worker_tree.terminate):
         try:
-            os.killpg(process.pid, signal.SIGTERM)
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            stop_owned_group({'pid': process.pid, 'process_identity': identity})
-            process.wait(timeout=5)
-        except ProcessLookupError:
-            pass
-    stop_browser_from_record(browser_record)
+            cleanup()
+        except Exception as error:
+            errors.append(str(error))
+    if errors:
+        raise ProcessCleanupError('; '.join(errors))
 
 
 
@@ -147,22 +141,26 @@ class CaptureService:
                                           sum(step.get('ms', 0) / 1000 for step in c['steps']) + c.get('record_ms', 1000) / 1000
                                           for c in recipe['captures'])
                         with (folder / ('%s-browser.log' % side)).open('wb') as log:
-                            process = subprocess.Popen([node, str(Path(__file__).with_name('browser_worker.mjs')), str(input_path)],
-                                                       cwd=str(Path(__file__).resolve().parents[2]), stdout=log, stderr=subprocess.STDOUT,
-                                                       start_new_session=True, stdin=subprocess.DEVNULL, env=dict(os.environ))
-                            identity = process_identity(process.pid)
-                            write_json(folder / ('%s-worker.json' % side), {'pid': process.pid, 'process_identity': identity, 'created_at': utcnow()})
+                            worker_tree = launch_owned([node, str(Path(__file__).with_name('browser_worker.mjs')), str(input_path)],
+                                                       Path(__file__).resolve().parents[2], dict(os.environ), log,
+                                                       folder / ('%s-worker-ownership.json' % side))
+                            process = worker_tree.process
+                            browser_record = folder / ('%s-browser-process.json' % side)
+                            cleanup = lambda tree=worker_tree, browser=browser_record: stop_capture_processes(tree, browser)
+                            if cancel is not None:
+                                cancel.cleanups.append(cleanup)
                             try:
-                                wait_process(process, min(timeout, max(1, int(os.environ.get('REPRISE_CAPTURE_TIMEOUT', '3600')))), cancel)
+                                identity = read_json(worker_tree.record_path)['root_identity']
+                                write_json(folder / ('%s-worker.json' % side), {'pid': process.pid, 'process_identity': identity, 'created_at': utcnow()})
+                                wait_owned_process(worker_tree, min(timeout, max(1, int(os.environ.get('REPRISE_CAPTURE_TIMEOUT', '3600')))), cancel)
                             except Cancelled:
-                                stop_worker(process, identity, folder / ('%s-browser-process.json' % side))
+                                # Cleanup below also covers a detached Chromium
+                                # session observed as a descendant of this worker.
+                                pass
                             except subprocess.TimeoutExpired:
-                                # Playwright launches Chromium in a separate process group.
-                                # Track and verify both groups; never signal by process name.
-                                stop_worker(process, identity, folder / ('%s-browser-process.json' % side))
-                                raise RuntimeError('Browser capture timed out; owned browser and worker process groups were stopped. See %s-browser.log.' % side)
+                                raise RuntimeError('Browser capture timed out. See %s-browser.log; process cleanup is recorded separately.' % side)
                             finally:
-                                stop_browser_from_record(folder / ('%s-browser-process.json' % side))
+                                cleanup()
                             result = process
                         if not result_path.is_file():
                             check(cancel)
@@ -189,16 +187,21 @@ class CaptureService:
                         break
                     except Exception as error:
                         record['errors'].append({'side': side, 'sha': revision, 'error': str(error)})
+                        if isinstance(error, ProcessCleanupError):
+                            record['cleanup_failed'] = True
                     finally:
                         if runtime:
                             try:
                                 self.runtime_manager.stop(runtime['id'])
                             except Exception as error:
                                 record['errors'].append({'side': side, 'error': 'Runtime cleanup failed: %s' % error})
+                                record['cleanup_failed'] = True
                     write_json(path, record)
             record['finished_at'] = utcnow()
             record['status'] = ('partial' if record['items'] else 'failed') if record['errors'] else 'complete'
-            if cancel is not None and cancel.requested():
+            if record.get('cleanup_failed'):
+                record['status'] = 'failed'
+            elif cancel is not None and cancel.requested():
                 record['status'] = 'cancelled'
             if not record['items'] and not record['errors'] and record['status'] != 'cancelled':
                 record['status'] = 'failed'

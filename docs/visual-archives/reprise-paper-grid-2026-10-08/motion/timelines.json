@@ -1,0 +1,646 @@
+[
+  {
+    "name": "01-directory-to-detail",
+    "duration": 820,
+    "times": [
+      0,
+      40,
+      80,
+      120,
+      160,
+      200,
+      240,
+      280,
+      320,
+      360,
+      400,
+      440,
+      480,
+      520,
+      560,
+      600,
+      640,
+      680,
+      720,
+      760,
+      800,
+      820
+    ],
+    "samples": [
+      {
+        "time": 0,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 40,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 80,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 120,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 160,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 200,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 240,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 280,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 320,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 360,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 400,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 440,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 480,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 520,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 560,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 600,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 640,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 680,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 720,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 760,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 800,
+        "scope": "directory",
+        "divider": null
+      },
+      {
+        "time": 820,
+        "scope": "directory",
+        "divider": null
+      }
+    ]
+  },
+  {
+    "name": "02-detail-to-current",
+    "duration": 820,
+    "times": [
+      0,
+      40,
+      80,
+      120,
+      160,
+      200,
+      240,
+      280,
+      320,
+      360,
+      400,
+      440,
+      480,
+      520,
+      560,
+      600,
+      640,
+      680,
+      720,
+      760,
+      800,
+      820
+    ],
+    "samples": [
+      {
+        "time": 0,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 40,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 80,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 120,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 160,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 200,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 240,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 280,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 320,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 360,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 400,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 440,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 480,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 520,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 560,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 600,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 640,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 680,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 720,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 760,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 800,
+        "scope": "detail",
+        "divider": null
+      },
+      {
+        "time": 820,
+        "scope": "detail",
+        "divider": null
+      }
+    ]
+  },
+  {
+    "name": "03-divider-joins-right",
+    "duration": 820,
+    "times": [
+      0,
+      40,
+      80,
+      120,
+      160,
+      200,
+      240,
+      280,
+      320,
+      360,
+      400,
+      440,
+      480,
+      520,
+      560,
+      600,
+      640,
+      680,
+      720,
+      760,
+      800,
+      820
+    ],
+    "samples": [
+      {
+        "time": 0,
+        "scope": "view",
+        "divider": {
+          "x": 376.1875,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 40,
+        "scope": "view",
+        "divider": {
+          "x": 559.67431640625,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 80,
+        "scope": "view",
+        "divider": {
+          "x": 748.6875610351562,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 120,
+        "scope": "view",
+        "divider": {
+          "x": 904.7437133789062,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 160,
+        "scope": "view",
+        "divider": {
+          "x": 1011.5979614257812,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 200,
+        "scope": "view",
+        "divider": {
+          "x": 1082.283447265625,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 240,
+        "scope": "view",
+        "divider": {
+          "x": 1130.54736328125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 280,
+        "scope": "view",
+        "divider": {
+          "x": 1164.6710205078125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 320,
+        "scope": "view",
+        "divider": {
+          "x": 1189.38720703125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 360,
+        "scope": "view",
+        "divider": {
+          "x": 1207.5157470703125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 400,
+        "scope": "view",
+        "divider": {
+          "x": 1220.831298828125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 440,
+        "scope": "view",
+        "divider": {
+          "x": 1230.5068359375,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 480,
+        "scope": "view",
+        "divider": {
+          "x": 1237.3521728515625,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 520,
+        "scope": "view",
+        "divider": {
+          "x": 1241.9456787109375,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 560,
+        "scope": "view",
+        "divider": {
+          "x": 1244.71337890625,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 600,
+        "scope": "view",
+        "divider": {
+          "x": 1245.977294921875,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 640,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 680,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 720,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 760,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 800,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      },
+      {
+        "time": 820,
+        "scope": "view",
+        "divider": {
+          "x": 1246.125,
+          "opacity": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "04-management-to-list",
+    "duration": 820,
+    "times": [
+      0,
+      40,
+      80,
+      120,
+      160,
+      200,
+      240,
+      280,
+      320,
+      360,
+      400,
+      440,
+      480,
+      520,
+      560,
+      600,
+      640,
+      680,
+      720,
+      760,
+      800,
+      820
+    ],
+    "samples": [
+      {
+        "time": 0,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 40,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 80,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 120,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 160,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 200,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 240,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 280,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 320,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 360,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 400,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 440,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 480,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 520,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 560,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 600,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 640,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 680,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 720,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 760,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 800,
+        "scope": "view",
+        "divider": null
+      },
+      {
+        "time": 820,
+        "scope": "view",
+        "divider": null
+      }
+    ]
+  },
+  {
+    "name": "05-preview-expand",
+    "duration": 420,
+    "times": [
+      0,
+      40,
+      80,
+      120,
+      160,
+      200,
+      240,
+      280,
+      320,
+      360,
+      400,
+      420
+    ]
+  }
+]

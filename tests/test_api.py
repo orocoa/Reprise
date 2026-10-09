@@ -66,6 +66,23 @@ class APITests(unittest.TestCase):
         self.assertEqual(status, 201, project)
         return project
 
+    def test_all_workspace_assets_are_available_and_notes_are_revision_bound(self):
+        for path in ('/', '/app.js', '/styles.css', '/locale.js', '/shell.js', '/paper-grid.css', '/workspace-grid.css', '/browse-motion.js'):
+            status, headers, data = self.request('GET', path, raw=True)
+            self.assertEqual(status, 200, path)
+            self.assertTrue(data)
+        from test_ai import NOTES
+        sha = self.commit({'index.html': '<h1>Fixture</h1>'})
+        project = self.import_project()
+        prefix = '/api/projects/' + project['id']
+        self.assertEqual(self.request('PUT', prefix + '/notes', {'sha': sha, 'localizations': NOTES}, authorized=False)[0], 403)
+        self.assertEqual(self.request('PUT', prefix + '/notes', {'sha': sha, 'localizations': {'zh': NOTES['zh']}})[0], 400)
+        self.assertEqual(self.request('PUT', prefix + '/notes', {'sha': sha[:9], 'localizations': NOTES})[0], 200)
+        status, _, version = self.request('GET', prefix + '/versions/' + sha)
+        self.assertEqual(version['notes']['localizations'], NOTES)
+        self.assertEqual(version['commit']['sha'], sha)
+        self.assertFalse(version['recipe_approved'])
+
     def test_host_origin_token_and_content_type_boundaries(self):
         status, _, _ = self.request('GET', '/api/bootstrap', headers={'Host': 'evil.invalid'})
         self.assertEqual(status, 403)

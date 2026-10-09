@@ -121,7 +121,8 @@ document.getElementById('start').onclick=()=>{c.focus();draw()};c.onkeydown=e=>{
                     '<video width="320" height="240" controls preload="none" src="/%s"></video>' % filename)
                 subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
                 subprocess.run(['git', '-C', str(source), 'commit', '-qm', filename], check=True)
-                result = self.capture.capture(self.repo, 'bad-video', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 1000}})
+                # Diagnose the asset, not a one-second Python startup race.
+                result = self.capture.capture(self.repo, 'bad-video', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 3000}})
                 self.assertEqual(result['status'], 'partial')
                 self.assertTrue(any('video ' in e['error'] and filename in e['error'] for e in result['errors']), result['errors'])
                 self.assertTrue(result['items'][0]['diagnostic'])
@@ -162,7 +163,7 @@ document.getElementById('start').onclick=()=>{c.focus();draw()};c.onkeydown=e=>{
             (source / 'index.html').write_text('<!doctype html><link rel="icon" href="data:,"><h1>Isolation</h1><img src="http://127.0.0.1:%s/private">' % server.server_port)
             subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
             subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'network fixture'], check=True)
-            result = self.capture.capture(self.repo, 'local-isolation', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 1000}})
+            result = self.capture.capture(self.repo, 'local-isolation', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 3000}})
             self.assertEqual(result['status'], 'partial')
             self.assertTrue(any('Blocked external request' in e['error'] for e in result['errors']))
             self.assertEqual(requests, [])
@@ -177,12 +178,12 @@ document.getElementById('start').onclick=()=>{c.focus();draw()};c.onkeydown=e=>{
         (source / 'index.html').write_text('<!doctype html><link rel="icon" href="data:,"><h1>Missing asset</h1><img src="/missing.png">')
         subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
         subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'missing asset'], check=True)
-        result = self.capture.capture(self.repo, 'broken-web', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 1000}})
+        result = self.capture.capture(self.repo, 'broken-web', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 3000}})
         self.assertEqual(result['status'], 'partial')
         self.assertTrue(any('missing.png' in e['error'] for e in result['errors']))
         self.assertTrue(result['items'][0]['diagnostic'])
         self.assertFalse(any(r['running'] for r in self.manager.list()))
-        again = self.capture.capture(self.repo, 'broken-web', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 1000}})
+        again = self.capture.capture(self.repo, 'broken-web', 'HEAD', {'adapter': 'static-web', 'readiness': {'timeout_ms': 3000}})
         self.assertNotEqual(again['id'], result['id'])
 
 

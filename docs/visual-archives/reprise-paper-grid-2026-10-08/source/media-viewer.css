@@ -1,0 +1,28 @@
+.media-viewer{min-width:0;max-width:100%}
+.media-tools{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-bottom:12px;font-size:12px;line-height:24px}
+.media-tools button,.media-tools a{color:var(--muted);white-space:nowrap}
+.media-tools button[aria-pressed="true"]{color:var(--ink);text-decoration:underline;text-underline-offset:5px}
+.media-tools output{margin-left:auto;color:var(--muted);font-size:11px}
+.media-viewport{max-width:100%;max-height:72svh;overflow:auto;overscroll-behavior:contain;background:#f4f4f4;scrollbar-gutter:stable;position:relative}
+.media-viewport img{display:block!important;width:auto;height:auto;max-width:none!important;max-height:none!important;object-fit:initial!important;margin:0 auto}
+.media-viewport[data-zoom="native"] img,.media-viewport[data-zoom="double"] img{margin:0}
+.media-viewport video{display:block;width:100%;height:auto!important;max-height:72svh!important;object-fit:contain;background:#111;margin:0 auto}
+.media-status{font-size:12px;line-height:1.7;color:var(--muted);margin:10px 0 0;display:flex;gap:12px;align-items:center}
+.media-status[data-state="ready"]{display:none}
+.media-status[data-state="error"]{color:#a33028}
+.media-status button{font-size:12px;text-decoration:underline}
+.media-status [hidden]{display:none!important}
+.media-source-note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:10px}
+.media-zoom-dialog{width:min(1480px,calc(100vw - 24px));max-height:94svh;padding:24px;background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.media-zoom-dialog::backdrop{background:#ffffffdc}
+.media-zoom-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:18px}
+.media-zoom-heading h2{font-size:18px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.media-zoom-heading button{font-size:24px;line-height:1;padding:2px 8px}
+.media-zoom-dialog .media-viewport{max-height:74svh}
+.media-zoom-dialog .media-viewport video{max-height:74svh!important}
+.evidence-pair .media-viewport{max-height:58svh}
+.evidence-pair .media-viewport video{max-height:58svh!important}
+.evidence-pair .media-tools{gap:6px 12px}
+.runtime-tools{display:flex;flex-wrap:wrap;gap:18px;align-items:center;font-size:12px;margin:14px 0}
+.runtime-frame:fullscreen{height:100vh;width:100vw;background:#111;border:0}
+@media(max-width:700px){.media-tools{gap:8px 14px}.media-tools output{width:100%;margin:0}.media-zoom-dialog{padding:18px 12px}.media-zoom-heading{gap:12px}.media-viewport{max-height:65svh}.media-viewport video{max-height:65svh!important}}

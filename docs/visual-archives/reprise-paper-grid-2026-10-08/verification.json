@@ -1,0 +1,92 @@
+{
+  "status": "PASS",
+  "visual_fidelity": "Four desktop states identical pixel-for-pixel at 1350x728",
+  "pixel_comparison": [
+    {
+      "state": "index",
+      "size": [
+        1350,
+        728
+      ],
+      "changed_pixels": 0,
+      "bbox": null
+    },
+    {
+      "state": "detail",
+      "size": [
+        1350,
+        728
+      ],
+      "changed_pixels": 0,
+      "bbox": null
+    },
+    {
+      "state": "current",
+      "size": [
+        1350,
+        728
+      ],
+      "changed_pixels": 0,
+      "bbox": null
+    },
+    {
+      "state": "management",
+      "size": [
+        1350,
+        728
+      ],
+      "changed_pixels": 0,
+      "bbox": null
+    }
+  ],
+  "offline_checks": [
+    {
+      "previewOpen": true
+    },
+    [
+      {
+        "time": 0,
+        "x": 376.1875,
+        "opacity": "1",
+        "right": 1246.125
+      },
+      {
+        "time": 310,
+        "x": 1183.913330078125,
+        "opacity": "1",
+        "right": 1246.125
+      },
+      {
+        "time": 620,
+        "x": 1246.125,
+        "opacity": "1",
+        "right": 1246.125
+      }
+    ],
+    {
+      "lang": "en",
+      "label": "Browse versions"
+    },
+    {
+      "narrowOverflow": false,
+      "frameWidth": 351
+    },
+    {
+      "reducedMotion": true
+    },
+    {
+      "remoteResources": []
+    }
+  ],
+  "starter_checks": {
+    "title": "02 · 设计资料",
+    "state": {
+      "view": "resources-view",
+      "busy": 0,
+      "remote": []
+    },
+    "viewerOverflow": false
+  },
+  "skill_validation": "Skill is valid!",
+  "recorded_source_unchanged": true
+}

@@ -54,6 +54,13 @@ class ProjectTests(unittest.TestCase):
         self.assertIsNone(old['recipe'])
         self.assertEqual(len(self.store.repository(project['id']).history()['commits']), 2)
 
+    def test_source_local_application_data_is_rejected_before_writes(self):
+        self.commit({'index.html': '<h1>Read only</h1>'})
+        data = self.source / 'reprise-state'
+        with self.assertRaisesRegex(ValueError, 'outside'):
+            ProjectStore(data).add(str(self.source))
+        self.assertFalse(data.exists())
+
     def test_import_deduplicates_canonical_path_and_is_read_only(self):
         self.commit({'index.html': '<h1>Committed</h1>'})
         (self.source / 'index.html').write_text('Uncommitted')
@@ -89,6 +96,44 @@ class ProjectTests(unittest.TestCase):
             self.assertFalse(reset['recipe_approved'])
         finally:
             app.close()
+
+    def test_reviewed_bilingual_notes_bind_to_exact_revision_without_recipe_approval(self):
+        from test_ai import NOTES
+        first = self.commit({'readme.md': 'Initial'})
+        second = self.commit({'readme.md': 'Changed'})
+        project = self.store.add(str(self.source))
+        before = git(self.source, 'status', '--porcelain')
+        self.store.save_notes(project['id'], NOTES, first[:9])
+        fresh = ProjectStore(self.root / 'state').get(project['id'])
+        self.assertEqual(fresh['version_notes'][first]['localizations'], NOTES)
+        self.assertNotIn(second, fresh['version_notes'])
+        self.assertFalse(fresh['recipe_approved'])
+        self.assertEqual(git(self.source, 'status', '--porcelain'), before)
+        with self.assertRaises(ValueError): self.store.save_notes(project['id'], {'zh': NOTES['zh']}, second)
+        self.assertNotIn(second, self.store.record(project['id'])['version_notes'])
+
+    def test_ai_context_has_bounded_committed_paths_and_no_author_credentials(self):
+        from test_ai import Stub
+        sha = self.commit({**{'zzf%03d.txt' % i: 'data' for i in range(305)},
+                           'index.html': '<h1>Fixture</h1>', 'zzzz/package.json': '{}'})
+        app = Reprise(self.root / 'ai-state')
+        adapter = Stub();app.ai.adapter = adapter
+        app.ai.save({'enabled': True, 'endpoint': 'https://fixture.invalid/v1', 'model': 'chosen'})
+        try:
+            project = app.projects.add(str(self.source))
+            job = app.execute(project['id'], 'ai/suggest', {'sha': sha})
+            import time
+            deadline = time.monotonic() + 5
+            while app.jobs.get(job['id'])['status'] in ('queued', 'running') and time.monotonic() < deadline:
+                time.sleep(.02)
+            self.assertEqual(app.jobs.get(job['id'])['status'], 'complete')
+            self.assertEqual(len(adapter.calls), 1)
+            context = json.loads(adapter.calls[0][1][1]['content'])
+            self.assertLessEqual(len(context['paths']), 300)
+            self.assertIn('zzzz/package.json', context['paths'])
+            self.assertEqual(set(context['commit']), {'subject', 'parents'})
+            self.assertNotIn('test@example.invalid', json.dumps(context))
+        finally: app.close()
 
     def test_empty_and_bare_repositories_are_browsable(self):
         empty = self.store.add(str(self.source))

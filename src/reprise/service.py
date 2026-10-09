@@ -29,7 +29,7 @@ class Reprise:
             difference = repository.diff(sha)
         except ValueError as error:
             difference = {'available': False, 'error': str(error), 'target': sha, 'base': commit['parents'][0] if commit['parents'] else None, 'parents': commit['parents'], 'files': [], 'counts': {}}
-        return {'commit': commit, 'diff': difference, 'detection': project['detected'], 'recipe': project['recipe'], 'recipe_source': project['recipe_source'], 'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'), 'legacy_recipe': project.get('legacy_recipe'), 'evidence': self.evidence.list(identifier, sha)}
+        return {'commit': commit, 'diff': difference, 'detection': project['detected'], 'recipe': project['recipe'], 'recipe_source': project['recipe_source'], 'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'), 'legacy_recipe': project.get('legacy_recipe'), 'notes': project.get('version_notes', {}).get(sha), 'evidence': self.evidence.list(identifier, sha)}
 
     def execute(self, identifier, operation, body):
         # Resolve refs and recipe before queuing so new commits/config edits cannot
@@ -55,7 +55,7 @@ class Reprise:
         elif operation == 'ai/suggest':
             diff = repository.diff(sha)
             tree = repository.tree(sha)
-            paths = [item['path'] for item in tree[:300]]
+            paths = [item['path'] for item in tree[:294]]  # reserve six committed manifest paths
             # Fixed allowlist, bounded committed manifests; never .env, credentials,
             # uncommitted files or project instructions read from the worktree.
             manifest_names = {'package.json', 'pyproject.toml', 'Cargo.toml', 'project.godot', 'CMakeLists.txt', 'go.mod'}
@@ -68,7 +68,9 @@ class Reprise:
                             paths.append(item['path'])
                     except (ValueError, UnicodeError):
                         continue
-            context = {'project_id': identifier, 'sha': sha, 'base': diff['base'], 'paths': paths, 'manifests': manifests, 'changed_files': diff['files'][:100], 'detection': project['detected']}
+            commit = repository.history(sha, limit=1)['commits'][0]
+            commit_brief = {'subject': commit['subject'][:2000], 'parents': commit['parents'][:8]}
+            context = {'project_id': identifier, 'sha': sha, 'base': diff['base'], 'paths': paths, 'manifests': manifests, 'changed_files': diff['files'][:100], 'detection': project['detected'], 'commit': commit_brief}
             callback = lambda: self.ai.suggest(context)
         else:
             raise ValueError('不支持的任务操作。')

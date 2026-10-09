@@ -13,9 +13,21 @@ import tempfile
 import threading
 from pathlib import Path
 
+from .storage import locked
+
 
 MAX_OUTPUT = 32 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024 * 1024
+
+# No includes, command drivers, hooks, fsmonitor, or repository-location settings
+# enter the isolated status repository. These scalar settings preserve native Git
+# comparisons (including CRLF and working-tree-encoding) and ignore/rename rules.
+_STATUS_CONFIG = frozenset('''core.filemode core.ignorecase core.precomposeunicode
+    core.symlinks core.trustctime core.checkstat core.ignorestat core.autocrlf
+    core.eol core.safecrlf core.checkroundtripencoding core.attributesfile
+    core.excludesfile core.protecthfs core.protectntfs core.sparsecheckout
+    core.sparsecheckoutcone index.sparse status.renames status.renamelimit
+    diff.renames diff.renamelimit'''.split())
 
 
 def _decode(value: bytes) -> str:
@@ -45,11 +57,13 @@ def _safe_path(path: str) -> str:
 class Repository:
     """A normal checkout, linked worktree, or bare Git repository."""
 
-    def __init__(self, path):
+    def __init__(self, path, *, status_directory=None):
         supplied = Path(path).expanduser().resolve()
         if not supplied.is_dir():
             raise ValueError('Repository directory does not exist: %s' % supplied)
         self.path = supplied
+        self.status_directory = Path(status_directory) if status_directory is not None else (
+            Path(tempfile.gettempdir()) / ('reprise-git-status-%s' % os.getuid()))
         try:
             git_dir = self._run('rev-parse', '--absolute-git-dir')[:-1]
             self.git_dir = Path(os.fsdecode(git_dir)).resolve()
@@ -260,10 +274,122 @@ class Repository:
         counts['total'] = len(files)
         return dict(target=target, base=base, parents=parents, files=files, counts=counts)
 
+    def _git_path(self, name):
+        value = self._run('rev-parse', '--git-path', name)[:-1]
+        return (self.path / os.fsdecode(value)).resolve()
+
+    def _status_view(self):
+        # A per-driver override has a race: another driver can be added between
+        # enumeration and `status`. Instead snapshot only safe config values and
+        # execute status with a separate git-dir that cannot read source config.
+        raw = self._run('config', '--null', '--list', '--includes')
+        values, filters = {}, set()
+        for entry in raw.split(b'\0'):
+            key, separator, value = entry.partition(b'\n')
+            name = _decode(key)
+            if name in _STATUS_CONFIG:
+                values[name] = _decode(value) if separator else None
+            elif name.startswith('filter.'):
+                filters.add(name[len('filter.'):].rsplit('.', 1)[0])
+        object_format = self._run('rev-parse', '--show-object-format').strip()
+        if object_format not in (b'sha1', b'sha256'):
+            raise ValueError('Unsupported Git object format for status')
+        config = '[core]\nrepositoryFormatVersion = %s\nbare = false\n' % (1 if object_format == b'sha256' else 0)
+        if object_format == b'sha256':
+            config += '[extensions]\nobjectFormat = sha256\n'
+        for key, value in sorted(values.items()):
+            section, name = key.split('.')
+            config += '[%s]\n%s' % (section, name)
+            if value is not None:
+                escaped = value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\t', '\\t').replace('\b', '\\b')
+                config += ' = "' + escaped + '"'
+            config += '\n'
+        try:
+            head = self.resolve('HEAD').encode('ascii') + b'\n'
+        except ValueError:
+            # Unborn repositories have a valid symbolic HEAD but no referenced
+            # commit. A corrupt/detached HEAD must still fail explicitly.
+            reference = self._run('symbolic-ref', '--quiet', 'HEAD').strip()
+            if self._run('for-each-ref', '--format=%(refname)', os.fsdecode(reference)).strip():
+                raise ValueError('The repository HEAD cannot be read')
+            head = b'ref: refs/heads/unborn\n'
+        files = {'config': config.encode('utf-8', 'surrogateescape'), 'HEAD': head}
+        index_path = self._git_path('index')
+        index_mtime = None
+        remaining = MAX_OUTPUT
+
+        def copy_input(name, path):
+            nonlocal remaining, index_mtime
+            try:
+                with path.open('rb') as stream:
+                    stamp = os.fstat(stream.fileno())
+                    content = stream.read(remaining + 1)
+            except FileNotFoundError:
+                return
+            if len(content) > remaining:
+                raise ValueError('Git status metadata exceeds the %d-byte safety limit' % MAX_OUTPUT)
+            remaining -= len(content)
+            files[name] = content
+            if name == 'index':
+                index_mtime = stamp.st_mtime_ns
+
+        copy_input('index', index_path)
+        # Split-index links are relative to the index directory. Copy all retained
+        # shared indexes so a concurrent source-index replacement can only fail
+        # closed, never cause Git to refresh a shared index in the source.
+        for shared in sorted(index_path.parent.glob('sharedindex.*')):
+            copy_input(shared.name, shared)
+        for name in ('info/attributes', 'info/exclude', 'info/sparse-checkout'):
+            copy_input(name, self._git_path(name))
+        objects = self._git_path('objects')
+        common = (self.path / os.fsdecode(self._run('rev-parse', '--git-common-dir')[:-1])).resolve()
+        digest = hashlib.sha256()
+        for value in (str(self.work_tree), str(objects), str(index_mtime)):
+            encoded = os.fsencode(value)
+            digest.update(len(encoded).to_bytes(8, 'big') + encoded)
+        for name, value in sorted(files.items()):
+            digest.update(name.encode('ascii') + b'\0' + len(value).to_bytes(8, 'big') + value)
+        cache = self.status_directory.expanduser().resolve()
+        for protected in (self.work_tree, self.git_dir, common, objects):
+            if protected and (cache == protected or protected in cache.parents):
+                raise ValueError('Status metadata must be outside the source repository')
+        if self.status_directory.is_symlink():
+            raise ValueError('Status metadata directory cannot be a symlink')
+        cache.mkdir(parents=True, mode=0o700, exist_ok=True)
+        stat = cache.stat()
+        if stat.st_uid != os.getuid() or stat.st_mode & 0o077:
+            raise ValueError('Status metadata directory must be private to the current user')
+        view = cache / digest.hexdigest()
+        with locked(cache / '.lock'):
+            if not view.exists():
+                pending = Path(tempfile.mkdtemp(prefix='.' + view.name + '-', dir=cache))
+                for name, content in files.items():
+                    destination = pending / name
+                    destination.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+                    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+                    with os.fdopen(fd, 'wb') as stream:
+                        stream.write(content)
+                if index_mtime is not None:
+                    os.utime(pending / 'index', ns=(index_mtime, index_mtime))
+                (pending / 'refs' / 'heads').mkdir(parents=True, mode=0o700)
+                # Only raw objects/alternates are shared; no source configuration
+                # or index is reachable as metadata of the isolated repository.
+                (pending / 'objects').symlink_to(objects, target_is_directory=True)
+                pending.rename(view)
+            if view.is_symlink() or (view / 'commondir').exists() or (view / 'objects').resolve() != objects:
+                raise ValueError('Retained Git status metadata has been altered')
+            for name, content in files.items():
+                candidate = view / name
+                if candidate.is_symlink() or candidate.read_bytes() != content:
+                    raise ValueError('Retained Git status metadata has been altered')
+        return view, sorted(filters)
+
     def status(self):
         if self.bare:
             return dict(available=False, dirty=False, changes=[], reason='Bare repositories do not have a worktree')
-        data = self._run('status', '--porcelain=v1', '-z', '--untracked-files=normal', '--ignore-submodules=dirty')
+        view, filters = self._status_view()
+        data = self._run('--git-dir', str(view), '--work-tree', str(self.work_tree),
+                         'status', '--porcelain=v1', '-z', '--untracked-files=normal', '--ignore-submodules=dirty')
         records = data.split(b'\0')
         changes, i = [], 0
         while i < len(records) and records[i]:
@@ -277,7 +403,10 @@ class Repository:
             changes.append(change)
         return dict(available=True, dirty=bool(changes), changes=changes,
                     submodule_worktree_changes_included=False,
-                    note='Nested submodule worktree modifications are not scanned.')
+                    filters_executed=False,
+                    disabled_filters=filters, status_metadata=str(view),
+                    note='Nested submodule worktree modifications are not scanned.' +
+                    (' External clean/process filters are disabled; filtered worktree files are compared without their custom conversion and may appear modified.' if filters else ''))
 
     def materialize(self, revision, destination, cancel=None):
         from .cancellation import check

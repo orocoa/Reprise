@@ -3,17 +3,21 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import secrets
-import sysconfig
+import threading
 import urllib.parse
 
 from . import __version__
 from .http_files import serve_file
 from .service import Reprise
 from .storage import now, write_json
+from .processes import ProcessCleanupError
+from . import workspace
 
-WEB = Path(__file__).resolve().parents[2] / 'web'
+WEB = Path(__file__).resolve().parent / 'web'
 if not WEB.is_dir():
-    WEB = Path(sysconfig.get_path('data')) / 'share/reprise/web'
+    # Source and editable installs use the canonical web/ directory. Wheels
+    # contain the same files as package resources, independent of install scheme.
+    WEB = Path(__file__).resolve().parents[2] / 'web'
 
 
 class LocalServer(ThreadingHTTPServer):
@@ -25,6 +29,7 @@ class LocalServer(ThreadingHTTPServer):
             raise ValueError('Reprise only binds to loopback')
         self.service = service
         self.token = secrets.token_urlsafe(32)
+        self.instance_id = secrets.token_hex(24)
         super().__init__(address, Handler)
 
 
@@ -69,6 +74,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'error': str(error).strip("'")}, 404)
         except (BrokenPipeError, ConnectionResetError):
             pass
+        except ProcessCleanupError as error:
+            self.send_json({'error': '停止未确认；请查看运行记录并重试。' + str(error)[:2500]}, 409)
         except (ValueError, TypeError, OSError, json.JSONDecodeError) as error:
             self.send_json({'error': str(error)[:3000]}, 400)
         except Exception:
@@ -77,7 +84,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self):
         host = self.headers.get('Host', '')
         expected = {'127.0.0.1:' + str(self.server.server_port), 'localhost:' + str(self.server.server_port)}
-        if host not in expected:
+        if len(self.headers.get_all('Host', [])) != 1 or host not in expected:
             return self.send_json({'error': 'Host is not the local Reprise server.'}, 403)
         parsed = urllib.parse.urlsplit(self.path)
         path = urllib.parse.unquote(parsed.path)
@@ -100,9 +107,32 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError('JSON body must be an object')
         app = self.server.service
         if path == '/api/health' and reading:
-            return self.send_json({'ok': True, 'version': __version__})
+            return self.send_json({'ok': True, 'version': __version__, 'instance_id': self.server.instance_id})
+        if path == '/api/shutdown' and method == 'POST':
+            app.close()
+            for runtime in app.runtimes.list():
+                if runtime['running']:
+                    app.runtimes.stop(runtime['id'])
+            self.send_json({'stopped': True})
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
         if path == '/api/bootstrap' and reading:
-            return self.send_json({'token': self.server.token, 'projects': app.projects.list(), 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
+            projects = [app.projects.get(query['project'][0])] if query.get('project', [''])[0] else app.projects.list()
+            return self.send_json({'token': self.server.token, 'projects': projects, 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
+        if path == '/api/workspace/context' and reading:
+            return self.send_json(workspace.context(app, query.get('project', [None])[0]))
+        if path == '/api/workspace/snapshot' and reading:
+            return self.send_json(workspace.project_snapshot(app, query['project'][0]))
+        if path == '/api/workspace/diff' and reading:
+            identifier = query['project'][0]
+            record = app.projects.record(identifier)
+            source, repository = workspace.comparison_repository(app, identifier,
+                record.get('history_project_ids', []), query['base'][0], query['target'][0])
+            return self.send_json({**repository.diff(query['target'][0], base=query['base'][0]),
+                                   'source_project_id': source})
+        if path == '/api/workspace/file' and reading:
+            return self.send_json(workspace.file_comparison(app, query['project'][0],
+                query['sha'][0], query['path'][0], query.get('base', [None])[0]))
         if path == '/api/projects':
             if reading:
                 return self.send_json({'projects': app.projects.list()})
@@ -139,6 +169,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(app.version(identifier, parts[4]))
             if suffix == 'recipe' and method == 'PUT':
                 return self.send_json(app.projects.save_recipe(identifier, body.get('recipe'), body.get('sha', 'HEAD')))
+            if suffix == 'notes' and method == 'PUT':
+                return self.send_json(app.projects.save_notes(identifier, body.get('localizations'), body.get('sha', 'HEAD')))
+            if suffix == 'histories' and method == 'PUT':
+                return self.send_json(app.projects.save_histories(identifier,
+                    body.get('history_project_ids'), body.get('catalog')))
             if suffix in ('run', 'capture', 'ai/suggest') and method == 'POST':
                 return self.send_json(app.execute(identifier, suffix, body), 202)
             if suffix == 'evidence' and reading:
@@ -155,12 +190,13 @@ class Handler(BaseHTTPRequestHandler):
             return serve_file(self, candidate, cache='private, max-age=31536000, immutable', attachment=attachment)
         if reading:
             candidate = (WEB / (path.lstrip('/') or 'index.html')).resolve()
-            if WEB.resolve() in candidate.parents and candidate.is_file() and candidate.suffix in ('.html', '.css', '.js', '.svg', '.ico'):
+            if (WEB.resolve() in candidate.parents and candidate.is_file() and
+                    (candidate.suffix in ('.html', '.css', '.js', '.svg', '.ico', '.woff2', '.ttf', '.txt') or candidate.name.endswith('LICENSE'))):
                 return serve_file(self, candidate)
         raise KeyError('找不到此页面或接口。')
 
 
-def serve(directory, port=51582):
+def serve(directory, port=51582, fallback_port=False):
     import fcntl
     import os
     directory = Path(directory).expanduser().resolve()
@@ -175,9 +211,20 @@ def serve(directory, port=51582):
         lock.close()
         raise ValueError('这个数据目录已有服务在运行，请使用已有服务或不同的 --data 目录。')
     app = Reprise(directory)
-    server = LocalServer(('127.0.0.1', port), app)
+    try:
+        server = LocalServer(('127.0.0.1', port), app)
+    except OSError as error:
+        import errno
+        if not fallback_port or error.errno != errno.EADDRINUSE:
+            app.close()
+            lock.close()
+            raise
+        server = LocalServer(('127.0.0.1', 0), app)
     url = 'http://127.0.0.1:%d/' % server.server_port
-    write_json(directory / 'server.json', {'pid': os.getpid(), 'url': url, 'started_at': now(), 'data_directory': str(directory), 'version': __version__})
+    from .processes import process_identity
+    write_json(directory / 'server.json', {'pid': os.getpid(), 'identity': process_identity(os.getpid()),
+               'instance_id': server.instance_id, 'url': url, 'started_at': now(),
+               'data_directory': str(directory), 'version': __version__}, private=True)
     print('Reprise ' + url + '\nData: ' + str(directory), flush=True)
     try:
         server.serve_forever(poll_interval=.3)

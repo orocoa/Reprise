@@ -3,7 +3,6 @@ import datetime
 import json
 import os
 import shutil
-import signal
 import socket
 import subprocess
 import sys
@@ -15,7 +14,8 @@ import uuid
 from pathlib import Path
 
 from .recipes import recipe_hash, validate_recipe
-from .cancellation import Cancelled, check, wait_process
+from .cancellation import Cancelled, check, wait_owned_process
+from .processes import OwnedProcessTree, ProcessCleanupError, process_identity, launch_owned
 
 
 def utcnow():
@@ -32,28 +32,6 @@ def write_json(path, value):
 
 def read_json(path):
     return json.loads(Path(path).read_text(encoding='utf-8'))
-
-
-def process_identity(pid):
-    """PID plus kernel start identity; never trust a persisted PID on its own."""
-    try:
-        if Path('/proc/%s/stat' % int(pid)).exists():
-            content = Path('/proc/%s/stat' % int(pid)).read_text()
-            fields = content[content.rfind(')') + 2:].split()
-            if fields[0] == 'Z':
-                return None
-            return 'linux:' + fields[19]
-        result = subprocess.run(['ps', '-p', str(int(pid)), '-o', 'lstart=', '-o', 'stat='],
-                                capture_output=True, text=True, timeout=3)
-        content = result.stdout.strip()
-        if result.returncode or not content:
-            return None
-        started, state = content.rsplit(None, 1)
-        if state.startswith('Z'):
-            return None
-        return 'ps:' + started.strip()
-    except (OSError, ValueError, subprocess.SubprocessError):
-        return None
 
 
 def _free_port():
@@ -79,6 +57,7 @@ class RuntimeManager:
         self.directory.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
         self._processes = {}
+        self._trees = {}
 
     def _path(self, runtime_id):
         if not isinstance(runtime_id, str) or not runtime_id or any(c not in '0123456789abcdef-' for c in runtime_id):
@@ -89,6 +68,8 @@ class RuntimeManager:
         write_json(self._path(state['id']), state)
 
     def _alive(self, state):
+        if state.get('process_trees'):
+            return any(self._tree(state, name).running() for name in state['process_trees'])
         proc = self._processes.get(state['id'])
         if proc is not None and proc.poll() is not None:
             return False
@@ -101,7 +82,10 @@ class RuntimeManager:
             for path in self.directory.glob('*/runtime.json'):
                 try:
                     state = read_json(path)
-                    state['running'] = self._alive(state)
+                    try:
+                        state['running'] = self._alive(state)
+                    except ProcessCleanupError as error:
+                        state.update(status='cleanup_failed', running=True, cleanup_error=str(error))
                     if state['status'] == 'running' and not state['running']:
                         state['status'] = 'exited'
                     states.append(state)
@@ -111,42 +95,63 @@ class RuntimeManager:
 
     def _launch(self, argv, root, env, state, log):
         state.update({'argv': argv, 'phase_started_at': utcnow()})
-        process = subprocess.Popen(argv, cwd=str(root), env=env, stdin=subprocess.DEVNULL,
-                                   stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        name = 'process-' + uuid.uuid4().hex + '.json'
+        tree = launch_owned(argv, root, env, log, self._path(state['id']).parent / name)
+        process = tree.process
         self._processes[state['id']] = process
-        state.update({'pid': process.pid, 'process_identity': process_identity(process.pid)})
-        self._save(state)
-        return process
+        self._trees[(state['id'], name)] = tree
+        try:
+            metadata = read_json(tree.record_path)
+            state.update({'pid': process.pid, 'process_identity': metadata['root_identity'], 'process_tree': name})
+            state.setdefault('process_trees', []).append(name)
+            self._save(state)
+        except Exception:
+            # Registration is already released; a metadata/storage failure must
+            # not lose our only live handle before the caller can stop it.
+            tree.terminate()
+            raise
+        return tree
+
+    def _tree(self, state, name):
+        if not isinstance(name, str) or Path(name).name != name or not name.startswith('process-') or not name.endswith('.json'):
+            raise ProcessCleanupError('Invalid process ownership record path')
+        path = self._path(state['id']).parent / name
+        try:
+            metadata = read_json(path)
+        except (OSError, ValueError) as error:
+            raise ProcessCleanupError('Cannot read process ownership record: %s' % error) from error
+        if not isinstance(metadata, dict):
+            raise ProcessCleanupError('Invalid process ownership record')
+        if name == state.get('process_tree') and (metadata.get('root_pid') != state.get('pid') or
+                                                 metadata.get('root_identity') != state.get('process_identity')):
+            raise ProcessCleanupError('Runtime and process ownership identities differ; no process was signalled')
+        return self._trees.get((state['id'], name)) or OwnedProcessTree.from_record(path)
 
     def _terminate(self, state):
-        process = self._processes.get(state['id'])
-        if not self._alive(state):
-            if process is not None:
-                process.poll()
+        if not state.get('pid'):
             return False
-        pid = state['pid']
-        try:
-            # Each launched process is a new session leader. Identity is checked again
-            # immediately before signalling; no name-based or port-based kills.
-            if process_identity(pid) != state['process_identity'] or os.getpgid(pid) != pid:
-                return False
-            os.killpg(pid, signal.SIGTERM)
-            end = time.monotonic() + 3
-            while time.monotonic() < end:
-                if process is not None:
-                    process.poll()
-                if not self._alive(state):
-                    if process is not None:
-                        process.wait(timeout=3)
-                    return True
-                time.sleep(.05)
-            if self._alive(state) and os.getpgid(pid) == pid:
-                os.killpg(pid, signal.SIGKILL)
-            if process is not None:
-                process.wait(timeout=3)
-            return True
-        except (ProcessLookupError, subprocess.TimeoutExpired):
-            return True
+        if not state.get('process_trees'):
+            # Older records can be upgraded while their original session leader
+            # is still verifiably alive. An exited leader cannot prove ownership
+            # of an arbitrary numeric group and must not be blindly signalled.
+            name = 'process-' + uuid.uuid4().hex + '.json'
+            tree = OwnedProcessTree.adopt(state['pid'], state.get('process_identity'),
+                                          self._path(state['id']).parent / name)
+            self._trees[(state['id'], name)] = tree
+            state.update(process_tree=name, process_trees=[name])
+            self._save(state)
+        terminated, errors = False, []
+        for name in reversed(state['process_trees']):
+            try:
+                terminated = self._tree(state, name).terminate() or terminated
+            except ProcessCleanupError as error:
+                errors.append(str(error))
+        if errors:
+            raise ProcessCleanupError('; '.join(errors))
+        process = self._processes.get(state['id'])
+        if process is not None:
+            process.poll()  # Reap our child even when a reloaded manager stopped it.
+        return terminated
 
     def start(self, repository, sha, recipe, approved=False, cancel=None):
         check(cancel)
@@ -185,35 +190,41 @@ class RuntimeManager:
             state['root'] = str(root)
             state['port'] = port
             env = dict(os.environ, PORT=str(port), HOST='127.0.0.1', BROWSER='none', REPRISE_RUNTIME_ID=rid)
-            env['PYTHONPATH'] = str(Path(__file__).resolve().parents[1]) + os.pathsep + env.get('PYTHONPATH', '')
             expand = lambda argv: [arg.replace('{port}', str(port)).replace('{host}', '127.0.0.1').replace('{root}', str(root)) for arg in argv]
             with open(state['log_path'], 'ab', buffering=0) as log:
                 for phase in ('install', 'build'):
                     for command in recipe['commands'].get(phase, []):
                         check(cancel)
                         state['status'] = phase
-                        process = self._launch(expand(command), root, env, state, log)
+                        tree = self._launch(expand(command), root, env, state, log)
                         try:
-                            code = wait_process(process, int(os.environ.get('REPRISE_COMMAND_TIMEOUT', '600')), cancel)
+                            code = wait_owned_process(tree, int(os.environ.get('REPRISE_COMMAND_TIMEOUT', '600')), cancel)
                         except subprocess.TimeoutExpired:
                             self._terminate(state)
                             raise RuntimeError('%s timed out; see %s' % (phase, state['log_path']))
+                        tree.terminate()
                         if code:
                             raise RuntimeError('%s exited with code %s; see %s' % (phase, code, state['log_path']))
                 if recipe['adapter'] == 'static-web':
-                    argv = [sys.executable, '-m', 'reprise.static_server', '--root', str(root), '--port', str(port)]
+                    # A repository is data, not an import location. Isolated mode
+                    # excludes cwd/PYTHONPATH/user site; -S also excludes system
+                    # site startup hooks. This trusted script uses only stdlib.
+                    argv = [sys.executable, '-I', '-S', str(Path(__file__).with_name('static_server.py').resolve()),
+                            '--root', str(root), '--port', str(port)]
+                    launch_root = folder
                 else:
                     argv = expand(recipe['commands']['start'])
+                    launch_root = root
                 state['status'] = 'starting'
                 check(cancel)
-                process = self._launch(argv, root, env, state, log)
+                tree = self._launch(argv, launch_root, env, state, log)
                 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                 deadline = time.monotonic() + recipe['readiness']['timeout_ms'] / 1000
                 last_error = 'no response'
                 while time.monotonic() < deadline:
                     check(cancel)
-                    if process.poll() is not None:
-                        raise RuntimeError('Preview process exited with code %s; see %s' % (process.returncode, state['log_path']))
+                    if tree.poll() is not None:
+                        raise RuntimeError('Preview process exited with code %s; see %s' % (tree.process.returncode, state['log_path']))
                     try:
                         target = state['url'].rstrip('/') + recipe['readiness']['path']
                         with opener.open(target, timeout=min(1, max(.1, deadline - time.monotonic()))) as response:
@@ -229,7 +240,16 @@ class RuntimeManager:
             self._save(state)
             return dict(state)
         except Exception as error:
-            self._terminate(state)
+            try:
+                self._terminate(state)
+            except ProcessCleanupError as cleanup:
+                state.update(status='cleanup_failed', running=True, error=str(error), cleanup_error=str(cleanup), finished_at=utcnow())
+                self._save(state)
+                raise cleanup from error
+            if isinstance(error, ProcessCleanupError):
+                state.update(status='cleanup_failed', running=True, error=str(error), cleanup_error=str(error), finished_at=utcnow())
+                self._save(state)
+                raise
             state.update({'status': 'cancelled' if isinstance(error, Cancelled) else 'failed', 'running': False, 'error': str(error), 'finished_at': utcnow()})
             self._save(state)
             raise
@@ -240,11 +260,18 @@ class RuntimeManager:
             if not path.is_file():
                 raise ValueError('Unknown runtime id')
             state = read_json(path)
-            alive = self._alive(state)
-            terminated = self._terminate(state)
+            if state.get('status') in ('preparing', 'install', 'build', 'starting'):
+                raise ValueError('运行任务尚未完成；请使用取消任务，等待进程清理结果。')
+            try:
+                terminated = self._terminate(state)
+            except ProcessCleanupError as error:
+                state.update(status='cleanup_failed', running=True, cleanup_error=str(error))
+                self._save(state)
+                raise
             state.update({'status': state['status'] if state.get('status') in ('failed', 'cancelled') else 'stopped',
                           'running': False, 'stopped_at': utcnow()})
-            if state.get('pid') and not alive and not terminated:
+            state.pop('cleanup_error', None)
+            if state.get('pid') and not terminated:
                 state['stop_note'] = 'Owned process already exited; no process was signalled'
             self._save(state)
             return state

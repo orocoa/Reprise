@@ -1,0 +1,97 @@
+{
+  "name": "reprise-paper-grid",
+  "approved_on": "2026-10-08",
+  "packaged_on": "2026-10-09",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "bytes": 2478,
+      "sha256": "92efbf9bd38c644630e2c819af517bff3cc4eb1e6a64ff89e6311d940b7744d3"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "bytes": 266,
+      "sha256": "7a8398613f0dabe3c9cf44acb541fd4ccc0a55ae440ba7a7448adea1d6bb0715"
+    },
+    {
+      "path": "assets/starter/INTEGRATION.md",
+      "bytes": 1225,
+      "sha256": "ca9200c25c93453ab8b179fca073d7d074fdcb3bd0a2758a61bcc4227b7b5ca7"
+    },
+    {
+      "path": "assets/starter/browse-motion.js",
+      "bytes": 13632,
+      "sha256": "6007a50533d009cfc439caf97600054415fa5754cec5c31567981da85bdc0c10"
+    },
+    {
+      "path": "assets/starter/demo-grid.svg",
+      "bytes": 541,
+      "sha256": "50172aa3de0a72d89c5460a9d4546889482aef4ad0683db04643a62e0306dfc2"
+    },
+    {
+      "path": "assets/starter/index.html",
+      "bytes": 119115,
+      "sha256": "4d54f47535480e4295e5a78d080c23052233662d38a12b9130b112d5cabb4e6c"
+    },
+    {
+      "path": "assets/starter/styles.css",
+      "bytes": 58560,
+      "sha256": "afe557da3ed602aa55d6793aec53a7ad6b3af5e9ab57548547bd00e600a685d6"
+    },
+    {
+      "path": "assets/visual-reference/01-directory-to-detail.gif",
+      "bytes": 375930,
+      "sha256": "7646d7cf8b4545e9007ca69c0faae908d1753b85a6bdf56a9b8558b2826c3299"
+    },
+    {
+      "path": "assets/visual-reference/01-version-list-desktop.png",
+      "bytes": 39168,
+      "sha256": "3ace3d0e54e0b307affed7a806cd270dc6071d7bf4dc97f023f58d2798f9b3ed"
+    },
+    {
+      "path": "assets/visual-reference/02-version-detail-desktop.png",
+      "bytes": 86848,
+      "sha256": "a1c4d37f135c118772d37ecc4b594e278e0087a9652a3017e631f488392fcf71"
+    },
+    {
+      "path": "assets/visual-reference/03-divider-joins-right.gif",
+      "bytes": 329022,
+      "sha256": "87156f2bf10b1133d47de9933271260ef8fed66e34378c57863eeb18bfafb48e"
+    },
+    {
+      "path": "assets/visual-reference/05-management-desktop.png",
+      "bytes": 63729,
+      "sha256": "7b7a717ac1d488219c6aa79e7e68c81c13056e4a681899850cef591f8917f5b6"
+    },
+    {
+      "path": "assets/visual-reference/05-preview-expand.gif",
+      "bytes": 202706,
+      "sha256": "9f0b472282ce4438d5828384c178f06927ed32181b1ae79a916bf5252272f87d"
+    },
+    {
+      "path": "assets/visual-reference/07-version-list-narrow.png",
+      "bytes": 37599,
+      "sha256": "7cf69f1ffa27db18502ebe92780e3f06779d3cdf30f608b58c218dab1ef60323"
+    },
+    {
+      "path": "references/computed-tokens.json",
+      "bytes": 4011,
+      "sha256": "5b9ce0051e551ded67752be2505cacbdfb8af26e73c568ddefd1f6db4bebb915"
+    },
+    {
+      "path": "references/design-system.md",
+      "bytes": 7440,
+      "sha256": "9812ab94819bdab7c8406bd84ffdb0863110e31412c407e58dfbbd0981fc1899"
+    },
+    {
+      "path": "references/motion.md",
+      "bytes": 3884,
+      "sha256": "75b6adb26156abb0ba608d7480a1f2e67bf76739cdb0e7257c12746fccf63d99"
+    },
+    {
+      "path": "references/source-manifest.json",
+      "bytes": 3200,
+      "sha256": "1e7691a695f7f22b44ca807058953fabca804f320cc3acb77d23ee58e12451e9"
+    }
+  ]
+}

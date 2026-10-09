@@ -8,6 +8,7 @@ from .git import Repository
 from .detection import detect
 from .recipes import validate_recipe
 from .storage import now, read_json, write_json, locked
+from .ai import validate_notes
 
 
 class ProjectStore:
@@ -28,14 +29,17 @@ class ProjectStore:
         raise KeyError('找不到这个项目。')
 
     def repository(self, identifier):
-        return Repository(self.record(identifier)['path'])
+        return Repository(self.record(identifier)['path'], status_directory=self.directory / 'git-status')
 
     def add(self, path, name=None):
         if not isinstance(path, str) or not path.strip() or len(path) > 4096:
             raise ValueError('请填写本地 Git 仓库路径。')
-        repository = Repository(Path(path).expanduser())
+        repository = Repository(Path(path).expanduser(), status_directory=self.directory / 'git-status')
         info = repository.info()
         canonical = info['path']
+        source = Path(canonical).resolve()
+        if self.directory == source or source in self.directory.parents:
+            raise ValueError('Reprise data must be outside the imported repository')
         identifier = hashlib.sha256(canonical.encode('utf-8', 'surrogateescape')).hexdigest()[:20]
         if name is not None and (not isinstance(name, str) or not name.strip() or len(name) > 120):
             raise ValueError('项目名称须为 1–120 个字符。')
@@ -80,7 +84,7 @@ class ProjectStore:
 
     def get(self, identifier, sha=None):
         record = self.record(identifier)
-        repository = Repository(record['path'])
+        repository = Repository(record['path'], status_directory=self.directory / 'git-status')
         info = repository.info()
         resolved = repository.resolve(sha) if sha else info['head']
         detection = self.detected(repository, resolved)
@@ -108,3 +112,43 @@ class ProjectStore:
             record.setdefault('recipe_history', []).append({'sha': revision, **entry})
             write_json(self.file, {'schema': 1, 'projects': records})
         return self.get(identifier, revision)
+
+    def save_notes(self, identifier, value, sha='HEAD'):
+        notes = validate_notes(value)
+        revision = self.repository(identifier).resolve(sha)
+        with self.lock, locked(self.lockfile):
+            records = self.records()
+            record = next((p for p in records if p['id'] == identifier), None)
+            if record is None:
+                raise KeyError('Unknown project')
+            entry = {'localizations': notes, 'saved_at': now()}
+            record.setdefault('version_notes', {})[revision] = entry
+            record.setdefault('notes_history', []).append({'sha': revision, **entry})
+            write_json(self.file, {'schema': 1, 'projects': records})
+        return entry
+
+    def save_histories(self, identifier, histories, catalog=None):
+        """Explicitly associate related read-only archives; never invent Git edges."""
+        if (not isinstance(histories, list) or len(histories) > 32 or
+                any(not isinstance(item, str) or item == identifier for item in histories)):
+            raise ValueError('历史来源必须是其他已注册项目的标识列表。')
+        histories = list(dict.fromkeys(histories))
+        if catalog is not None:
+            if (not isinstance(catalog, list) or len(catalog) > 10000 or
+                    any(not isinstance(sha, str) or len(sha) not in (40, 64) or
+                        any(c not in '0123456789abcdef' for c in sha) for sha in catalog)):
+                raise ValueError('历史目录必须包含完整 SHA。')
+            catalog = list(dict.fromkeys(catalog))
+        from .workspace import snapshot
+        from types import SimpleNamespace
+        snapshot(SimpleNamespace(projects=self), identifier, histories,
+                 set(catalog) if catalog is not None else None)
+        with self.lock, locked(self.lockfile):
+            records = self.records()
+            record = next((p for p in records if p['id'] == identifier), None)
+            if record is None:
+                raise KeyError('找不到这个项目。')
+            record['history_project_ids'] = histories
+            record['history_catalog'] = catalog
+            write_json(self.file, {'schema': 1, 'projects': records})
+        return self.get(identifier)

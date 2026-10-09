@@ -55,3 +55,46 @@ python3 scripts/import_legacy_evidence.py \
 为了保持本地服务可响应，读取与采集有大小/时间上限：Git 单次输出默认 32 MiB，快照默认 4 GiB，手工单文件 512 MiB，浏览器全页图片限制 100M 像素/40,000 CSS px 高度。达到上限会明确失败并保留诊断，历史浏览仍与运行能力分开。外部资源会受网络策略影响；私有服务需显式配置。
 
 这些边界不会被 AI 输出覆盖。新增适配器必须保持同样的版本身份、配置校验、进程归属、失败诊断和证据来源契约。
+# 2026-10-08 发布前安全与分发修复验证
+
+本轮验证记录保留在 `work/test-artifacts/release-hardening-20261008/`：
+
+- `full-tests-final.log`：101 项完整测试通过，包含 8 项真实浏览器采集测试，无跳过；运行于 macOS / Python 3.9，采集使用已有 Node、Playwright 和 Google Chrome。
+- `distribution-20261008T145158Z-571b2926/report.json`：直接 wheel、源码包重建 wheel，分别在全新 venv 与独立 user-site 安装；4 组从源码目录外启动，网页、JS、CSS 内容哈希与 API 均通过。构建/安装使用 Python 3.12。wheel 中全部 Python 文件已与当前源码核对。
+- `cleanup-failure-paths.log`：启动后读取运行记录失败、写入采集 worker 记录失败、浏览器记录损坏均有回归验证；不会漏清理或被当作成功取消。
+- 新增 Git 用例覆盖同尺寸 clean filter、required process filter、配置变化竞争、split-index、linked worktree、SHA-256、CRLF、UTF-16 内置转换及子模块边界。
+- 新增进程用例覆盖可信启动握手、瞬时退出、父退子存、已观察的独立会话子进程、身份错配、PID 复用、清理失败、旧活进程安全登记及 macOS 退出过渡状态。
+
+早期整合失败和相关进程记录保留，用于说明修复过程；最终结果以 `full-tests-final.log` 为准。一个由早期观测超时遗留的测试预览已按匹配身份安全停止，原失败记录未改动。未改导入项目、未调用真实外部 AI、未做远端发布。本轮没有 Linux 实机验证；本地进程跟踪不替代恶意代码的容器/虚拟机隔离。
+
+## 2026-10-08 后续独立发布验收
+
+新增记录位于 `work/test-artifacts/release-readiness-20261008T232055-56e79e/`，结论见 `release-readiness.txt` 和 `release-readiness.json`。上述较早的 101 项通过记录不代表后续补测已全部通过：
+
+- 26 项独立 HTTP/CLI 验收通过；真实新项目、中文/空格路径、源文件及 Git 元数据哈希保持不变、两版图片/录像、未确认命令阻断、请求边界、重启持久化均有证据。实际浏览器另验证新提交刷新、非相邻/反向比较、未知项目配置入口和空仓库。
+- 当前完整 101 项回归中，两项媒体诊断用例共有三处断言失败，失败发生在预览启动就绪阶段。单独复测两项通过；保留整轮与复测差异，尚未完全隔离启动时序原因。
+- **新增发布阻塞项**：项目在观察前快速双重 fork、切换到独立会话的子进程，可在 `stop` 返回 `stopped / running=false` 后继续运行。两个独立测试仓库均复现，见 `fast-detach-result.json`、`fast-detach-result-repeat-1.json`。探针子进程有自动退出期限，并已按匹配身份清理。当前周期性观察覆盖已观察到的后代，不能由此声称整个进程树均已确认退出。
+- 51581 原型与通用核心尚未整合，中英切换及首次 AI 双语内容尚未落实到通用产品；`reprise .` 的实际退出码为 2；保存 AI 密钥状态字段与 UI 不匹配、缺少清除入口仍可复现。
+
+本轮未封装、发布或修改产品功能/视觉。测试浏览器和服务已关闭，记录的预览及探针 PID 均已确认退出；现有 51581/51582 服务没有重启。所有夹具、媒体、失败记录和脚本保留。未验证 Linux/Windows，也没有调用真实外部模型。
+
+## 2026-10-09 已知问题修复复测
+
+修复前的审计与失败复现全部保留；本段是该次审计的后续结果。新证据位于 `work/test-artifacts/release-fixes-20261008T235118/`。
+
+- 完整回归 **112 项通过，0 跳过**（`full-tests-release-ready.log`）；随后新增 CLI 参数/损坏记录处理由 **5 项通过**的 `cli-tests-final.log` 覆盖，UI 的旧单语提示、配对截图及媒体窗口由 **1 项通过**的 `ui-tests-capture-final.log` 覆盖。
+- 自有进程 **15 项通过**。同一快速 double-fork + setsid + 忽略 TERM 复现的结果为 `child_survives:false`，不再出现停止假成功；见 `fast-detach-result.json`。
+- UI 自动回归和 ego-browser 实际操作均验证：通用项目导入、完整语言切换、原始 Git 消息保留、模型不自动切换、密钥清除、一次双语生成、审阅后按完整 SHA 保存、刷新恢复、运行/停止、配对截图和放大窗口。桌面导航不重叠，390px 页面没有横向溢出，提示条宽度正常。`browser-capture-result.json` 的配对采集为 complete、两个不同 SHA、未翻译界面文案集合为空、运行实例为 0。
+- Git 过滤器、可信模块加载、Host/Origin/token、读取只读、静态外部文件隔离等原有安全回归继续通过。AI 上下文最多 300 个显式路径，仅加入提交标题和父提交，不发送作者邮箱。
+- 页面资源新入口均返回 200，延续已经验证的包内资源定位；本轮按用户要求不重新封装。正式发行时仍应对最终产物运行全新 venv/user-site 安装矩阵。
+
+本轮在 macOS 验证，真实外部模型、Linux 和 Windows 未测试。命令执行依然是批准后的本机代码，不是恶意代码沙箱。尚需用户最终视觉调整、选择发布许可证与最终发行验收。
+# 0.3.0 整合验证 · 2026-10-09
+
+最新视觉与版本来源、版本选择器 Demo 已合入正式 `web/`。正式服务在隔离数据目录读取 PersonalWeb 61 版（当前 6＋历史 55），保留精确 SHA、来源及真实父子关系。截图与已有证据复制到 QA 数据，原文件保留；源仓库只读。
+
+`REPRISE_BROWSER_TESTS=1 PYTHONPATH=src python3 -m unittest discover -s tests -v`：119 项全部通过，无跳过。包含真实浏览器采集、录像、取消、进程生命周期和正式 UI 的中英切换、手动说明保存、收藏持久化、32px 紧凑视图、AI 模拟提案审核、显式配方批准、运行停止、媒体放大、自动比较及迟到响应保护。AI 测试使用本机模拟，未请求外部模型。
+
+发行检查从源码目录外验证直接 wheel / 源码包重建 wheel 的 venv / user-site 四种安装。检查全部网页、字体和图标资源的 SHA-256，并保留构建包、环境与日志。构建使用已有 bundled Python 的 setuptools 84；系统 Python 的 setuptools 58 不满足构建要求，首次失败日志保留。
+
+Ego Lite 的截图先遇到零宽视口，设置有效视口后仍超时；按用户规则由 in-app browser 补充正式页面视觉验证。截图、全部测试日志与失败诊断位于 `work/test-artifacts/reprise-release-20261009/`。旧 Demo 与视觉档案保持原位。

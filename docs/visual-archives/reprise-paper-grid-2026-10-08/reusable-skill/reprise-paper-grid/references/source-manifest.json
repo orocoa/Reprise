@@ -1,0 +1,99 @@
+{
+  "name": "Reprise Paper Grid",
+  "confirmed_on": "2026-10-08",
+  "status": "user-approved after right-frame-merge fix",
+  "source_directory": "/Users/kai/Documents/Codex/2026-10-07/superset-devpod-git-git-ai/outputs/git-version-demo",
+  "source_files": [
+    {
+      "file": "index.html",
+      "sha256": "8e6844a46ba6a6cb0a2614ccf96a709690ccee76995e37ec9e2995981c84a4c5",
+      "bytes": 3810
+    },
+    {
+      "file": "styles.css",
+      "sha256": "afe557da3ed602aa55d6793aec53a7ad6b3af5e9ab57548547bd00e600a685d6",
+      "bytes": 58560
+    },
+    {
+      "file": "browse-motion.js",
+      "sha256": "6007a50533d009cfc439caf97600054415fa5754cec5c31567981da85bdc0c10",
+      "bytes": 13632
+    },
+    {
+      "file": "ai.css",
+      "sha256": "3c0cbf1e177408b431f3facbd63c2bd6f6e1acd6ba5ec91e2ebc3e64c2977529",
+      "bytes": 2362
+    },
+    {
+      "file": "media-viewer.css",
+      "sha256": "7119bb2b0e4b26f1b64c2176d521982b1fd34b8622d85a65e5651b11b90a752b",
+      "bytes": 2568
+    },
+    {
+      "file": "evidence.css",
+      "sha256": "5305cdb02c3274acb022c24c24a75b19324a0eb31c0645b7db3596f74dabb8a6",
+      "bytes": 2938
+    },
+    {
+      "file": "app.js",
+      "sha256": "b191997df31da744eda1f20265937811948ab873f0201e2395ce36556d36e13c",
+      "bytes": 39597
+    },
+    {
+      "file": "ai-ui.js",
+      "sha256": "96cf7531b3ff9408bc034b1b92abb83700a0c0a81e5306385d4b4b48368a26b5",
+      "bytes": 10641
+    },
+    {
+      "file": "media-viewer.js",
+      "sha256": "eb0497643be9f890c860553f5ce0fe747fe334b694f3d73f3bdd1692b0c59a38",
+      "bytes": 6918
+    },
+    {
+      "file": "evidence-ui.js",
+      "sha256": "1f7629d03326a144cbc1a74856b38b16c4ee477b46ee214d5b47855927c238d5",
+      "bytes": 7258
+    },
+    {
+      "file": "language.js",
+      "sha256": "fb36ec2bfdecc5ce8970d08c00d5b6b449fc96c655b626a755e75f30ba39296c",
+      "bytes": 19516
+    },
+    {
+      "file": "content-en.json",
+      "sha256": "b55f4c23c48baf04fa9ee8da825795c47fe67784e60dc9d34eb84a34c612fa99",
+      "bytes": 67895
+    },
+    {
+      "file": "README.md",
+      "sha256": "e7b8e5427203692b0ea0e91573ea2b5a85657ed74af272062e49bf928e53fb02",
+      "bytes": 22144
+    }
+  ],
+  "videos": [
+    {
+      "file": "Screen Recording 2026-10-08 at 16.46.18.mov",
+      "role": "用户认可的目录收拢与内容呈现基准",
+      "sha256": "bb483f2905acf2bd7c711e83943437e453d3ea6ada94242f98fc4b899e687799",
+      "bytes": 1232363
+    },
+    {
+      "file": "Screen Recording 2026-10-08 at 17.15.00.mov",
+      "role": "问题参考：无必要的横线汇合",
+      "sha256": "b019f07c6c2ddfd1dba789a5c462547ace3c2e16f0b521d4a5f51f38b0848dc4",
+      "bytes": 1033842
+    },
+    {
+      "file": "Screen Recording 2026-10-08 at 22.51.39.mov",
+      "role": "问题参考：全宽页面临时生成竖线",
+      "sha256": "8b961e7c0013c74859da72157db84bd59e4f442de4a47de074c4a9c7e2bc5ea9",
+      "bytes": 4900595
+    },
+    {
+      "file": "Screen Recording 2026-10-08 at 23.17.23.mov",
+      "role": "问题参考：内部竖线原位淡出；最终要求改为右移并入右边框",
+      "sha256": "ab3dc63fc5aff525d7bf9d6e9f188fd45a52385b3b580d48648f7825991650fc",
+      "bytes": 2649956
+    }
+  ]
+}

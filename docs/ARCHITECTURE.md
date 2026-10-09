@@ -14,7 +14,7 @@ run.py / cli.py ─┐
 web/ ↔ server.py┘       │              ├─ detection.py
                        │              └─ recipes.py
                        ├─ jobs.py ─ runtime.py ─ 独立历史副本 + 日志
-                       │             └─ static_server.py / 明确批准的 argv
+                       │             └─ processes.py → static_server.py / 明确批准的 argv
                        ├─ capture.py ─ browser_worker.mjs ─ 截图 / 录像 / 诊断
                        ├─ evidence.py ─ 人工资料 / 历史资料导入
                        └─ ai.py ─ 可选提案 → 校验 → 人工保存配置
@@ -27,6 +27,8 @@ web/ ↔ server.py┘       │              ├─ detection.py
 每个提交保留完整 SHA、真实 parents、作者、时间及引用。默认 diff 使用真实第一父节点；合并提交可选择其他父节点；根提交与空树比较。浅克隆缺失父对象时仍显示提交和现有证据，并指出差异不可读。历史实时从 Git 读取，不再依赖预生成的 61 项目录。
 
 还原直接读取 Git blob，验证对象内容，写入新建的托管目录。不 checkout 源工作区，不修改源 index，不运行仓库 hooks / smudge 过滤器，不自动 fetch。子模块保留 gitlink 信息；LFS 指针明确标记。危险路径、越界符号链接、不可表示的文件和超限输出必须失败并说明，不能悄悄替换内容。
+
+工作树状态在独立的只读 Git 元数据视图中计算：复制 index/sharedindex、HEAD 和影响内置转换的安全配置，原对象目录只供读取；最终 status 不加载源配置或 include，因此即使源配置并发新增 clean/process 驱动也不会执行。CRLF、working-tree-encoding 等内置转换保留。未执行的自定义过滤转换可能让文件显示 modified，返回状态明确说明这一限制。视图按内容哈希复用，保留在应用数据的 `git-status/` 私有目录。
 
 ### 2. 项目注册与能力识别
 
@@ -42,6 +44,10 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 运行进程使用新 session，停止时校验 PID 与启动身份。API 与项目预览使用不同来源，项目脚本得不到管理 API 的跨源读取权限。停止保留文件；没有自动清理、自动提交、自动推送流程。线程池限制任务并发，同项目由持久锁防止 CLI 与服务并行覆盖；服务重启识别已中断任务。
 
+可信 Python 启动入口先等待进程所有权登记，再以 exec 执行目标 argv；短命令也不能抢先退出而丢失身份。各 install/build/start 阶段分别保留进程树记录，安装与构建结束后清理其后代，再进入下一阶段。观察器登记后代和会话；可信启动器在执行命令前注入随机所有权标记，macOS/Linux 从内核读取标记以追踪快速双重 fork、重新归属及独立会话的后代。只保留标记，不持久化其他进程环境。父进程退出不等于整树退出；停止前进行两次独立所有权扫描并再次核验身份，对顽固进程升级到 KILL，并确认结果。身份或清理无法确认时保存 `cleanup_failed`，接口报错，界面保留“停止未确认”与重试入口。尚在准备/启动的任务使用取消任务，不能通过停止接口制造先停止后启动的竞态。
+
+静态服务器由可信绝对脚本通过 `python -I -S` 启动，不搜索仓库或继承的 Python 路径，并精确校验 loopback Host。进程跟踪用于生命周期管理，不能保证归因一个主动清除所有权标记且从未被观察到的恶意后台进程；这仍属于下面的容器/虚拟机隔离范围。
+
 这些进程以当前本机用户权限运行。若要运行不可信仓库，需要后续容器/虚拟机 adapter；不能把“独立副本”叫作沙箱。现阶段明确的命令配置与执行动作承担授权边界。
 
 ### 4. 确定性采集与证据
@@ -56,21 +62,23 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 ### 5. 可选 AI 边界
 
-模型适配器只接受有限的已提交清单、路径和差异元数据，只返回结构化提案。输出通过 `validate_recipe` 与文件依据检查，包含 provider/model、输入哈希和提示词版本。提案不会自动保存、执行或变成验证证据。连接配置在请求途中变化时，旧响应丢弃。当前实现兼容 Chat Completions 接口，可通过替换 provider adapter 接入其他供应商；旧原型里的 Codex 配置不被迁移或改写。
+模型适配器只接受有限的已提交清单、路径和差异元数据，只返回结构化提案。输出通过 `validate_recipe` 与文件依据检查，包含 provider/model、输入哈希和提示词版本。提案要求一次包含 zh/en 两种语言的标题、摘要和变化说明，缺失或超出限制即拒绝；提示词版本进入缓存键，旧版单语缓存不会被复用。提案不会自动保存、执行或变成验证证据。审阅后的版本说明由独立 notes 接口绑定完整 SHA；说明保存不批准配方，原始 Git 消息保留。连接配置在请求途中变化时，旧响应丢弃。当前实现兼容 Chat Completions 接口，可通过替换 provider adapter 接入其他供应商；旧原型里的 Codex 配置不被迁移或改写。
 
 ## 数据目录
 
 ```text
 <application data>/
-  projects.json                 项目注册 + version_recipes（完整 SHA）+ 配方保存历史
+  projects.json                 项目注册 + version_recipes / version_notes（完整 SHA）+ 保存历史
   jobs/<id>.json                任务和恢复状态
   runtimes/<id>/runtime.json    进程身份与配置哈希
+  runtimes/<id>/process-*.json  各阶段的进程树所有权及清理记录
   runtimes/<id>/source/         精确提交的独立副本
   runtimes/<id>/runtime.log     安装 / 构建 / 启动日志
   evidence/<id>/record.json     SHA、配方、来源、诊断、媒体元数据
   evidence/<id>/*               原始截图、录像、采集输入和日志
   ai/settings.json             本机私密连接配置
   ai/proposals/                 已校验但未自动执行的模型提案
+  git-status/<hash>/             可复用的私有 Git 状态元数据视图
 ```
 
 应用数据应放在源仓库以外。读取 Git、刷新列表、切换项目不创建预览副本。只有运行、采集、人工导入等具体操作才写相应托管内容。
@@ -82,3 +90,15 @@ web/ ↔ server.py┘       │              ├─ detection.py
 运行与采集使用持久取消请求和协作式检查，状态为 queued → running → cancelling → cancelled（清理失败则 failed）。排队取消释放项目锁；运行中取消覆盖快照、安装/构建、服务就绪、采集锁等待及浏览器阶段。只停止具有匹配进程身份的自有进程；部分输出与日志保留。任务完成后取消为幂等操作，不停止已经交付的预览；此时使用运行实例的停止接口。CLI 与服务共享取消请求。
 
 每份任务记录独立校验；损坏 JSON、结构、编码或读取错误通过 `job_warnings` 显示，跳过该条但保留原文件，不阻止其他任务和工作台启动。
+
+### 命令入口与网页
+
+`reprise .` / `open` 从当前目录定位仓库，检查数据目录不位于源仓库内，再启动或复用服务。启动通过可信绝对 `server_entry.py`、`python -I -S` 和托管工作目录，不搜索项目模块。复用检查 PID 启动身份、健康接口实例随机标记与数据目录；不按端口猜测服务。`--no-browser` 返回 JSON，`shutdown` 通过带 token 的本机接口取消任务并停止预览，无法确认清理就报错。
+
+`web/` 是通用核心唯一前端编辑源；locale/app/shell 负责界面文案、原有流程与 Paper Grid 布局，归档原型仅作为视觉参考，不在核心内保留具体项目路径、固定版本或用户模型设置。
+
+## 0.3.0 版本工作台
+
+`workspace.py` 提供通用历史快照、显式关联存档、比较来源选择与双侧文件文本。`web/live*.js` 和 `graph-layout.js` 是当前正式界面，读取 `/api/workspace/*` 和原有版本、运行、资料 API。启动 URL 中的项目标识决定上下文；不会通过其他项目切换入口改变启动仓库。旧 `app.js` 和 Paper Grid 视觉档案继续保留。
+
+关联存档先验证共同 Git 提交，再保存本机注册信息；按完整 SHA 去重，保留每条版本的读取来源。目录筛选只影响存档显示，不删除 Git 对象。路线只依据真实 parents，独立记录显示分隔说明。媒体以完整 SHA 和采集场景匹配；手工资料没有场景元数据时不会自动伪造成前后对照。AI 提案和运行配置仍须单独明确保存。

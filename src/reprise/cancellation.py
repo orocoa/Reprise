@@ -49,6 +49,19 @@ def wait_process(process, timeout, cancel=None):
             pass
 
 
+def wait_owned_process(tree, timeout, cancel=None):
+    """Observe descendants before polling/reaping their original parent."""
+    deadline = time.monotonic() + timeout
+    while True:
+        check(cancel)
+        code = tree.poll()
+        if code is not None:
+            return code
+        if time.monotonic() >= deadline:
+            raise subprocess.TimeoutExpired(tree.process.args, timeout)
+        time.sleep(.05)
+
+
 @contextlib.contextmanager
 def cancellable_lock(lock, cancel=None):
     while not lock.acquire(timeout=.1):

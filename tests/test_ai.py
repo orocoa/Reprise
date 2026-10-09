@@ -7,11 +7,15 @@ import unittest
 from reprise.ai import AIService, validate_endpoint, validate_proposal
 
 
+NOTES = {'zh': {'title': '静态站点', 'summary': '可直接采集。', 'changes': ['提交包含 HTML 入口']},
+         'en': {'title': 'Static site', 'summary': 'Ready for capture.', 'changes': ['Commit contains an HTML entry']}}
+
+
 class Stub:
     def __init__(self): self.calls = []
     def complete(self, config, messages):
         self.calls.append((config, messages))
-        return {'model': config['model'], 'text': json.dumps({'summary': '这是静态站点，可直接采集。', 'reasons': ['提交包含 HTML 入口'], 'evidence_paths': ['index.html'], 'recipe': {'schema': 1, 'adapter': 'static-web'}})}
+        return {'model': config['model'], 'text': json.dumps({'localizations': NOTES, 'evidence_paths': ['index.html'], 'recipe': {'schema': 1, 'adapter': 'static-web'}})}
 
 
 class AIContractTests(unittest.TestCase):
@@ -44,9 +48,27 @@ class AIContractTests(unittest.TestCase):
 
     def test_bad_recipe_or_fabricated_path_rejected(self):
         with self.assertRaises(ValueError):
-            validate_proposal(json.dumps({'summary': 'test', 'evidence_paths': ['invented'], 'recipe': None}), {'index.html'})
+            validate_proposal(json.dumps({'localizations': NOTES, 'evidence_paths': ['invented'], 'recipe': None}), {'index.html'})
         with self.assertRaises(ValueError):
-            validate_proposal(json.dumps({'summary': 'test', 'evidence_paths': [], 'recipe': {'adapter': 'static-web', 'root': '../../'}}), set())
+            validate_proposal(json.dumps({'localizations': NOTES, 'evidence_paths': [], 'recipe': {'adapter': 'static-web', 'root': '../../'}}), set())
+
+    def test_both_languages_generated_once_and_missing_language_rejected(self):
+        self.ai.save({'enabled': True, 'endpoint': 'https://models.example/v1', 'model': 'exact'})
+        result = self.ai.suggest(self.context)
+        self.assertEqual(result['localizations'], NOTES)
+        self.assertEqual(result['sha'], self.context['sha'])
+        self.assertIn('必须一次返回完整中英两版', self.adapter.calls[0][1][0]['content'])
+        with self.assertRaises(ValueError):
+            validate_proposal(json.dumps({'localizations': {'zh': NOTES['zh']}, 'recipe': None}), set())
+
+    def test_clear_key_preserves_model_and_does_not_call_provider(self):
+        self.ai.save({'enabled': True, 'endpoint': 'https://models.example/v1', 'model': 'exact', 'api_key': 'secret'})
+        self.assertTrue(self.ai.save({'enabled': True})['has_key'])
+        state = self.ai.save({'enabled': True, 'clear_key': True})
+        self.assertFalse(state['has_key'])
+        self.assertEqual(state['model'], 'exact')
+        self.assertEqual(self.adapter.calls, [])
+        with self.assertRaises(ValueError): self.ai.save({'enabled': True, 'clear_key': 'yes'})
 
     def test_endpoint_no_redirect_credential_or_remote_plaintext(self):
         for value in ('http://remote.example/v1', 'https://user:pw@example.org', 'https://example.org?key=secret'):
