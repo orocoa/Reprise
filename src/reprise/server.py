@@ -1,5 +1,5 @@
 """Loopback-only local API. Project content runs on a separate preview origin."""
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import json
 from pathlib import Path
 import secrets
@@ -11,6 +11,7 @@ from .http_files import serve_file
 from .service import Reprise
 from .storage import now, write_json
 from .processes import ProcessCleanupError
+from .static_server import LoopbackHTTPServer
 from . import workspace
 
 WEB = Path(__file__).resolve().parent / 'web'
@@ -20,7 +21,7 @@ if not WEB.is_dir():
     WEB = Path(__file__).resolve().parents[2] / 'web'
 
 
-class LocalServer(ThreadingHTTPServer):
+class LocalServer(LoopbackHTTPServer):
     daemon_threads = True
     request_queue_size = 128
 

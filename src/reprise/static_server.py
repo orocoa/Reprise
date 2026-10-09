@@ -4,7 +4,17 @@ import mimetypes
 import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 from urllib.parse import unquote, urlsplit
+
+
+class LoopbackHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer resolves its bind address with getfqdn(). Our fixed
+        # loopback origin needs no DNS, which can stall on an offline resolver.
+        TCPServer.server_bind(self)
+        self.server_name = 'localhost'
+        self.server_port = self.server_address[1]
 
 
 class PreviewHandler(SimpleHTTPRequestHandler):
@@ -98,7 +108,7 @@ def main():
     parser.add_argument('--root', required=True)
     parser.add_argument('--port', required=True, type=int)
     args = parser.parse_args()
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), PreviewHandler)
+    server = LoopbackHTTPServer(('127.0.0.1', args.port), PreviewHandler)
     server.root = Path(args.root).resolve()
     server.serve_forever()
 

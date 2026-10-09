@@ -55,49 +55,6 @@ jobs:
       - name: Git graph and workspace contracts
         shell: bash
         run: node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs | tee work/test-artifacts/ci/node.log
-      - name: Diagnose macOS preview transport
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          python -u - <<'PY'
-          import os, socket, subprocess, sys, time, urllib.request
-          from pathlib import Path
-          from reprise.processes import launch_owned
-          root = Path('work/test-artifacts/ci/transport').resolve()
-          root.mkdir(parents=True, exist_ok=True)
-          (root / 'index.html').write_text('preview transport probe')
-          code = ('import faulthandler,sys; faulthandler.dump_traceback_later(3,repeat=True); '
-                  'from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler; '
-                  'server=ThreadingHTTPServer(("127.0.0.1",int(sys.argv[1])),SimpleHTTPRequestHandler); '
-                  'print("bound",flush=True); server.serve_forever()')
-          for mode in ('direct', 'owned'):
-              with socket.socket() as sock:
-                  sock.bind(('127.0.0.1', 0))
-                  port = sock.getsockname()[1]
-              path = root / (mode + '.log')
-              with path.open('wb') as log:
-                  argv = [sys.executable, '-I', '-S', '-c', code, str(port)]
-                  tree = launch_owned(argv, root, dict(os.environ), log, root / 'owned.json') if mode == 'owned' else None
-                  process = tree.process if tree else subprocess.Popen(argv, cwd=root, stdout=log, stderr=log)
-                  try:
-                      opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-                      deadline = time.monotonic() + 8
-                      while time.monotonic() < deadline:
-                          try:
-                              with opener.open('http://127.0.0.1:%s/' % port, timeout=1) as response:
-                                  print(mode, 'response:', response.status, response.read())
-                              break
-                          except OSError as error:
-                              print(mode, 'request:', error)
-                              time.sleep(.1)
-                  finally:
-                      if tree:
-                          tree.terminate()
-                      else:
-                          process.terminate()
-                          process.wait(timeout=5)
-              print(mode, 'server log:', path.read_text())
-          PY
       - name: Full regression
         shell: bash
         run: python -m unittest discover -s tests -v 2>&1 | tee work/test-artifacts/ci/python.log

@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 import urllib.error
 import urllib.request
@@ -13,6 +14,7 @@ from unittest.mock import patch
 from reprise.git import Repository
 from reprise.runtime import RuntimeManager, process_identity
 from reprise.processes import ProcessCleanupError
+from reprise.static_server import LoopbackHTTPServer, PreviewHandler
 
 
 def fixture(prefix):
@@ -33,6 +35,13 @@ def commit_repo(path):
     return Repository(path)
 
 
+def http_server_command():
+    # This command fixture tests execution/cleanup, not external reverse DNS.
+    code = ('import runpy,socket; socket.getfqdn=lambda host: "localhost"; '
+            'runpy.run_module("http.server",run_name="__main__")')
+    return [sys.executable, '-c', code, '{port}', '--bind', '{host}']
+
+
 class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.root = fixture('runtime')
@@ -43,6 +52,24 @@ class RuntimeTests(unittest.TestCase):
     def tearDown(self):
         for runtime in self.opened:
             self.manager.stop(runtime['id'])
+
+    def test_loopback_http_works_when_reverse_dns_is_unavailable(self):
+        with patch('socket.getfqdn', side_effect=AssertionError('DNS must not be queried')):
+            server = LoopbackHTTPServer(('127.0.0.1', 0), PreviewHandler)
+            server.root = self.repo.work_tree
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            connection = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=2)
+            try:
+                connection.request('GET', '/')
+                response = connection.getresponse()
+                self.assertEqual(response.status, 200)
+                self.assertIn(b'<h1>first</h1>', response.read())
+            finally:
+                connection.close()
+                server.shutdown()
+                server.server_close()
+                thread.join(2)
 
     def test_static_historical_snapshot_and_ranges(self):
         (self.root / 'repo' / 'index.html').write_text('<title>dirty working tree</title>')
@@ -64,7 +91,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertIsNone(process_identity(runtime['pid']))
 
     def test_commands_require_saved_approval(self):
-        recipe = {'adapter': 'command-web', 'commands': {'start': [sys.executable, '-m', 'http.server', '{port}', '--bind', '{host}']}}
+        recipe = {'adapter': 'command-web', 'commands': {'start': http_server_command()}}
         with self.assertRaisesRegex(ValueError, 'approve'):
             self.manager.start(self.repo, 'HEAD', recipe)
         self.assertEqual(self.manager.list(), [])
@@ -76,7 +103,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_failure_retains_snapshot_and_logs(self):
         recipe = {'adapter': 'command-web', 'commands': {'build': [[sys.executable, '-c', 'import sys; print("meaningful build failure"); sys.exit(7)']],
-            'start': [sys.executable, '-m', 'http.server', '{port}', '--bind', '{host}']}}
+            'start': http_server_command()}}
         with self.assertRaisesRegex(RuntimeError, 'build exited with code 7'):
             self.manager.start(self.repo, 'HEAD', recipe, approved=True)
         state = self.manager.list()[0]
@@ -107,8 +134,9 @@ class RuntimeTests(unittest.TestCase):
         (source / 'child.py').write_text('import os, signal, time\nfrom pathlib import Path\n'
             'signal.signal(signal.SIGTERM, signal.SIG_IGN)\n'
             'Path("child.pid").write_text(str(os.getpid()))\ntime.sleep(60)\n')
-        (source / 'parent.py').write_text('import os, subprocess, sys, time\nfrom pathlib import Path\n'
+        (source / 'parent.py').write_text('import os, socket, subprocess, sys, time\nfrom pathlib import Path\n'
             'from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler\n'
+            'socket.getfqdn=lambda host: "localhost"\n'
             'subprocess.Popen([sys.executable, "child.py"])\n'
             'while not Path("child.pid").exists(): time.sleep(.01)\n'
             'ThreadingHTTPServer(("127.0.0.1", int(os.environ["PORT"])), SimpleHTTPRequestHandler).serve_forever()\n')
@@ -135,7 +163,7 @@ class RuntimeTests(unittest.TestCase):
         subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'background process from build'], check=True)
         runtime = self.manager.start(self.repo, 'HEAD', {'adapter': 'command-web', 'commands': {
             'build': [[sys.executable, 'build.py']],
-            'start': [sys.executable, '-m', 'http.server', '{port}', '--bind', '{host}']}}, approved=True)
+            'start': http_server_command()}}, approved=True)
         self.opened.append(runtime)
         child = int((Path(runtime['path']) / 'build-child.pid').read_text())
         self.assertIsNone(process_identity(child))
