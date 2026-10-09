@@ -65,13 +65,13 @@ jobs:
         if: always()
         shell: bash
         run: |
-          mkdir -p work/test-artifacts
-          tar --exclude=./reprise-diagnostics.tar.gz -czf work/test-artifacts/reprise-diagnostics.tar.gz -C work/test-artifacts .
+          mkdir -p work/test-artifacts/ci-upload
+          tar --exclude=./ci-upload -czf work/test-artifacts/ci-upload/reprise-diagnostics.tar.gz -C work/test-artifacts .
       - name: Retain diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: reprise-${{ matrix.os }}-py${{ matrix.python }}-${{ github.run_attempt }}
-          path: work/test-artifacts/reprise-diagnostics.tar.gz
+          path: work/test-artifacts/ci-upload/reprise-diagnostics.tar.gz
           if-no-files-found: warn
           retention-days: 90
