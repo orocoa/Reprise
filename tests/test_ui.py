@@ -1,12 +1,13 @@
 """Opt-in real browser regression of locale, AI review and runtime controls."""
 import os
 import subprocess
+import sys
 import threading
 import unittest
 from pathlib import Path
 from reprise.server import LocalServer
 from reprise.service import Reprise
-from test_runtime import fixture, commit_repo
+from test_runtime import fixture, commit_repo, http_server_command
 from test_git import git
 from test_ai import Stub, NOTES
 
@@ -53,6 +54,11 @@ class BrowserUITests(unittest.TestCase):
         app=Reprise(root/'state');adapter=Stub();app.ai.adapter=adapter
         app.ai.save({'enabled':True,'endpoint':'https://fixture.invalid/v1','model':'exact-test-model','api_key':'test-key'})
         project=app.projects.add(str(repo.work_tree))
+        # A live install process must stay cancellable without being offered
+        # as a ready preview. Keep this recipe on the older revision only.
+        app.projects.save_recipe(project['id'],{'adapter':'command-web','commands':{
+            'install':[[sys.executable,'-c','import time; time.sleep(30)']],
+            'start':http_server_command()}},repo.resolve('HEAD^'))
         (app.jobs.directory / 'broken-record.json').write_text('{broken JSON')
         server=LocalServer(('127.0.0.1',0),app)
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()

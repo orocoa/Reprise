@@ -1,10 +1,12 @@
 # Reprise
 
-本机 Git 项目与版本工作台。项目接入、Git 读取、运行和证据采集各自独立；不需要 AI 即可读取版本、运行已配置的网页、采集截图与录像。
+给 Git 历史一个可浏览的读档界面。翻更新说明和已有预览，找印象里的旧页面；沿真实版本路线查看分叉与合并，比较任意两版的页面资料与文件变化。配好对应的运行方式后，还能在独立副本里打开历史页面。
+
+版本来自已有 Git 记录。预览需要生成或导入，并绑定对应版本；更新说明可手工编辑，也可选择接入 AI。核心只依赖 Python 标准库与 Git，浏览、比较和运行不需要 AI。
 
 ## 启动
 
-需要 Python 3.9+ 和 Git。macOS 已完成本机回归，Linux 的自动检查结果见 GitHub Actions。Git 读取与 Web 工作台使用 Python 标准库。
+需要 Python 3.9+ 和 Git。macOS/Linux 的回归、浏览器与安装检查见 [GitHub Actions](https://github.com/orocoa/Reprise/actions/workflows/ci.yml)。Git 读取与 Web 工作台使用 Python 标准库。
 
 从 GitHub 获取并安装命令：
 
@@ -21,6 +23,13 @@ source ~/.venvs/reprise/bin/activate
 
 ```sh
 reprise .
+```
+
+已有安装可更新 Reprise 的源码目录，再重装同一个环境。先用 `reprise shutdown` 停止旧服务，随后重新运行 `reprise .`；本机版本说明、配置与预览继续保留。
+
+```sh
+git -C /path/to/Reprise pull --ff-only
+~/.venvs/reprise/bin/python -m pip install --upgrade /path/to/Reprise
 ```
 
 它只读导入当前仓库，启动或复用本机 Reprise 服务，并打开该项目页面。数据目录在 macOS 的 `~/Library/Application Support/Reprise` 或 Linux 的 `$XDG_DATA_HOME/reprise`，需位于导入仓库之外。可以传入其他仓库路径；默认由系统分配空闲端口，显式指定但被占用的端口自动回退。AI 或脚本可以省略浏览器，读取 JSON 中的 URL、项目 ID 与停止命令：
@@ -53,7 +62,7 @@ python3 run.py history /path/to/project --limit 20
 python3 run.py detect /path/to/project --ref HEAD
 ```
 
-0.3.0 将最新视觉工作台整合到正式界面：真实 Git 彩色路线、详细视图与 32px 紧凑视图、收藏定位，以及「本次更新 / 版本预览 / 版本对比」。项目名使用 Departure Mono＋正格点黑，正文使用 Inter；按钮采用胶囊与圆形图标，编辑入口为无框铅笔。项目、提交、运行和媒体来自同一通用核心。支持中文/英文界面；Git 原始消息、路径、代码和手工资料标题保留原文。AI 提案一次生成中英标题、摘要及变化说明；显式保存后绑定完整 SHA，切换语言和重启不再请求模型。双语说明保存与运行配方批准是两个独立操作。
+0.3.1 提供真实 Git 彩色路线、详细视图与 32px 紧凑视图、收藏定位，以及「本次更新 / 版本预览 / 版本对比」。缺少预览时可直接进入添加资料；运行记录显示独立副本和日志目录，安装、构建与启动阶段使用任务取消，服务就绪后才提供打开与停止。项目名使用 Departure Mono＋正格点黑，正文使用 Inter；按钮采用胶囊与圆形图标，编辑入口为无框铅笔。项目、提交、运行和媒体来自同一通用核心。支持中文/英文界面；Git 原始消息、路径、代码和手工资料标题保留原文。AI 提案一次生成中英标题、摘要及变化说明；显式保存后绑定完整 SHA，切换语言和重启不再请求模型。双语说明保存与运行配方批准是两个独立操作。
 
 所有创建的副本、失败日志和证据均保留，停止服务不会删除它们。不要将带有 AI 密钥的应用数据目录提交到 Git。
 
@@ -63,14 +72,14 @@ python3 run.py detect /path/to/project --ref HEAD
 
 ```sh
 python3 -m venv /path/to/reprise-venv
-/path/to/reprise-venv/bin/python -m pip install /path/to/reprise_local-0.3.0-py3-none-any.whl
+/path/to/reprise-venv/bin/python -m pip install /path/to/reprise_local-0.3.1-py3-none-any.whl
 /path/to/reprise-venv/bin/reprise /path/to/project
 ```
 
 也支持允许用户安装的基础 Python 环境，使用模块入口可以避免命令目录未加入 PATH 的问题：
 
 ```sh
-python3 -m pip install --user /path/to/reprise_local-0.3.0-py3-none-any.whl
+python3 -m pip install --user /path/to/reprise_local-0.3.1-py3-none-any.whl
 python3 -m reprise /path/to/project
 ```
 
@@ -158,7 +167,7 @@ AI 默认关闭。设置里填入兼容 Chat Completions 的 HTTPS 端点、模�
 
 ## 验证
 
-[发布验收范围](docs/RELEASE-CHECKLIST.md) 明确区分已验证能力和待执行的跨平台检查。`.github/workflows/ci.yml` 已配置 macOS/Linux 回归、Git 图与缓存契约、浏览器和全新环境安装检查；远端 CI 结果需在正式发布前确认。
+[发布验收范围](docs/RELEASE-CHECKLIST.md) 覆盖 macOS/Linux 回归、Git 图与缓存契约、浏览器和全新环境安装检查。每次发布以对应提交的 [CI 实际结果](https://github.com/orocoa/Reprise/actions/workflows/ci.yml) 为准。
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v

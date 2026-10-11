@@ -22,5 +22,11 @@ Object.assign(uiCopy,{'独立历史':'Separate history','与上方无连接':'No
 
 Object.assign(uiCopy,{'添加预览资料':'Add previews','生成此版本预览':'Capture this revision','在项目目录运行 reprise .，即可打开这个仓库。':'Run reprise . in a project directory to open that repository.'});
 Object.assign(uiCopy,{'这份任务记录无法读取，已保留原文件，其他任务可继续使用。':'This job record cannot be read. Its original file is retained; other jobs remain available.'});
+Object.assign(uiCopy,{
+ '此版本尚未保存截图或录屏。':'No screenshots or recordings have been saved for this revision.',
+ '安装中':'Installing','已结束':'Exited',
+ '启动尚未完成，可在下方操作进度取消任务。':'Startup is in progress. Cancel the task under Operation progress below.',
+ '个活动或待确认的服务':'active or unconfirmed services','条保留记录':'retained records'
+});
 compileUICopy();
 localizeDOM();

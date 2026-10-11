@@ -53,3 +53,35 @@ test('recent jobs stay bounded while active and newly completed old jobs remain 
  assert.equal(result.old.status,'complete');
  assert.equal(result.old.dismissed,true);
 });
+
+test('live startup processes cannot be opened or stopped as ready previews',()=>{
+ const context=vm.createContext({location:{hash:''},URLSearchParams,
+  document:{addEventListener(){}},window:{addEventListener(){}}});
+ vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
+ for(const name of ['live-focus.js','live-parity.js','live-features.js'])vm.runInContext(fs.readFileSync(path.join(web,name),'utf8'),context);
+ const result=vm.runInContext(`(()=>{
+  globalThis.uiText=value=>value;state.project={id:'fixture'};
+  const d={commit:{sha:'revision'}},record={id:'runtime',sha:'revision',project_id:'fixture',running:true,url:'http://127.0.0.1:1234/',path:'/copies/<old>&',log_path:'/logs/run.log'};
+  const pending=['preparing','install','build','starting'].map(status=>{
+   state.runtimes=[{...record,status}];
+   return {status:runtimeInfo(state.runtimes[0]).status,card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
+  });
+  state.runtimes=[{...record,status:'running'}];
+  const ready={card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
+  state.runtimes=[{...record,status:'cleanup_failed',cleanup_error:'ownership unconfirmed'}];
+  const uncertain={card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
+  return {pending,ready,uncertain,cancelled:runtimeInfo({status:'cancelled',running:false}).status};
+ })()`,context);
+ assert.deepEqual(Array.from(result.pending,r=>r.status),['准备中','安装中','构建中','启动中']);
+ for(const row of result.pending){
+  assert.doesNotMatch(row.card,/data-action="stop-runtime"|href=/);
+  assert.equal(row.preview,'');
+ }
+ assert.match(result.ready.card,/\/copies\/&lt;old&gt;&amp;/);
+ assert.match(result.ready.card,/data-action="stop-runtime"/);
+ assert.match(result.ready.preview,/href=/);
+ assert.match(result.uncertain.card,/重试停止/);
+ assert.doesNotMatch(result.uncertain.card,/href=/);
+ assert.equal(result.uncertain.preview,'');
+ assert.equal(result.cancelled,'已取消');
+});

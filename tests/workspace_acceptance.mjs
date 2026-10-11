@@ -7,6 +7,11 @@ const [url,project,sha,output]=process.argv.slice(2);
 const browser=await chromium.launch({headless:true,...(process.env.REPRISE_BROWSER?{executablePath:process.env.REPRISE_BROWSER}:{})});
 const page=await browser.newPage({viewport:{width:1360,height:900}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
+const runtimeResponses=[];
+page.on('response',async response=>{
+ if(!/\/api\/(bootstrap|runtimes)(\?|$)/.test(response.url()))return;
+ try{const body=await response.json();runtimeResponses.push({url:response.url(),rows:(body.runtimes||[]).map(r=>({sha:r.sha,status:r.status,running:r.running}))});}catch{}
+});
 const snapshot=()=>page.evaluate(()=>repriseWorkspace.snapshot());
 try {
  await page.goto(`${url}?project=${project}&sha=${sha}&lang=en`);
@@ -57,6 +62,16 @@ try {
  await verifyGraphView();
  await page.click(`[data-action=select][data-id="${sha}"]`);
  await page.waitForFunction(()=>detail(state.selected));
+ await page.click('[data-tab=preview]');
+ assert.equal(await page.locator('.empty-preview p').innerText(),'No screenshots or recordings have been saved for this revision.');
+ await page.screenshot({path:output+'/empty-preview-en.png',fullPage:true});
+ await page.click('[data-action=preview-settings]');
+ assert.equal(await page.locator('.preview-settings').evaluate(e=>e.open),true);
+ assert.equal(await page.locator('[data-action=capture]').innerText(),'Capture this revision');
+ await page.click('#dialog [data-action=close]');
+ assert.equal((await snapshot()).tab,'preview');
+ assert.equal((await snapshot()).sha,sha);
+ await page.click('[data-tab=updates]');
  await page.click('[data-action=settings]');
  assert.equal(await page.locator('#settings-management').innerText().then(t=>t.includes('This job record cannot be read.')),true);
  assert.equal(await page.locator('#settings-management code').first().innerText(),'broken-record.json');
@@ -115,6 +130,9 @@ try {
  await page.click('[data-action=run]');
  await page.waitForFunction(()=>state.runtimes.some(r=>r.running),null,{timeout:20000});
  await page.click('[data-action=settings]');
+ const runningCopy=await page.evaluate(()=>state.runtimes.find(r=>r.status==='running').path);
+ await page.click('.managed-runtime summary');
+ assert.equal(await page.locator('.managed-runtime dd code').first().innerText(),runningCopy);
  await page.click('[data-action=stop-runtime]');
  await page.waitForFunction(()=>!state.runtimes.some(r=>r.running),null,{timeout:15000});
  await page.click('summary:text-is("Add previews")');
@@ -148,11 +166,45 @@ try {
  await page.waitForTimeout(500);
  assert.deepEqual((await snapshot()).comparison,pair);
  await page.unroute('**/api/workspace/diff?*');
+ // Exercise a real, explicitly saved install command and cancel its job.
+ await page.click('[data-tab=preview]');
+ await page.click(`[data-action=select][data-id="${pair.base}"]`);
+ await page.waitForFunction(base=>state.selected===base&&detail(base),pair.base);
+ assert.equal(await page.locator('.media-open').count(),0,'Another revision’s captured media must not fill this empty preview');
+ await page.click('[data-action=run]');
+ await page.waitForFunction(async()=>{
+  const {runtimes:rows}=await api('/api/runtimes');
+  return rows.some(r=>r.sha===state.selected&&r.status==='install'&&r.running);
+ },null,{timeout:20000,polling:200});
+ await page.click('[data-action=settings]');
+ await page.waitForFunction(()=>document.querySelector('#dialog').open&&document.querySelector('#dialog').classList.contains('settings-dialog'));
+ await page.click('[data-action=refresh-management]');
+ assert.equal(await page.locator('.runtime-row').count(),0,'An installer is not a ready preview');
+ const pending=page.locator('.managed-runtime').filter({hasText:'Installing'});
+ await pending.waitFor({state:'visible',timeout:10000});
+ assert.equal(await pending.count(),1);
+ assert.equal(await pending.locator('[data-action=stop-runtime],a').count(),0);
+ await page.screenshot({path:output+'/runtime-install-en.png',fullPage:true});
+ await page.click('[data-action=cancel-job]');
+ await page.waitForFunction(()=>state.jobs.some(j=>j.operation==='run'&&j.request.sha===state.selected&&j.status==='cancelled'),null,{timeout:15000});
+ await page.waitForFunction(()=>state.runtimes.some(r=>r.sha===state.selected&&r.status==='cancelled'&&!r.running));
+ assert.equal(await page.locator('.managed-runtime').filter({hasText:'Cancelled'}).count(),1);
+ await page.click('#dialog [data-action=close]');
+ await page.click(`[data-action=select][data-id="${sha}"]`);
+ await page.waitForFunction(()=>state.selected===new URL(location.href).searchParams.get('sha')&&detail(state.selected));
  await page.click('[data-tab=updates]');
  await page.screenshot({path:output+'/desktop-en.png',fullPage:true});
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.screenshot({path:output+'/mobile-en.png',fullPage:true});
  assert.deepEqual(errors,[]);
- await fs.writeFile(output+'/ui-result.json',JSON.stringify({ok:true,sha,model:'exact-test-model',ai_calls:1,notes_saved:true,recipe_explicitly_approved:true,run_stop:true,capture:true,bookmark_persistence:true,compact_height:32,auto_compare:true,compare_race:true,media_modal:true,mobile_overflow:false,errors},null,2));
+ await fs.writeFile(output+'/ui-result.json',JSON.stringify({ok:true,sha,model:'exact-test-model',ai_calls:1,notes_saved:true,recipe_explicitly_approved:true,run_stop:true,capture:true,bookmark_persistence:true,compact_height:32,auto_compare:true,compare_race:true,media_modal:true,empty_preview_entry:true,exact_revision_media:true,runtime_copy_path:true,install_cancel:true,mobile_overflow:false,errors},null,2));
+} catch(error){
+ await fs.writeFile(output+'/ui-failure.json',JSON.stringify(await page.evaluate(()=>({
+  snapshot:repriseWorkspace.snapshot(),runtimes:state.runtimes,
+  dialog:document.querySelector('#dialog').innerText
+ })),null,2));
+ await fs.writeFile(output+'/runtime-responses.json',JSON.stringify(runtimeResponses,null,2));
+ await page.screenshot({path:output+'/ui-failure.png',fullPage:true});
+ throw error;
 } finally {await browser.close();}
