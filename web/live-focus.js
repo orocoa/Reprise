@@ -1,4 +1,29 @@
 'use strict';
+// Preserve the control being used across synchronous view refreshes. A later
+// async response must never pull focus back from another part of the page.
+function captureViewFocus(root){
+ const active=document.activeElement;
+ if(!active||!root?.contains(active))return null;
+ if(active.tagName==='SUMMARY'&&active.parentElement.dataset.keepOpen)return {active,disclosure:active.parentElement.dataset.keepOpen};
+ const attributes=['id','data-action','data-id','data-tab','data-record','data-index','data-density','data-job','data-runtime','data-path','data-language','data-direction','data-zoom'];
+ const identity=attributes.filter(name=>active.hasAttribute(name)).map(name=>[name,active.getAttribute(name)]);
+ return identity.length?{active,identity}:null;
+}
+function restoreViewFocus(saved,root){
+ if(!saved||saved.active.isConnected||document.activeElement!==document.body)return;
+ const replacement=saved.disclosure?
+  [...root.querySelectorAll('details[data-keep-open]')].find(element=>element.dataset.keepOpen===saved.disclosure)?.querySelector('summary'):
+  [...root.querySelectorAll('[id],[data-action]')].find(element=>saved.identity.every(([name,value])=>element.getAttribute(name)===value));
+ replacement?.focus({preventScroll:true});
+}
+function openDisclosures(root){return new Set([...root.querySelectorAll('details[open][data-keep-open]')].map(element=>element.dataset.keepOpen));}
+function restoreDisclosures(root,opened){for(const element of root.querySelectorAll('details[data-keep-open]'))element.open=opened.has(element.dataset.keepOpen);}
+function captureDialogContext(){
+ const dialog=$('#dialog');
+ if(!dialog.open||!dialog.classList.contains('settings-dialog'))return null;
+ return {nodes:[...dialog.childNodes],className:dialog.className,origin:returnFocus,
+  focused:document.activeElement,focus:captureViewFocus(dialog),scrollTop:dialog.scrollTop};
+}
 // The workspace follows its launch repository. Related archives retain their own identities.
 function revisionProject(sha=state.selected){return commit(sha)?.source_project_id||state.project?.id;}
 function workspaceProjectIds(){return new Set([state.project?.id,...(state.historySources||[]).map(s=>s.id)]);}
@@ -55,8 +80,8 @@ function toggleBookmark(){
 }
 function refreshSettingsManagement(){
  const container=$('#settings-management');if(!container||!$('#dialog').open)return;
- const opened=new Set([...container.querySelectorAll('details[open][data-keep-open]')].map(d=>d.dataset.keepOpen));container.innerHTML=managementContent();
- for(const details of container.querySelectorAll('details[data-keep-open]'))if(opened.has(details.dataset.keepOpen))details.open=true;
+ const opened=openDisclosures(container),focus=captureViewFocus(container),top=$('#dialog').scrollTop;
+ container.innerHTML=managementContent();restoreDisclosures(container,opened);restoreViewFocus(focus,container);$('#dialog').scrollTop=top;
 }
 function settingsContent(){return `<section class="settings-section"><h3 data-user-content>${esc(state.project.name)}</h3><p class="project-path"><code>${esc(state.project.path)}</code></p><p class="snapshot-message">Reprise 专注于启动时所在的仓库。</p></section><section class="settings-section settings-language"><div class="settings-line"><h3>界面语言</h3><div class="segmented language-switch" role="group" aria-label="界面语言"><button data-user-content data-action="language" data-language="zh" aria-pressed="${uiLanguage==='zh'}">中文</button><button data-user-content data-action="language" data-language="en" aria-pressed="${uiLanguage==='en'}">English</button></div></div></section><section class="settings-section"><div class="settings-line"><div><h3>AI</h3><p>${state.ai.enabled?'已启用':'未启用'}</p></div><button class="secondary-button" data-action="ai-settings">配置 AI</button></div></section>${state.selected?`<section class="settings-section"><div class="settings-line"><div><h3>运行与采集</h3><p data-user-content>${esc(versionTitle(commit(state.selected)))}</p></div><button class="secondary-button" data-action="recipe">配置当前版本</button></div><details class="preview-settings"><summary>添加预览资料</summary><div class="preview-tools"><button class="secondary-button" data-action="capture">生成此版本预览</button><button class="text-button" data-action="manual">导入截图 / 录屏</button></div></details></section>`:''}<div id="settings-management">${managementContent()}</div>${(state.historySources||[]).some(s=>s.kind==='archive')?`<details class="settings-section"><summary>历史资料</summary>${state.historySources.filter(s=>s.kind==='archive').map(s=>`<p class="snapshot-message"><span>历史存档</span> · <code>${esc(s.path)}</code></p>`).join('')}</details>`:''}`;}
 

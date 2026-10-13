@@ -54,7 +54,7 @@ jobs:
           echo "REPRISE_PLAYWRIGHT=$GITHUB_WORKSPACE/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
       - name: Git graph and workspace contracts
         shell: bash
-        run: node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs | tee work/test-artifacts/ci/node.log
+        run: node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs tests/evidence-model.test.cjs | tee work/test-artifacts/ci/node.log
       - name: Full regression
         shell: bash
         run: python -m unittest discover -s tests -v 2>&1 | tee work/test-artifacts/ci/python.log

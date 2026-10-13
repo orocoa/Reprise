@@ -7,9 +7,9 @@
 | 检查 | 验收内容 |
 | --- | --- |
 | 完整回归 | `PYTHONPATH=src python3 -m unittest discover -s tests -v`；发布检查提供 Node 和浏览器变量，并设置 `REPRISE_BROWSER_TESTS=1` |
-| 图与缓存契约 | `node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs`；所有完整 SHA、有序父边、各分支边界与淘汰后的搜索保持正确 |
-| 真实界面 | 中英首屏与切换、编辑/收藏持久化、32px 列表、任意两版比较、陈旧响应、精确版本媒体、空预览入口、媒体放大、运行/采集/停止、安装任务取消、副本路径与移动端溢出 |
-| 安全与退出 | 源仓库字节/index 不变；同名 Python 包、Git filters、Host/Origin/token、文件越界、登记外产物及残留子进程回归 |
+| 图、缓存与证据契约 | `node --test tests/graph-layout.test.cjs tests/workspace-cache.test.cjs tests/evidence-model.test.cjs`；所有完整 SHA、有序父边、各分支边界、淘汰后的搜索及媒体归属保持正确 |
+| 真实界面 | 中英首屏与切换、编辑/收藏持久化、32px 列表、任意两版比较、陈旧响应、精确版本媒体、空预览入口、媒体放大、失败/部分采集诊断与自动刷新、连续键盘导航、导入返回原设置位置、运行阶段刷新、运行/采集/停止、安装任务取消、副本路径与移动端溢出 |
+| 安全与退出 | 源仓库字节/index 不变；同名 Python 包、Git filters、Host/Origin/token、文件越界、登记外产物、静态目录重定向、启动中断恢复及残留子进程回归 |
 | 安装 | `python3 scripts/check_distribution.py`；源码外的全新 venv/user-site、直接 wheel 和 sdist 重建 wheel，网页与 worker 内容匹配 |
 | 平台 | macOS 和 Linux 对应 CI 实际通过；只通过 macOS 时仅把 macOS 标为已验证，不以 CI 配置代替结果 |
 | 发布内容 | 当前视觉定稿再跑受影响界面回归；最终安装物与其源码匹配；保留 MIT 和第三方许可，无本机应用数据/真实密钥进入发行物 |

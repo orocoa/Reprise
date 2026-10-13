@@ -1,6 +1,5 @@
 """Managed, retained Git snapshots and explicitly requested preview processes."""
-import datetime
-import json
+import contextlib
 import os
 import shutil
 import socket
@@ -16,22 +15,15 @@ from pathlib import Path
 from .recipes import recipe_hash, validate_recipe
 from .cancellation import Cancelled, check, wait_owned_process
 from .processes import OwnedProcessTree, ProcessCleanupError, process_identity, launch_owned
+from .storage import locked, now as utcnow, read_json as storage_read_json, write_json
 
-
-def utcnow():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
-
-
-def write_json(path, value):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + '.tmp-' + uuid.uuid4().hex)
-    temporary.write_text(json.dumps(value, ensure_ascii=True, indent=2) + '\n', encoding='utf-8')
-    temporary.replace(path)
+STARTING = ('preparing', 'install', 'build', 'starting')
 
 
 def read_json(path):
-    return json.loads(Path(path).read_text(encoding='utf-8'))
+    # Runtime/capture ownership records are mandatory; unlike optional stores,
+    # a missing file must remain a readable failure, not silently become None.
+    return storage_read_json(path, required=True)
 
 
 def _free_port():
@@ -76,12 +68,99 @@ class RuntimeManager:
         return bool(state.get('pid') and state.get('process_identity') and
                     process_identity(state['pid']) == state['process_identity'])
 
+    def _legacy_start_owner(self, state):
+        if state.get('owner_pid') and state.get('owner_identity'):
+            return state
+        # Before startup leases existed, jobs retained the initiating process.
+        # Match the source, full SHA and execution interval, never mere recency.
+        try:
+            projects = storage_read_json(self.data_dir / 'projects.json', {}).get('projects', [])
+            project_ids = {item['id'] for item in projects if item.get('path') == state.get('source')}
+        except (OSError, ValueError, AttributeError, KeyError, TypeError) as error:
+            raise ProcessCleanupError('无法读取旧启动任务的项目归属；原文件已保留。') from error
+        matches = []
+        for path in (self.data_dir / 'jobs').glob('*.json'):
+            try:
+                job = read_json(path)
+                request = job.get('request', {})
+                created = state.get('created_at', '')
+                if (job.get('project_id') in project_ids and job.get('operation') in ('run', 'capture')
+                        and state.get('sha') in (request.get('sha'), request.get('base'))
+                        and (job.get('started_at') or job.get('created_at', '')) <= created
+                        and (not job.get('finished_at') or created <= job['finished_at'])):
+                    matches.append(job)
+            except (OSError, ValueError, AttributeError, TypeError):
+                continue
+        return matches[0] if len(matches) == 1 else {}
+
+    @contextlib.contextmanager
+    def _startup_guard(self, state):
+        """Exclude a live starter before exposing or stopping interrupted work."""
+        if state.get('status') not in STARTING:
+            yield
+            return
+        if state.get('startup_lock'):
+            path = self._path(state['id']).parent / 'startup.lock'
+            if not path.is_file():
+                raise ProcessCleanupError('启动所有权锁缺失，无法确认任务是否仍在启动；原文件已保留。')
+            lease = contextlib.ExitStack()
+            try:
+                lease.enter_context(locked(path, blocking=False))
+            except BlockingIOError:
+                raise ValueError('运行任务尚未完成；请使用取消任务，等待进程清理结果。') from None
+            except (OSError, ValueError) as error:
+                raise ProcessCleanupError('无法读取启动所有权锁，未发送停止信号：%s' % error) from error
+            with lease:
+                # Startup may have completed after the caller read its state
+                # but before we acquired this lock. Preserve the final record.
+                latest = read_json(self._path(state['id']))
+                state.clear()
+                state.update(latest)
+                yield
+            return
+        owner = self._legacy_start_owner(state)
+        pid, identity = owner.get('owner_pid'), owner.get('owner_identity')
+        if type(pid) is not int or pid <= 1 or not isinstance(identity, str) or not identity:
+            raise ProcessCleanupError('旧运行记录缺少可验证的启动任务身份；无法确认任务是否仍在启动，未发送停止信号。')
+        current = process_identity(pid)
+        if current == identity:
+            raise ValueError('运行任务尚未完成；请使用取消任务，等待进程清理结果。')
+        if current is None:
+            # process_identity deliberately returns None for inspection errors
+            # too. Only an absent PID proves that the old starter has exited.
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                pass
+            except OSError as error:
+                raise ProcessCleanupError('无法核验旧启动任务身份，未发送停止信号：%s' % error) from error
+            else:
+                raise ProcessCleanupError('无法核验旧启动任务身份，未发送停止信号。')
+        yield
+
+    def _recover_start_trees(self, state):
+        # launch_owned durably registers a tree before releasing its exec gate.
+        # A crash can precede our runtime.json update; those retained records
+        # still own the children and must join cleanup after the starter exits.
+        names = [path.name for path in self._path(state['id']).parent.glob('process-*.json')]
+        state['process_trees'] = list(dict.fromkeys(state.get('process_trees', []) + names))
+
     def list(self):
         states = []
         with self._lock:
             for path in self.directory.glob('*/runtime.json'):
                 try:
                     state = read_json(path)
+                    if state['status'] in STARTING:
+                        try:
+                            with self._startup_guard(state):
+                                if state['status'] in STARTING:
+                                    self._recover_start_trees(state)
+                                    state.update(status='interrupted', recovery_error='启动任务已中断；副本和日志已保留，可停止残留进程后重试。')
+                        except ProcessCleanupError as error:
+                            state.update(status='cleanup_failed', recovery_error=str(error))
+                        except ValueError:
+                            pass  # A live owner must still be cancelled through its job.
                     try:
                         state['running'] = self._alive(state)
                     except ProcessCleanupError as error:
@@ -128,7 +207,7 @@ class RuntimeManager:
         return self._trees.get((state['id'], name)) or OwnedProcessTree.from_record(path)
 
     def _terminate(self, state):
-        if not state.get('pid'):
+        if not state.get('pid') and not state.get('process_trees'):
             return False
         if not state.get('process_trees'):
             # Older records can be upgraded while their original session leader
@@ -168,9 +247,16 @@ class RuntimeManager:
         state = {'id': rid, 'sha': resolved, 'adapter': recipe['adapter'], 'recipe_hash': recipe_hash(recipe),
                  'path': str(snapshot), 'log_path': str(folder / 'runtime.log'), 'created_at': utcnow(),
                  'status': 'preparing', 'running': False, 'pid': None, 'process_identity': None,
-                 'source': repository.info().get('path'), 'url': None, 'warnings': []}
-        self._save(state)
+                 'source': repository.info().get('path'), 'url': None, 'warnings': [],
+                 'startup_lock': True, 'owner_pid': os.getpid(), 'owner_identity': process_identity(os.getpid())}
+        if cancel is not None and getattr(cancel, 'request_path', None) is not None:
+            state['job_id'] = cancel.request_path.stem
+        # The lock is held before publishing state and across every startup
+        # phase. It is non-inheritable and the kernel releases it on a crash.
+        lease = locked(folder / 'startup.lock')
+        lease.__enter__()
         try:
+            self._save(state)
             if cancel is not None:
                 cancel.cleanups.append(lambda: self.stop(rid))
             materialized = repository.materialize(resolved, snapshot, cancel=cancel)
@@ -253,6 +339,8 @@ class RuntimeManager:
             state.update({'status': 'cancelled' if isinstance(error, Cancelled) else 'failed', 'running': False, 'error': str(error), 'finished_at': utcnow()})
             self._save(state)
             raise
+        finally:
+            lease.__exit__(None, None, None)
 
     def stop(self, runtime_id):
         with self._lock:
@@ -260,18 +348,19 @@ class RuntimeManager:
             if not path.is_file():
                 raise ValueError('Unknown runtime id')
             state = read_json(path)
-            if state.get('status') in ('preparing', 'install', 'build', 'starting'):
-                raise ValueError('运行任务尚未完成；请使用取消任务，等待进程清理结果。')
-            try:
-                terminated = self._terminate(state)
-            except ProcessCleanupError as error:
-                state.update(status='cleanup_failed', running=True, cleanup_error=str(error))
+            with self._startup_guard(state):
+                if state.get('status') in STARTING:
+                    self._recover_start_trees(state)
+                try:
+                    terminated = self._terminate(state)
+                except ProcessCleanupError as error:
+                    state.update(status='cleanup_failed', running=True, cleanup_error=str(error))
+                    self._save(state)
+                    raise
+                state.update({'status': state['status'] if state.get('status') in ('failed', 'cancelled') else 'stopped',
+                              'running': False, 'stopped_at': utcnow()})
+                state.pop('cleanup_error', None)
+                if state.get('pid') and not terminated:
+                    state['stop_note'] = 'Owned process already exited; no process was signalled'
                 self._save(state)
-                raise
-            state.update({'status': state['status'] if state.get('status') in ('failed', 'cancelled') else 'stopped',
-                          'running': False, 'stopped_at': utcnow()})
-            state.pop('cleanup_error', None)
-            if state.get('pid') and not terminated:
-                state['stop_note'] = 'Owned process already exited; no process was signalled'
-            self._save(state)
             return state

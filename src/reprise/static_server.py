@@ -5,7 +5,7 @@ import re
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from socketserver import TCPServer
-from urllib.parse import unquote, urlsplit
+from urllib.parse import quote, unquote, urlsplit
 
 
 class LoopbackHTTPServer(ThreadingHTTPServer):
@@ -26,14 +26,33 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         if len(hosts) != 1 or hosts[0] not in expected:
             self.send_error(403, 'Host is not the local Reprise preview server.')
             return
-        relative = unquote(urlsplit(self.path).path).lstrip('/')
-        requested = (self.server.root / relative).resolve()
+        try:
+            target = urlsplit(self.path)
+            if target.scheme or target.netloc or not target.path.startswith('/'):
+                self.send_error(400, 'Expected a local preview path')
+                return
+            relative = unquote(target.path, errors='strict').lstrip('/')
+            requested = (self.server.root / relative).resolve()
+        except (ValueError, UnicodeError):
+            self.send_error(400, 'Invalid preview path')
+            return
         try:
             requested.relative_to(self.server.root)
         except ValueError:
             self.send_error(403, 'Path leaves preview root')
             return
         if requested.is_dir():
+            if not target.path.endswith('/'):
+                # Construct a path-only Location. Quoting decoded names keeps
+                # spaces/Unicode and encoded slashes local; preserve the query.
+                location = '/' + quote(relative, safe='/') + '/'
+                if target.query:
+                    location += '?' + target.query
+                self.send_response(301)
+                self.send_header('Location', location)
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
             requested = requested / 'index.html'
         if not requested.is_file():
             self.send_error(404, 'File absent from this Git version')

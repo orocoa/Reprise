@@ -6,6 +6,26 @@ const vm=require('node:vm');
 const {test}=require('node:test');
 const web=path.resolve(__dirname,'../web');
 
+test('refresh restores the same task, runtime or file and never steals outside focus',()=>{
+ for(const [attribute,action] of [['data-job','cancel-job'],['data-runtime','stop-runtime'],['data-path','file']]){
+  const document={body:{},activeElement:null},context=vm.createContext({document});
+  vm.runInContext(fs.readFileSync(path.join(web,'live-focus.js'),'utf8'),context);
+  const element=value=>({isConnected:true,tagName:'BUTTON',attrs:{'data-action':action,[attribute]:value},
+   hasAttribute(name){return name in this.attrs;},getAttribute(name){return this.attrs[name]??null;},
+   focus(){document.activeElement=this;}});
+  const old=element('second'),first=element('first'),second=element('second');
+  context.root={contains:el=>el===old,querySelectorAll:()=>[first,second]};
+  document.activeElement=old;
+  vm.runInContext('globalThis.saved=captureViewFocus(root)',context);
+  old.isConnected=false;document.activeElement=document.body;
+  vm.runInContext('restoreViewFocus(saved,root)',context);
+  assert.equal(document.activeElement,second,attribute);
+  const search={};document.activeElement=search;
+  vm.runInContext('restoreViewFocus(saved,root)',context);
+  assert.equal(document.activeElement,search,'Late updates must not take focus back');
+ }
+});
+
 test('detail eviction retains selected/baseline revisions and renamed-file search',async()=>{
  const context=vm.createContext({location:{hash:''},URLSearchParams});
  vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
@@ -70,7 +90,9 @@ test('live startup processes cannot be opened or stopped as ready previews',()=>
   const ready={card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
   state.runtimes=[{...record,status:'cleanup_failed',cleanup_error:'ownership unconfirmed'}];
   const uncertain={card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
-  return {pending,ready,uncertain,cancelled:runtimeInfo({status:'cancelled',running:false}).status};
+  state.runtimes=[{...record,status:'interrupted'}];
+  const interrupted={card:runtimeCards(state.runtimes),preview:renderRuntimes(d)};
+  return {pending,ready,uncertain,interrupted,cancelled:runtimeInfo({status:'cancelled',running:false}).status};
  })()`,context);
  assert.deepEqual(Array.from(result.pending,r=>r.status),['准备中','安装中','构建中','启动中']);
  for(const row of result.pending){
@@ -83,5 +105,9 @@ test('live startup processes cannot be opened or stopped as ready previews',()=>
  assert.match(result.uncertain.card,/重试停止/);
  assert.doesNotMatch(result.uncertain.card,/href=/);
  assert.equal(result.uncertain.preview,'');
+ assert.match(result.interrupted.card,/停止残留进程/);
+ assert.match(result.interrupted.card,/data-action="stop-runtime"/);
+ assert.doesNotMatch(result.interrupted.card,/href=/);
+ assert.equal(result.interrupted.preview,'');
  assert.equal(result.cancelled,'已取消');
 });

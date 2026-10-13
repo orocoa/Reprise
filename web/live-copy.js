@@ -30,3 +30,10 @@ Object.assign(uiCopy,{
 });
 compileUICopy();
 localizeDOM();
+
+Object.assign(uiCopy,{
+ '已中断':'Interrupted','确认结束':'Confirm stopped',
+ '停止残留进程':'Stop remaining processes',
+ '启动任务已中断，可停止残留进程。副本与日志会保留。':'Startup was interrupted. Stop the remaining processes; copies and logs will be retained.',
+ '启动任务已中断，副本与日志已保留。':'Startup was interrupted. Copies and logs are retained.'
+});

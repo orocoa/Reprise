@@ -49,6 +49,7 @@ function prepareGraph(){
 }
 function renderHistory(){
  if(!state.graph)return;
+ const focus=captureViewFocus($('#version-list'));
  const top=$('#history-scroll').scrollTop;$('#history-count').textContent=state.commits.length;$('#history-track').classList.toggle('compact',state.prefs.density==='compact');
  const n=results().length;$('#search-status').hidden=!state.query&&state.filter==='all'&&!state.searching;
  $('#search-status').innerHTML=`${state.searching?'正在搜索提交与文件…':state.filter==='starred'?(n?`<span>${n}</span> <span>个收藏 · 保留版本关系</span>`:'还没有收藏版本'):n?`${n} 个匹配 · 其余为关系节点`:'没有匹配版本'} <button data-action="clear-search">查看全部</button>`;
@@ -56,7 +57,7 @@ function renderHistory(){
  const bookmarkFilter=$('#bookmark-filter'),focused=state.filter==='starred';bookmarkFilter.dataset.filter=focused?'all':'starred';bookmarkFilter.setAttribute('aria-pressed',focused);bookmarkFilter.classList.toggle('active',focused);$('#bookmark-filter-icon').innerHTML=icon('star');$('#bookmark-count').textContent=state.commits.filter(c=>state.prefs.stars.includes(c.sha)).length;$('#history-track').classList.toggle('bookmark-focus',focused);
  $('#version-list').innerHTML=state.commits.map(c=>{const matched=match(c),selected=matched&&state.selected===c.sha,starred=state.prefs.stars.includes(c.sha);return `${state.historyBreaks.has(c.sha)?'<div class="history-divider" role="separator" aria-label="独立历史" title="与上一段历史没有已记录的父子连接"><span>独立历史</span><span class="history-divider-note">与上方无连接</span></div>':''}<button class="version-row ${starred?'bookmarked':''} ${selected?'selected':''} ${matched?'':'dimmed context-row'}" data-action="select" data-id="${c.sha}" aria-current="${selected}" data-user-label aria-label="${uiText('版本')} ${esc(versionTitle(c))}${starred?'，'+uiText('已收藏'):''}${matched?'':'，'+uiText('关系节点')}"><span class="version-meta"><span class="version-identity"><span class="version-number">${esc(versionLabel(c))}</span>${state.prefs.stars.includes(c.sha)?icon('star'):''}${c.sha===state.project.head?'<span class="new-label">当前版本</span>':''}</span><time class="version-date" datetime="${esc(c.committed_at)}" title="${esc(formatDate(c.committed_at,true))}">${esc(formatDate(c.committed_at))}</time></span><span class="version-title" data-user-content title="${esc(versionTitle(c))}">${esc(versionTitle(c))}</span>${starred?`<span class="history-bookmark" title="已收藏" aria-label="已收藏">${icon('star')}</span>`:''}<span class="version-summary" data-user-content title="${esc(versionCaption(c))}">${esc(versionCaption(c))}</span></button>`;}).join('');
  if(state.graph.boundaries.length)$('#version-list').insertAdjacentHTML('beforeend','<p class="snapshot-message" style="padding-left:20px">虚线连接尚未加载的历史版本</p>');
- $('#history-scroll').scrollTop=top;requestAnimationFrame(drawGraph);
+ $('#history-scroll').scrollTop=top;restoreViewFocus(focus,$('#version-list'));requestAnimationFrame(drawGraph);
 }
 function rounded(points){const a=[];for(const p of points){if(a.length>=2){const x=a[a.length-2],y=a[a.length-1];if((x.x===y.x&&y.x===p.x)||(x.y===y.y&&y.y===p.y))a.pop();}a.push(p);}if(a.length<2)return '';let d=`M${a[0].x},${a[0].y}`;for(let i=1;i<a.length-1;i++){const x=a[i-1],p=a[i],y=a[i+1],before=Math.hypot(x.x-p.x,x.y-p.y),after=Math.hypot(y.x-p.x,y.y-p.y),r=Math.min(7,before/2,after/2);if(!before||!after)continue;d+=`L${p.x+(x.x-p.x)*r/before},${p.y+(x.y-p.y)*r/before}Q${p.x},${p.y} ${p.x+(y.x-p.x)*r/after},${p.y+(y.y-p.y)*r/after}`;}return d+`L${a.at(-1).x},${a.at(-1).y}`;}
 function drawGraph(){
@@ -79,12 +80,24 @@ function renderChanges(d){
  let rest=d.diff.files.slice(),sections=[];for(const [title,description,test] of groups){const files=rest.filter(f=>test(f.path));rest=rest.filter(f=>!test(f.path));if(!files.length)continue;sections.push(`<section class="feature"><div class="feature-copy"><span class="feature-kind"><span class="feature-number">${String(sections.length+1).padStart(2,'0')}</span>${files.length} 个文件</span><h3>${title}</h3><p>${uiLanguage==='en'?esc(uiText(description))+'.<br>File changes relative to '+(d.diff.base?'the first parent.':'an empty repository.'):description+'。<br>记录来自此提交相对'+(d.diff.base?'第一父提交':'空仓库')+'的文件变化。'}</p></div><div class="changed-files">${fileRows(files)}</div></section>`);}
  return updateExplanations(d)+(sections.join('')||'<div class="empty-preview"><h3>此提交没有文件变化</h3><p>提交信息与父子关系仍然保留。</p></div>');
 }
-function mediaItems(d){if(!d)return [];return (d.evidence||[]).flatMap(e=>(e.items||[]).map((i,index)=>({...i,index,sha:i.sha||e.sha,capture:e.source==='automatic'?{...(e.recipe?.captures||[]).find(c=>c.id===i.capture_id),network:e.recipe?.network,runner:e.runner_version}:i.capture,kind:i.kind||(i.media_type?.startsWith('image/')?'image':i.media_type?.startsWith('video/')?'video':'file'),record:e.id,sourceLabel:e.source==='legacy'?'历史保留资料 · 沿用原采集元数据':e.source==='manual'?'手工导入 · 归属由提供者指定':'自动采集 · 精确提交'})).filter(i=>i.side!=='base'&&i.sha===d.commit.sha));}
-function renderPreview(d,{comparison=false}={}){const items=mediaItems(d);return (comparison?'':renderRuntimes(d))+(!items.length?`<div class="empty-preview">${icon('file')}<h3>没有预览</h3>${comparison?'':'<p>此版本尚未保存截图或录屏。</p><button class="secondary-button" data-action="preview-settings">添加预览资料</button>'}</div>`:items.map(i=>`<figure class="saved-media">${i.missing?'<div class="empty-content">预览文件不可用</div>':i.kind==='image'?`<button class="media-open" data-user-label data-action="media" data-record="${esc(i.record)}" data-index="${i.index}" aria-label="${uiText('放大')} ${esc(i.title||i.name||uiText('版本预览'))}"><img src="${esc(i.url)}" alt="${esc(i.title||i.name||uiText('版本预览'))}" loading="lazy"></button>`:i.kind==='video'?`<video src="${esc(i.url)}" controls preload="metadata"></video>`:`<div class="empty-content"><a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title||i.name||uiText('打开保存的文件'))} ↗</a></div>`}<figcaption><span data-user-content>${esc(i.title||i.name||i.scenario||uiText('版本预览'))}</span></figcaption></figure>`).join(''));}
+function mediaItems(d){return d?evidenceItems(d.evidence,d.commit.sha,{side:'target'}):[];}
+function renderPreview(d,{comparison=false,pairedTarget=null}={}){
+ const items=pairedTarget&&pairedTarget.commit.sha!==d.commit.sha?baselineMediaItems(pairedTarget,d,d.commit.sha):mediaItems(d),[title,message]=previewEmptyText(d);
+ const content=!items.length?`<div class="empty-preview">${icon('file')}<h3>${title}</h3><p>${message}</p>${comparison?'':'<button class="secondary-button" data-action="preview-settings">添加预览资料</button>'}</div>`:items.map(item=>{
+  const caption=item.title||item.name||item.scenario||uiText('版本预览');
+  const media=item.missing||item.error||!item.url?`<div class="empty-content" data-user-content>${esc(item.error||uiText(item.missing?'预览文件不可用':'资料地址不可用'))}</div>`:item.kind==='image'?`<button class="media-open" data-user-label data-action="media" data-record="${esc(item.record)}" data-index="${item.index}" aria-label="${uiText('放大')} ${esc(caption)}"><img src="${esc(item.url)}" alt="${esc(caption)}" loading="lazy"></button>`:item.kind==='video'?`<video src="${esc(item.url)}" controls preload="metadata"></video>`:`<div class="empty-content"><a href="${esc(item.url)}" target="_blank" rel="noopener" data-user-content>${esc(caption)} ↗</a></div>`;
+  return `<figure class="saved-media">${media}<figcaption><span data-user-content>${esc(caption)}</span></figcaption></figure>`;
+ }).join('');
+ const diagnostics=renderCaptureDiagnostics(d);
+ return (comparison?'':renderRuntimes(d))+(items.length?diagnostics+content:content+diagnostics);
+}
 function renderDetail(){
+ const focus=captureViewFocus($('#detail'));
+ const opened=openDisclosures($('#detail')),top=$('#detail').scrollTop;
  const c=commit(state.selected);if(!c){$('#detail').innerHTML=`<div class="empty-content"><h3>${state.filter==='starred'?'还没有收藏版本':state.commits.length?'没有匹配版本':'这个项目还没有提交'}</h3><p>${state.filter==='starred'?'点击版本右侧的星标，即可在这里定位。':state.commits.length?'清空搜索或切换到全部版本，即可继续查看。':'首次提交后刷新，版本历史会出现在这里。'}</p>${state.commits.length?'<button class="secondary-button" data-action="clear-search">查看全部版本</button>':''}</div>`;return;}
  const d=detail(c.sha),starred=state.prefs.stars.includes(c.sha),items=d?mediaItems(d):[],notes=versionNotes(c);
- $('#detail').innerHTML=`<div class="detail-head"><div class="detail-topline"><div class="eyebrow"><span class="version-tag">${esc(versionLabel(c))}</span><span class="eyebrow-line"></span><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at,true))}</time></div><div class="detail-actions">${state.tab==='compare'?'':`<button class="primary-button" data-action="run" ${d?'':'disabled'}>运行此版本</button>`}</div></div><div class="detail-title"><div class="version-name"><h2 data-user-content>${esc(versionTitle(c))}</h2><button class="edit-entry edit-primary" data-action="edit-version" ${d?'':'disabled'} aria-label="编辑版本信息" title="编辑版本信息">${icon('pencil')}</button></div><button class="star-button ${starred?'starred':''}" data-action="star" aria-label="${starred?'取消收藏':'收藏此版本'}" aria-pressed="${starred}">${icon('star')}</button></div><div class="release-intro-row editable-region"><p class="release-intro" data-user-content>${d?esc(notes?.summary||summary(d)):uiText('正在读取此提交的变化…')}</p>${d?``:''}</div><div class="detail-subline">${c.parents.length?c.parents.map((p,i)=>`<button data-action="parent" data-id="${p}" data-user-label title="${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}"><span>${uiText(i?'合并版本':'上一版')}</span> · <span data-user-content>${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}</span></button>`).join(''):'<span>项目起点</span>'}<span>·</span><span data-user-content>${esc(c.author)}</span></div><div class="detail-tabs" role="tablist" aria-label="查看内容">${[['updates','本次更新',d?.diff.counts.total??'…'],['preview','版本预览',items.length],['compare','版本对比',null]].map(([tab,label,count])=>`<button id="tab-${tab}" data-action="tab" data-tab="${tab}" role="tab" aria-selected="${state.tab===tab}" aria-controls="live-content" class="${state.tab===tab?'active':''}">${label}${count===null?'':`<span class="tab-count">${count}</span>`}</button>`).join('')}</div></div><div id="live-content" class="detail-content" role="tabpanel" aria-labelledby="tab-${state.tab}">${d?(state.tab==='compare'?renderComparison():state.tab==='preview'?renderPreview(d):renderChanges(d)):'<div class="load-state">正在读取文件变化…</div>'}</div>`;
+ $('#detail').innerHTML=`<div class="detail-head"><div class="detail-topline"><div class="eyebrow"><span class="version-tag">${esc(versionLabel(c))}</span><span class="eyebrow-line"></span><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at,true))}</time></div><div class="detail-actions">${state.tab==='compare'?'':`<button class="primary-button" data-action="run" ${d?'':'disabled'}>运行此版本</button>`}</div></div><div class="detail-title"><div class="version-name"><h2 data-user-content>${esc(versionTitle(c))}</h2><button class="edit-entry edit-primary" data-action="edit-version" ${d?'':'disabled'} aria-label="编辑版本信息" title="编辑版本信息">${icon('pencil')}</button></div><button class="star-button ${starred?'starred':''}" data-action="star" aria-label="${starred?'取消收藏':'收藏此版本'}" aria-pressed="${starred}">${icon('star')}</button></div><div class="release-intro-row editable-region"><p class="release-intro" data-user-content>${d?esc(notes?.summary||summary(d)):uiText('正在读取此提交的变化…')}</p>${d?``:''}</div><div class="detail-subline">${c.parents.length?c.parents.map((p,i)=>`<button data-action="parent" data-id="${p}" data-user-label title="${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}"><span>${uiText(i?'合并版本':'上一版')}</span> · <span data-user-content>${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}</span></button>`).join(''):'<span>项目起点</span>'}<span>·</span><span data-user-content>${esc(c.author)}</span></div><div class="detail-tabs" role="tablist" aria-label="查看内容">${[['updates','本次更新',d?.diff.counts.total??'…'],['preview','版本预览',items.length],['compare','版本对比',null]].map(([tab,label,count])=>`<button id="tab-${tab}" data-action="tab" data-tab="${tab}" role="tab" tabindex="${state.tab===tab?0:-1}" aria-selected="${state.tab===tab}" aria-controls="live-content" class="${state.tab===tab?'active':''}">${label}${count===null?'':`<span class="tab-count">${count}</span>`}</button>`).join('')}</div></div><div id="live-content" class="detail-content" role="tabpanel" aria-labelledby="tab-${state.tab}">${d?(state.tab==='compare'?renderComparison():state.tab==='preview'?renderPreview(d):renderChanges(d)):'<div class="load-state">正在读取文件变化…</div>'}</div>`;
+ restoreDisclosures($('#detail'),opened);restoreViewFocus(focus,$('#detail'));$('#detail').scrollTop=top;
  if(d&&state.tab==='updates')requestAnimationFrame(enhanceUpdateVisuals);
 }
 async function loadDetail(id,signal,source=revisionProject(id)){
@@ -122,8 +135,29 @@ async function loadProject(id,{preserve=false}={}){
  const u=new URL(location.href);u.searchParams.set('project',id);history.replaceState(null,'',u);renderHistory();renderDetail();if(state.selected)await choose(state.selected);else renderDetail();
  }catch(e){if(n!==projectRequest)return;state.loading=false;$('#source-status').textContent='读取失败';$('#detail').innerHTML=`<div class="empty-content"><h3>无法读取项目</h3><p>${esc(e.message)}</p><button class="secondary-button" data-action="refresh">重试</button></div>`;notify(e.message);}
 }
-function dialogShell(title,content,footer='',wide=false){state.dialogRequest++;returnFocus=document.activeElement;const dialog=$('#dialog');dialog.classList.remove('settings-dialog');dialog.classList.toggle('file-dialog',wide);dialog.innerHTML=`<div class="dialog-header"><div><h2 id="dialog-title">${esc(title)}</h2></div><button class="icon-button" data-action="close" aria-label="关闭">${icon('close')}</button></div><div class="dialog-body">${content}</div><div class="dialog-footer"><span id="dialog-status" role="status"></span>${footer||'<button class="secondary-button" data-action="close">返回</button>'}</div>`;if(!dialog.open)dialog.showModal();}
-function closeDialog(){$('#dialog').close();state.dialogRequest++;if(returnFocus?.isConnected)returnFocus.focus();else if(returnFocus?.dataset.action)$(`[data-action="${returnFocus.dataset.action}"]`)?.focus();}
+let dialogParent=null;
+function pauseDialogMedia(){for(const media of $$('#dialog video, #dialog audio'))media.pause();}
+function dialogShell(title,content,footer='',wide=false,parent=null){
+ state.dialogRequest++;returnFocus=document.activeElement;dialogParent=parent;
+ pauseDialogMedia();
+ const dialog=$('#dialog');dialog.classList.remove('settings-dialog');dialog.classList.toggle('file-dialog',wide);
+ dialog.innerHTML=`<div class="dialog-header"><div><h2 id="dialog-title">${esc(title)}</h2></div><button class="icon-button" data-action="close" aria-label="${parent?'返回设置':'关闭'}">${icon('close')}</button></div><div class="dialog-body">${content}</div><div class="dialog-footer"><span id="dialog-status" role="status"></span>${footer||'<button class="secondary-button" data-action="close">返回</button>'}</div>`;
+ if(!dialog.open)dialog.showModal();
+}
+function closeDialog({returnToParent=true}={}){
+ const dialog=$('#dialog'),parent=dialogParent;dialogParent=null;
+ pauseDialogMedia();state.dialogRequest++;
+ if(returnToParent&&parent){
+  dialog.replaceChildren(...parent.nodes);dialog.className=parent.className;returnFocus=parent.origin;
+  refreshSettingsManagement();dialog.scrollTop=parent.scrollTop;
+  if(parent.focused.isConnected)parent.focused.focus({preventScroll:true});
+  else restoreViewFocus(parent.focus,dialog);
+  return;
+ }
+ dialog.close();dialog.replaceChildren();
+ if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});
+ else if(returnFocus?.dataset.action)$(`[data-action="${returnFocus.dataset.action}"]`)?.focus({preventScroll:true});
+}
 function conditions(){recipeDialog();}
 async function settings({preview=false}={}){
  await refreshWorkspace();dialogShell('项目设置',settingsContent(),'<button class="primary-button" data-action="save-settings">完成</button>');$('#dialog').classList.add('settings-dialog');
@@ -131,7 +165,49 @@ async function settings({preview=false}={}){
 }
 function working(){const files=state.status?.changes||[];dialogShell('当前工作区',`<p class="project-path"><code>${esc(state.project?.path)}</code></p><div class="current-git-summary"><p>当前版本 · <span data-user-content>${esc(versionTitle(commit(state.project?.head)||{sha:state.project?.head,subject:uiText('历史版本')}))}</span></p><p>以下改动尚未保存到版本中。</p></div><div class="changed-files">${files.length?files.map(f=>`<div class="file-row"><span class="file-status">${esc(f.status||'?')}</span><code>${esc(f.path)}</code></div>`).join(''):`<div class="empty-content">${state.status?.available===false?'此仓库没有工作区。':'工作区干净。'}</div>`}</div>`,`<button class="secondary-button" data-action="close">返回</button>${state.project?.head?'<button class="primary-button" data-action="working-head">查看当前版本</button>':''}`);}
 async function openFile(path){const sha=state.selected,project=state.tab==='compare'&&state.comparison?state.comparison.source_project_id:revisionProject();dialogShell(path,'<p class="snapshot-message">读取两侧文件…</p>','',true);$('#dialog-title').setAttribute('data-user-content','');const n=state.dialogRequest;try{const d=await api(query('/api/workspace/file',{project,sha,path,...(state.tab==='compare'&&state.comparison?{base:state.comparison.base}:{})}));if(n!==state.dialogRequest||!$('#dialog').open)return;const side=(name,s)=>`<div class="code-column"><h3>${name}</h3><pre>${esc(s.error|| (s.absent?'此侧没有此文件。':s.text))}</pre></div>`;$('#dialog .dialog-body').innerHTML=`<p class="snapshot-message"><span>A / </span><span data-user-content>${esc(versionTitle(commit(d.base)||{sha:d.base,subject:uiText('基准版本')}))}</span><span> → B / </span><span data-user-content>${esc(versionTitle(commit(d.sha)||{sha:d.sha,subject:uiText('目标版本')}))}</span><span> · 两侧完整文本（单侧上限 64 KB）</span></p><div class="code-columns">${side('A / 基准版本',d.before)}${side('B / 目标版本',d.after)}</div>`;}catch(e){if(n===state.dialogRequest)$('#dialog .dialog-body').textContent=e.message;}}
-async function action(b){const a=b.dataset.action;switch(a){case 'select':case 'parent':await choose(b.dataset.id);if(state.tab==='compare')await compareSelection();break;case 'tab':await setDetailTab(b.dataset.tab);break;case 'refresh':if(state.loading)return;await refreshWorkspace();await loadProject(state.project?.id||new URLSearchParams(location.search).get('project'),{preserve:true});break;case 'retry':if(state.selected)await choose(state.selected);break;case 'filter':{const previous=state.filter;state.filter=b.dataset.filter;if(state.filter==='starred')state.bookmarkOrigin=state.selected;else if(previous==='starred'){state.selected=state.bookmarkOrigin;state.bookmarkOrigin=null;}settleFilter();break;}case 'clear-search':++searchRequest;state.searching=false;state.query='';state.filter='all';state.selected=state.bookmarkOrigin||state.selected;state.bookmarkOrigin=null;state.ref='--all';state.refMembers=null;$('#search').value='';settleFilter();break;case 'star':toggleBookmark();break;case 'conditions':conditions();break;case 'settings':await settings();break;case 'preview-settings':await settings({preview:true});break;case 'working':working();break;case 'file':await openFile(b.dataset.path);break;case 'close':closeDialog();break;case 'more':dialogShell('提交信息',`<p class="identity-sha">${esc(state.selected)}</p><p data-user-content>${esc(commit(state.selected)?.subject)}</p><p>引用：<span data-user-content>${esc(commit(state.selected)?.refs.map(refLabel).join(' · ')||'无直接引用')}</span></p><button class="secondary-button" data-action="copy-sha">复制完整 SHA</button>`);break;case 'copy-sha':try{await navigator.clipboard.writeText(state.selected);$('#dialog-status').textContent='已复制';}catch{$('#dialog-status').textContent='无法自动复制，可选择上方完整 SHA。';}break;case 'save-settings':{savePrefs();closeDialog();break;}case 'import':{const path=$('#import-path').value.trim();if(!path){$('#dialog-status').textContent='请填写本地 Git 仓库路径。';break;}b.disabled=true;try{const p=await api('/api/projects',{method:'POST',body:JSON.stringify({path})});closeDialog();await loadProject(p.id);}catch(e){$('#dialog-status').textContent=e.message;b.disabled=false;}break;}default:await featureAction(b);}
+const coreActions={
+ select:async b=>{await choose(b.dataset.id);if(state.tab==='compare')await compareSelection();},
+ parent:async b=>{await choose(b.dataset.id);if(state.tab==='compare')await compareSelection();},
+ tab:b=>setDetailTab(b.dataset.tab),
+ refresh:async()=>{
+  if(state.loading)return;
+  await refreshWorkspace();await loadProject(state.project?.id||new URLSearchParams(location.search).get('project'),{preserve:true});
+ },
+ retry:()=>state.selected&&choose(state.selected),
+ filter:b=>{
+  const previous=state.filter;state.filter=b.dataset.filter;
+  if(state.filter==='starred')state.bookmarkOrigin=state.selected;
+  else if(previous==='starred'){state.selected=state.bookmarkOrigin;state.bookmarkOrigin=null;}
+  settleFilter();
+ },
+ 'clear-search':()=>{
+  ++searchRequest;state.searching=false;state.query='';state.filter='all';state.selected=state.bookmarkOrigin||state.selected;
+  state.bookmarkOrigin=null;state.ref='--all';state.refMembers=null;$('#search').value='';settleFilter();
+ },
+ star:()=>toggleBookmark(),
+ conditions:()=>conditions(),
+ settings:()=>settings(),
+ 'preview-settings':()=>settings({preview:true}),
+ working:()=>working(),
+ file:b=>openFile(b.dataset.path),
+ close:()=>closeDialog(),
+ more:()=>dialogShell('提交信息',`<p class="identity-sha">${esc(state.selected)}</p><p data-user-content>${esc(commit(state.selected)?.subject)}</p><p>引用：<span data-user-content>${esc(commit(state.selected)?.refs.map(refLabel).join(' · ')||'无直接引用')}</span></p><button class="secondary-button" data-action="copy-sha">复制完整 SHA</button>`),
+ 'copy-sha':async()=>{
+  try{await navigator.clipboard.writeText(state.selected);$('#dialog-status').textContent='已复制';}
+  catch{$('#dialog-status').textContent='无法自动复制，可选择上方完整 SHA。';}
+ },
+ 'save-settings':()=>{savePrefs();closeDialog();},
+ import:async b=>{
+  const path=$('#import-path').value.trim();if(!path){$('#dialog-status').textContent='请填写本地 Git 仓库路径。';return;}
+  b.disabled=true;
+  try{const project=await api('/api/projects',{method:'POST',body:JSON.stringify({path})});closeDialog();await loadProject(project.id);}
+  catch(error){$('#dialog-status').textContent=error.message;b.disabled=false;}
+ }
+};
+async function action(button){
+ const name=button.dataset.action;
+ const handler=[coreActions,featureActions,parityActions].find(handlers=>Object.hasOwn(handlers,name))?.[name];
+ if(handler)await handler(button);
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const saving=b.dataset.action.startsWith('save-');if(saving)b.disabled=true;action(b).catch(e=>{if($('#dialog').open)$('#dialog-status').textContent=e.message;else notify(e.message);}).finally(()=>{if(saving&&b.isConnected)b.disabled=false;});});
 $('#search').addEventListener('input',()=>{clearTimeout(searchTimer);state.query=$('#search').value.trim();if(!state.query){++searchRequest;state.searching=false;settleFilter();return;}renderHistory();searchTimer=setTimeout(searchAll,180);});

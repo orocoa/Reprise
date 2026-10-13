@@ -1,7 +1,6 @@
 'use strict';
 // Actual version media lead update explanations. Git files remain the fallback.
 const updateFocusCache=new Map();
-function updateVisualItem(item){return !item.missing&&!item.error&&item.url&&['image','video'].includes(item.kind);}
 function updateScenario(item){
  const meta=item.legacy||item.capture||item,viewport=meta.viewport||item.viewport;
  const full=Boolean(meta.full_page||item.full_page||/full_url/.test(item.capture_id||''));
@@ -14,7 +13,7 @@ function updateScene(item){const key=updateScenario(item);return key?JSON.string
 function updateWords(text){const result=new Set(),normalized=String(text).toLowerCase().replace(/英文|中文|全图|版本|本次|更新|保存|资料|预览|截图|完整页面/g,'');for(const word of normalized.match(/[a-z][a-z0-9_-]{2,}|[\u3400-\u9fff]+/g)||[]){if(/^[a-z]/.test(word))result.add(word);else for(let i=0;i<word.length-1;i++)result.add(word.slice(i,i+2));}return result;}
 function updateAffinity(item,text){const words=updateWords(item.title||item.name||item.scenario||''),context=updateWords(text);return [...words].filter(w=>context.has(w)).length;}
 function updateCards(d){
- const current=mediaItems(d).filter(updateVisualItem),before=[...mediaItems(detail(d.diff.base)),...(d.evidence||[]).filter(e=>e.base===d.diff.base).flatMap(e=>(e.items||[]).map((i,index)=>({...i,index,record:e.id,kind:i.kind||(i.media_type?.startsWith('image/')?'image':i.media_type?.startsWith('video/')?'video':'file'),capture:e.source==='automatic'?{...(e.recipe?.captures||[]).find(c=>c.id===i.capture_id),network:e.recipe?.network,runner:e.runner_version}:i.capture})).filter(i=>i.sha===d.diff.base))].filter(updateVisualItem);
+ const current=mediaItems(d).filter(visualEvidence),before=baselineMediaItems(d,detail(d.diff.base),d.diff.base).filter(visualEvidence);
  if(!current.length)return [];
  if(d.diff.available!==false&&d.diff.files.length&&!d.diff.files.some(f=>/\.(html?|css|scss|sass|less|jsx?|tsx?|vue|svelte|mdx|png|jpe?g|webp|avif|bmp|gif|svg|woff2?|ttf|otf|mp4|webm|mov)$/i.test(f.path)))return [];
  const notes=versionNotes(d.commit),localized=Object.values(d.notes?.localizations||d.commit.notes?.localizations||{}),context=[versionTitle(d.commit),notes?.summary,...(notes?.changes||[]),...localized.flatMap(n=>[n.title,n.summary,...(n.changes||[])])].join(' '),scenes=new Map();
@@ -28,7 +27,7 @@ function updateCards(d){
  const cards=[...scenes.values()].sort((a,b)=>b.score-a.score),relevant=cards.some(c=>c.score>0)?cards.filter(c=>c.score>0):cards;
  return relevant.slice(0,6);
 }
-async function ensureUpdateBaseline(d,signal){if(d?.diff.base&&mediaItems(d).some(updateVisualItem)&&!detail(d.diff.base)){try{await loadDetail(d.diff.base,signal);}catch(error){if(error.name==='AbortError')throw error;}}}
+async function ensureUpdateBaseline(d,signal){if(d?.diff.base&&mediaItems(d).some(visualEvidence)&&!detail(d.diff.base)){try{await loadDetail(d.diff.base,signal);}catch(error){if(error.name==='AbortError')throw error;}}}
 function updateVisualMarkup(item,label=''){
  const caption=item.title||item.name||uiText('版本预览');
  return `<figure class="update-image-side">${label?`<figcaption>${label}</figcaption>`:''}${item.kind==='video'?`<video class="update-video" src="${esc(item.url)}" controls preload="metadata"></video>`:`<button class="update-image-open" data-action="media" data-record="${esc(item.record)}" data-index="${item.index}" data-user-label aria-label="${uiText('放大')} ${esc(caption)}"><span class="update-image-viewport"><img src="${esc(item.url)}" alt="${esc(caption)}" ${item.width&&item.height?`width="${item.width}" height="${item.height}"`:''} loading="lazy" data-update-image="${label===uiText('更新前')?'before':'after'}"></span><span class="update-expand" aria-hidden="true"><svg class="icon" viewBox="0 0 18 18"><path d="M6 2H2v4M12 2h4v4M16 12v4h-4M6 16H2v-4"/></svg></span></button>`}</figure>`;

@@ -63,11 +63,53 @@ try {
  await page.click(`[data-action=select][data-id="${sha}"]`);
  await page.waitForFunction(()=>detail(state.selected));
  await page.click('[data-tab=preview]');
+ // Tabs must survive both synchronous and asynchronous detail renders.
+ await page.press('#tab-preview','ArrowLeft');
+ await page.waitForFunction(()=>state.tab==='updates'&&document.activeElement.id==='tab-updates');
+ await page.keyboard.press('ArrowRight');
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'tab-preview');
+ await page.keyboard.press('End');
+ await page.waitForFunction(()=>state.comparison&&!state.comparisonLoading);
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'tab-compare');
+ await page.keyboard.press('Home');
+ await page.waitForFunction(()=>state.tab==='updates'&&document.activeElement.id==='tab-updates');
+ assert.equal(await page.locator('[role=tab][tabindex="0"]').count(),1);
+ // A late response cannot take focus back after the user starts searching.
+ await page.evaluate(()=>{
+  const original=ensureUpdateBaseline;
+  ensureUpdateBaseline=async(...args)=>{
+   await new Promise(resolve=>{window.releaseBaseline=resolve;});
+   ensureUpdateBaseline=original;return original(...args);
+  };
+ });
+ await page.click('[data-tab=updates]');
+ await page.focus('#search');
+ await page.evaluate(()=>window.releaseBaseline());
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(resolve)));
+ assert.equal(await page.evaluate(()=>document.activeElement.id),'search');
+ await page.click('[data-tab=preview]');
  assert.equal(await page.locator('.empty-preview p').innerText(),'No screenshots or recordings have been saved for this revision.');
  await page.screenshot({path:output+'/empty-preview-en.png',fullPage:true});
  await page.click('[data-action=preview-settings]');
  assert.equal(await page.locator('.preview-settings').evaluate(e=>e.open),true);
  assert.equal(await page.locator('[data-action=capture]').innerText(),'Capture this revision');
+ // Child-dialog Back and Escape restore the actual scroll container and origin.
+ await page.setViewportSize({width:390,height:400});
+ await page.locator('[data-action=manual]').scrollIntoViewIfNeeded();
+ const settingsTop=await page.locator('#dialog').evaluate(dialog=>dialog.scrollTop);
+ assert.ok(settingsTop>0,'The return test must exercise a scrolled settings dialog');
+ await page.click('[data-action=manual]');
+ assert.equal(await page.locator('#dialog .dialog-footer [data-action=close]').innerText(),'Back to settings');
+ await page.keyboard.press('Escape');
+ assert.equal(await page.locator('#dialog').evaluate(dialog=>dialog.open&&dialog.classList.contains('settings-dialog')),true);
+ assert.equal(await page.locator('.preview-settings').evaluate(element=>element.open),true);
+ assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'manual');
+ assert.ok(Math.abs(await page.locator('#dialog').evaluate(dialog=>dialog.scrollTop)-settingsTop)<2);
+ await page.click('[data-action=manual]');
+ await page.click('#dialog .dialog-footer [data-action=close]');
+ assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'manual');
+ await page.screenshot({path:output+'/import-return-mobile-en.png',fullPage:true});
+ await page.setViewportSize({width:1360,height:900});
  await page.click('#dialog [data-action=close]');
  assert.equal((await snapshot()).tab,'preview');
  assert.equal((await snapshot()).sha,sha);
@@ -172,10 +214,17 @@ try {
  await page.waitForFunction(base=>state.selected===base&&detail(base),pair.base);
  assert.equal(await page.locator('.media-open').count(),0,'Another revision’s captured media must not fill this empty preview');
  await page.click('[data-action=run]');
- await page.waitForFunction(async()=>{
-  const {runtimes:rows}=await api('/api/runtimes');
-  return rows.some(r=>r.sha===state.selected&&r.status==='install'&&r.running);
- },null,{timeout:20000,polling:200});
+ // This Playwright poller treats a Promise as truthy. Await actual server data
+ // in Node rather than using an async waitForFunction predicate.
+ const installDeadline=Date.now()+20000;
+ let installing=false;
+ while(Date.now()<installDeadline){
+  const {runtimes:rows}=await (await page.request.get(url+'api/runtimes')).json();
+  installing=rows.some(r=>r.sha===pair.base&&r.status==='install'&&r.running);
+  if(installing)break;
+  await new Promise(resolve=>setTimeout(resolve,200));
+ }
+ assert.equal(installing,true,'The saved install command must actually be running');
  await page.click('[data-action=settings]');
  await page.waitForFunction(()=>document.querySelector('#dialog').open&&document.querySelector('#dialog').classList.contains('settings-dialog'));
  await page.click('[data-action=refresh-management]');

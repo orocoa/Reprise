@@ -12,12 +12,12 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
-def read_json(path, default=None):
+def read_json(path, default=None, *, required=False):
     path = Path(path)
-    if not path.exists():
-        return default
     if path.is_symlink():
         raise ValueError('状态文件不能是符号链接。')
+    if not required and not path.exists():
+        return default
     return json.loads(path.read_text(encoding='utf-8'))
 
 
@@ -37,13 +37,13 @@ def write_json(path, value, private=False):
 
 
 @contextlib.contextmanager
-def locked(path):
+def locked(path, *, blocking=True):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.is_symlink():
         raise ValueError('锁文件不能是符号链接。')
     with path.open('a') as stream:
-        fcntl.flock(stream, fcntl.LOCK_EX)
+        fcntl.flock(stream, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         try:
             yield
         finally:

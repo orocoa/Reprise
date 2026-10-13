@@ -92,11 +92,15 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 每份任务记录独立校验；损坏 JSON、结构、编码或读取错误通过 `job_warnings` 显示，跳过该条但保留原文件，不阻止其他任务和工作台启动。
 
+运行实例从准备到就绪持有独立 `startup.lock`，启动子进程不会继承该锁。服务异常退出时操作系统释放锁；恢复时先取得锁并重读记录，避免把刚完成的启动误判为中断。仍处于启动阶段的实例显示 `interrupted`，可通过原进程所有权记录停止残留进程。存活启动任务继续使用取消入口。旧记录以来源、完整 SHA 和任务执行时间关联启动所有者；无法核验时明确报告，不根据 PID 或空身份猜测进程已退出。恢复不会执行配方，也不删除副本、日志或媒体。
+
+采集任务无论完成、部分失败或取消，都使对应项目与精确 SHA 的详情缓存失效；可见结果更新，不切换用户当前版本。预览与设置提供可展开的具体错误、警告及本机日志位置；这些路径仅作为文字展示，HTTP 仍只提供登记的媒体。`live-evidence.js` 统一资料的 SHA、侧别、类型和可用性，预览、对比和查看器共用；普通文件保留链接，图片/视频轮播排除缺失或无效项。
+
 ### 命令入口与网页
 
 `reprise .` / `open` 从当前目录定位仓库，检查数据目录不位于源仓库内，再启动或复用服务。启动通过可信绝对 `server_entry.py`、`python -I -S` 和托管工作目录，不搜索项目模块。复用检查 PID 启动身份、健康接口实例随机标记与数据目录；不按端口猜测服务。`--no-browser` 返回 JSON，`shutdown` 通过带 token 的本机接口取消任务并停止预览，无法确认清理就报错。
 
-`web/` 是通用核心唯一前端编辑源。当前 `index.html` 只加载 `graph-layout.js`、`locale.js`、`live-copy.js`、`live-focus.js`、`live-parity.js`、`live-features.js`、`live-updates.js` 与 `live.js`；样式来自 `base.css` / `live.css`。旧 app/shell/Paper Grid 文件与视觉档案保留，但不在当前页面执行。不在核心内保留具体项目路径、固定版本或用户模型设置。
+`web/` 是通用核心唯一前端编辑源。当前 `index.html` 只加载 `graph-layout.js`、`locale.js`、`live-copy.js`、`live-focus.js`、`live-parity.js`、`live-evidence.js`、`live-features.js`、`live-updates.js` 与 `live.js`；样式来自 `base.css` / `live.css`。操作通过命名 handler 表由一个入口分派；刷新按控件的任务、运行、资料或文件标识恢复焦点，异步结果不抢回其他区域的焦点。手工导入子页保留原设置节点、展开状态和滚动位置，返回及 Escape 恢复原入口。旧 app/shell/Paper Grid 文件与视觉档案保留，但不在当前页面执行。不在核心内保留具体项目路径、固定版本或用户模型设置。
 
 ## 0.3.0 版本工作台
 

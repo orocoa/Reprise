@@ -16,6 +16,17 @@ class EvidenceStore:
 
     def public(self, value):
         value = {**value, 'items': [dict(item) for item in value.get('items', [])]}
+        # Diagnostic locations are text metadata, never public artifact URLs.
+        for field in ('local_directory', 'record_path', 'browser_logs'):
+            value.pop(field, None)
+        identifier = value.get('id', '')
+        if isinstance(identifier, str) and identifier and Path(identifier).name == identifier:
+            folder = (self.directory / identifier).resolve()
+            if folder.parent == self.directory and (folder / 'record.json').is_file():
+                value['local_directory'] = str(folder)
+                value['record_path'] = str(folder / 'record.json')
+                value['browser_logs'] = [str(path) for side in ('before', 'after')
+                                         if (path := folder / ('%s-browser.log' % side)).is_file()]
         for item in value['items']:
             if not item.get('path'):
                 continue

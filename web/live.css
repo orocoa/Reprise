@@ -212,3 +212,8 @@ button[data-action="more"]:focus-visible{outline:2px solid #767681;outline-offse
 .history-divider:before{content:"";height:1px;flex:0 0 14px;background:#cfcfd6}
 .history-divider-note{color:#96969f;font-size:9px}
 .history-track.compact .history-divider{height:26px}
+
+/* Retained capture failures stay readable in the current revision and task. */
+.capture-diagnostics{margin:16px 0;border-block:1px solid var(--line,#d8d8d8);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.capture-diagnostics summary{display:flex;gap:12px;align-items:center;cursor:pointer;list-style:none;padding:12px 0}.capture-diagnostics summary::-webkit-details-marker{display:none}.capture-diagnostics summary:after{content:'+';margin-left:auto;font-size:18px}.capture-diagnostics[open] summary:after{content:'−'}.capture-diagnostics-content{padding:0 0 14px}.capture-diagnostics ul{margin:0;padding-left:18px}.capture-diagnostics li+li{margin-top:10px}.capture-diagnostics li p{margin:3px 0}.capture-diagnostics dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;margin:14px 0}.capture-diagnostics dd{margin:0;overflow-wrap:anywhere}.capture-diagnostics code{font:11px/1.7 var(--mono)}.job-row>.capture-diagnostics{flex-basis:100%;margin:0}.capture-diagnostics-content>p{font-size:11px;color:var(--muted,#666)}
+
+.capture-diagnostics summary>span{min-width:0;flex:1}.capture-diagnostics summary:after{flex:none}
