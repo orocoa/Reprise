@@ -7,6 +7,7 @@ from .evidence import EvidenceStore
 from .jobs import Jobs
 from .projects import ProjectStore
 from .runtime import RuntimeManager
+from .recovery import RecoveryStore
 
 
 class Reprise:
@@ -19,6 +20,7 @@ class Reprise:
         self.evidence = EvidenceStore(self.directory, self.captures)
         self.ai = AIService(self.directory)
         self.jobs = Jobs(self.directory)
+        self.recovery = RecoveryStore(self.directory, self.projects)
 
     def version(self, identifier, revision):
         repository = self.projects.repository(identifier)
@@ -40,6 +42,13 @@ class Reprise:
         base = None
         if not sha:
             raise ValueError('项目还没有提交。')
+        if operation in ('restore', 'export'):
+            destination = str(self.recovery.destination(body['to'])) if body.get('to') else None
+            if operation == 'restore' and not destination:
+                raise ValueError('请选择新的恢复目录。')
+            return self.jobs.submit(identifier, operation,
+                lambda cancel: self.recovery.create(repository, identifier, sha, operation, destination, cancel),
+                request={'sha': sha, 'to': destination}, cancellable=True)
         if operation in ('run', 'capture') and (not recipe or recipe['adapter'] == 'manual'):
             raise ValueError(project.get('recipe_error') or '这个项目需要运行配方；也可以先添加人工截图或录屏。')
         if operation in ('run', 'capture') and recipe['adapter'] == 'command-web' and not approved:

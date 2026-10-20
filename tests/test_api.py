@@ -64,6 +64,30 @@ class APITests(unittest.TestCase):
         self.assertEqual(status, 201, project)
         return project
 
+    def test_recovery_download_is_registered_and_writes_require_local_token(self):
+        import io
+        import time
+        import zipfile
+        sha = self.commit({'index.html': '<h1>Exact historical content</h1>'})
+        project = self.import_project()
+        prefix = '/api/projects/' + project['id']
+        self.assertEqual(self.request('POST', prefix + '/export', {'sha': sha}, authorized=False)[0], 403)
+        status, _, job = self.request('POST', prefix + '/export', {'sha': sha})
+        self.assertEqual(status, 202)
+        deadline = time.monotonic() + 10
+        while job['status'] in ('queued', 'running') and time.monotonic() < deadline:
+            time.sleep(.03)
+            job = self.request('GET', '/api/jobs/' + job['id'])[2]
+        self.assertEqual(job['status'], 'complete', job)
+        status, headers, data = self.request('GET', job['result']['download_url'], raw=True)
+        self.assertEqual(status, 200)
+        self.assertIn('attachment', headers['Content-Disposition'])
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            self.assertEqual(archive.read('index.html'), b'<h1>Exact historical content</h1>')
+        self.assertEqual(self.request('GET', '/downloads/' + 'g'*32)[0], 404)
+        self.assertEqual(self.request('POST', prefix + '/restore', {'sha': sha, 'to': str(self.source / 'nested')})[0], 400)
+        self.assertFalse((self.source / 'nested').exists())
+
     def test_all_workspace_assets_are_available_and_notes_are_revision_bound(self):
         for path in ('/', '/app.js', '/styles.css', '/locale.js', '/shell.js', '/paper-grid.css', '/workspace-grid.css', '/browse-motion.js'):
             status, headers, data = self.request('GET', path, raw=True)

@@ -164,7 +164,9 @@ try {
  assert.equal(await page.locator('.version-name h2').innerText(),'Static site');
  assert.equal(await page.evaluate(()=>detail(state.selected).recipe_approved),false);
  await page.click('[data-action=run]');
- await page.waitForSelector('#recipe-json');
+ await page.waitForSelector('#recipe-json',{state:'attached'});
+ assert.equal(await page.locator('#recipe-json').isVisible(),false,'Static recipe keeps advanced JSON collapsed');
+ await page.locator('.recipe-advanced summary').click();
  assert.equal(JSON.parse(await page.locator('#recipe-json').inputValue()).adapter,'static-web');
  await page.click('[data-action=save-recipe]');
  await page.waitForFunction(()=>!document.querySelector('#dialog').open);

@@ -176,7 +176,7 @@ def main():
         for name in ('pyproject.toml', 'MANIFEST.in', 'README.md', 'CHANGELOG.md', 'AGENTS.md',
                      'LICENSE', 'THIRD-PARTY-NOTICES.md', 'run.py', 'package.json'):
             shutil.copy2(ROOT / name, source / name)
-        for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts'):
+        for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts', 'skills'):
             shutil.copytree(ROOT / name, source / name,
                             ignore=shutil.ignore_patterns('__pycache__', '*.egg-info', '*.pyc', '.DS_Store'))
         caller = output / 'outside-source'

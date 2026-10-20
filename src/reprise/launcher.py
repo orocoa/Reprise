@@ -13,9 +13,10 @@ import webbrowser
 from .git import Repository
 from .processes import process_identity
 from .storage import read_json
+from . import __version__
 
 
-def _request(record, path, body=None, token=None):
+def _request(record, path, body=None, token=None, method=None):
     url = urllib.parse.urlsplit(record['url'])
     if url.scheme != 'http' or url.hostname != '127.0.0.1' or not url.port or url.path not in ('', '/'):
         raise ValueError('Saved server URL is not a local Reprise address')
@@ -23,7 +24,7 @@ def _request(record, path, body=None, token=None):
     if token:
         headers.update({'X-Reprise-Token': token, 'Origin': record['url'].rstrip('/')})
     request = urllib.request.Request(record['url'].rstrip('/') + path, headers=headers,
-                                     data=json.dumps(body).encode() if body is not None else None)
+                                     data=json.dumps(body).encode() if body is not None else None, method=method)
     with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=5) as response:
         return json.loads(response.read(2 * 1024 * 1024))
 
@@ -42,13 +43,12 @@ def verified_server(directory):
     if (not record.get('instance_id') or health.get('instance_id') != record['instance_id'] or
             Path(record['data_directory']).resolve() != Path(directory).resolve()):
         raise ValueError('The saved address does not belong to this Reprise service')
-    return record
+    return {**record, 'version': health.get('version')}
 
 
 def open_repository(directory, path='.', port=0, browser=True, language=None,
                     history_repositories=(), history_catalog=None):
-    repository = Repository(path)
-    canonical = repository.info()['path']
+    canonical = Repository(path).info()['path']
     directory = Path(directory).expanduser().resolve()
     source = Path(canonical).resolve()
     if directory == source or source in directory.parents:
@@ -56,6 +56,9 @@ def open_repository(directory, path='.', port=0, browser=True, language=None,
     directory.mkdir(parents=True, exist_ok=True)
     record = verified_server(directory)
     reused = bool(record)
+    if record and record.get('version') != __version__:
+        raise ValueError('Another Reprise version is running (%s). Run reprise --data %s shutdown, then open again; saved data is retained.' %
+                         (record.get('version', 'unknown'), shlex.quote(str(directory))))
     if not record:
         entry = Path(__file__).with_name('server_entry.py').resolve()
         logpath = directory / 'server.log'
@@ -81,7 +84,7 @@ def open_repository(directory, path='.', port=0, browser=True, language=None,
                 time.sleep(.08)
         if not record:
             raise ValueError('Reprise did not start; inspect ' + str(logpath))
-    bootstrap = _request(record, '/api/bootstrap')
+    bootstrap = _request(record, '/api/bootstrap?include_projects=0')
     project = _request(record, '/api/projects', {'path': canonical}, bootstrap['token'])
     if history_repositories or history_catalog is not None:
         histories = [_request(record, '/api/projects', {'path': str(Path(path).expanduser().resolve())},
@@ -94,7 +97,7 @@ def open_repository(directory, path='.', port=0, browser=True, language=None,
             raise ValueError('历史目录应为带 SHA 的版本记录数组。')
         project = _request(record, '/api/projects/' + project['id'] + '/histories',
             {'history_project_ids': histories, 'catalog': [entry['sha'] for entry in entries] if entries is not None else None},
-            bootstrap['token'])
+            bootstrap['token'], method='PUT')
     query = {'project': project['id']}
     if language:
         query['lang'] = language
@@ -109,7 +112,7 @@ def shutdown(directory):
     record = verified_server(directory)
     if not record:
         return {'stopped': True, 'already_exited': True}
-    bootstrap = _request(record, '/api/bootstrap')
+    bootstrap = _request(record, '/api/bootstrap?include_projects=0')
     result = _request(record, '/api/shutdown', {}, bootstrap['token'])
     deadline = time.monotonic() + 10
     while process_identity(record['pid']) == record['identity'] and time.monotonic() < deadline:

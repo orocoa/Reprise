@@ -4,7 +4,7 @@
 @font-face{font-family:ZhengGeDianHei16;src:url('fonts/ZhengGeDianHei-16.ttf') format('truetype');font-weight:400;font-display:swap;size-adjust:72.727273%}
 :root{--standard:InterVariable;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--ui:InterVariable,'PingFang SC','Microsoft YaHei',sans-serif;font-family:var(--ui);font-optical-sizing:auto;font-feature-settings:'cv11' 1,'calt' 1}
 body,button,input,select{font-family:var(--ui)}
-.brand{min-width:0}.brand strong{font-family:'Departure Mono',ZhengGeDianHei16,'PingFang SC',monospace;font-size:22px;line-height:32px;font-weight:400;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.brand{min-width:0}.brand strong{font-family:var(--ui);font-size:22px;line-height:32px;font-weight:400;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .chrome-actions{flex:0;gap:8px}.search{max-width:420px}.chrome .brand{flex:1}.chrome .search{flex:1}
 .history h1{font-size:15px;font-weight:550}.segmented button,.detail-tabs button{font-size:13px;font-weight:500;white-space:nowrap}
 .detail-title h2{font-family:var(--ui);font-size:29px;font-weight:560;line-height:1.45;letter-spacing:-.6px;text-wrap:pretty;overflow-wrap:anywhere}
@@ -217,3 +217,7 @@ button[data-action="more"]:focus-visible{outline:2px solid #767681;outline-offse
 .capture-diagnostics{margin:16px 0;border-block:1px solid var(--line,#d8d8d8);font-size:12px;line-height:1.7;overflow-wrap:anywhere}.capture-diagnostics summary{display:flex;gap:12px;align-items:center;cursor:pointer;list-style:none;padding:12px 0}.capture-diagnostics summary::-webkit-details-marker{display:none}.capture-diagnostics summary:after{content:'+';margin-left:auto;font-size:18px}.capture-diagnostics[open] summary:after{content:'−'}.capture-diagnostics-content{padding:0 0 14px}.capture-diagnostics ul{margin:0;padding-left:18px}.capture-diagnostics li+li{margin-top:10px}.capture-diagnostics li p{margin:3px 0}.capture-diagnostics dl{display:grid;grid-template-columns:100px minmax(0,1fr);gap:8px;margin:14px 0}.capture-diagnostics dd{margin:0;overflow-wrap:anywhere}.capture-diagnostics code{font:11px/1.7 var(--mono)}.job-row>.capture-diagnostics{flex-basis:100%;margin:0}.capture-diagnostics-content>p{font-size:11px;color:var(--muted,#666)}
 
 .capture-diagnostics summary>span{min-width:0;flex:1}.capture-diagnostics summary:after{flex:none}
+/* Recovery and optional inline runtime previews. */
+.recipe-advanced summary{cursor:pointer;margin:12px 0}
+.live-preview-frame{display:block;width:100%;height:440px;border:1px solid var(--line,#ddd);border-radius:8px;margin:12px 0;background:white}
+.runtime-row,.detail-actions{flex-wrap:wrap;gap:8px}

@@ -5,3 +5,5 @@ recursive-include examples *
 recursive-include scripts *.py
 recursive-include tests *.py *.mjs *.cjs
 global-exclude __pycache__ *.py[cod] .DS_Store
+
+recursive-include skills *.md *.py

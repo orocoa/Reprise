@@ -61,6 +61,11 @@ jobs:
       - name: Fresh installation checks
         shell: bash
         run: python scripts/check_distribution.py 2>&1 | tee work/test-artifacts/ci/distribution.log
+      - name: Portable skill packages
+        shell: bash
+        run: |
+          python scripts/build_skill.py --output work/test-artifacts/ci/reprise-skill.zip
+          python scripts/build_skill.py --profile workbuddy --output work/test-artifacts/ci/reprise-workbuddy.zip
       - name: Package diagnostics
         if: always()
         shell: bash

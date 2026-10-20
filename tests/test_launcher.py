@@ -37,6 +37,26 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(one['project_id'], two['project_id'])
         self.assertTrue(self.cli('shutdown')['stopped'])
 
+    def test_open_without_path_uses_current_repository(self):
+        result = self.cli('open', '--no-browser')
+        self.assertEqual(result['path'], str(self.repo.path))
+        self.assertIsNotNone(result['project_id'])
+
+    def test_explicit_related_history_is_saved_with_put(self):
+        root = self.root / 'history.git'
+        subprocess.run(['git', 'clone', '--bare', str(self.repo.path), str(root)], check=True, capture_output=True)
+        result = self.cli('open', str(self.repo.path), '--no-browser', '--history', str(root))
+        record = json.loads((self.data / 'projects.json').read_text())
+        project = next(p for p in record['projects'] if p['id'] == result['project_id'])
+        self.assertEqual(len(project['history_project_ids']), 1)
+
+    def test_old_server_is_not_silently_reused_as_the_new_version(self):
+        from unittest.mock import patch
+        from reprise.launcher import open_repository
+        with patch('reprise.launcher.verified_server', return_value={'version': '0.0.0'}):
+            with self.assertRaisesRegex(ValueError, 'Another Reprise version'):
+                open_repository(self.data, self.repo.path, browser=False)
+
     def test_busy_port_falls_back_without_touching_other_service(self):
         import socket
         with socket.socket() as occupied:

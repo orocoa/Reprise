@@ -100,13 +100,13 @@ web/ ↔ server.py┘       │              ├─ detection.py
 
 `reprise .` / `open` 从当前目录定位仓库，检查数据目录不位于源仓库内，再启动或复用服务。启动通过可信绝对 `server_entry.py`、`python -I -S` 和托管工作目录，不搜索项目模块。复用检查 PID 启动身份、健康接口实例随机标记与数据目录；不按端口猜测服务。`--no-browser` 返回 JSON，`shutdown` 通过带 token 的本机接口取消任务并停止预览，无法确认清理就报错。
 
-`web/` 是通用核心唯一前端编辑源。当前 `index.html` 只加载 `graph-layout.js`、`locale.js`、`live-copy.js`、`live-focus.js`、`live-parity.js`、`live-evidence.js`、`live-features.js`、`live-updates.js` 与 `live.js`；样式来自 `base.css` / `live.css`。操作通过命名 handler 表由一个入口分派；刷新按控件的任务、运行、资料或文件标识恢复焦点，异步结果不抢回其他区域的焦点。手工导入子页保留原设置节点、展开状态和滚动位置，返回及 Escape 恢复原入口。旧 app/shell/Paper Grid 文件与视觉档案保留，但不在当前页面执行。不在核心内保留具体项目路径、固定版本或用户模型设置。
+`web/` 是通用核心唯一前端编辑源。当前 `index.html` 只加载 `graph-layout.js`、`locale.js`、`live-copy.js`、`live-focus.js`、`live-parity.js`、`live-evidence.js`、`live-features.js`、`live-updates.js` 、`live-workspace.js` 与 `live.js`；样式来自 `base.css` / `live.css`。操作通过命名 handler 表由一个入口分派；刷新按控件的任务、运行、资料或文件标识恢复焦点，异步结果不抢回其他区域的焦点。手工导入子页保留原设置节点、展开状态和滚动位置，返回及 Escape 恢复原入口。旧 app/shell/Paper Grid 文件与视觉档案保留，但不在当前页面执行。不在核心内保留具体项目路径、固定版本或用户模型设置。
 
 ## 0.3.0 版本工作台
 
 Git 关系图的节点、父边、参考线、轨道复用、避碰、像素投影及换仓库回归要求，统一见 [Git 图实现契约](GIT-GRAPH.md)。视觉调整不能改写真实父关系，筛选不能删掉关系节点。
 
-`workspace.py` 提供通用历史快照、显式关联存档、比较来源选择与双侧文件文本。`web/live*.js` 和 `graph-layout.js` 是当前正式界面，读取 `/api/workspace/*` 和原有版本、运行、资料 API。启动 URL 中的项目标识决定上下文；不会通过其他项目切换入口改变启动仓库。旧 `app.js` 和 Paper Grid 视觉档案继续保留。
+`workspace.py` 提供通用历史快照、显式关联存档、比较来源选择与双侧文件文本。`web/live*.js` 和 `graph-layout.js` 是当前正式界面，读取 `/api/workspace/*` 和原有版本、运行、资料 API。启动 URL 中的项目标识决定上下文；agent 从当前项目或显式路径直接打开，不增加界面选仓库流程。刷新后旧详情响应不再写入新缓存。旧 `app.js` 和 Paper Grid 视觉档案继续保留。
 
 关联存档先验证共同 Git 提交，再保存本机注册信息；按完整 SHA 去重，保留每条版本的读取来源。目录筛选只影响存档显示，不删除 Git 对象。路线只依据真实 parents，独立记录显示分隔说明。媒体以完整 SHA 和采集场景匹配；手工资料没有场景元数据时不会自动伪造成前后对照。AI 提案和运行配置仍须单独明确保存。
 
@@ -123,3 +123,11 @@ Git 关系图的节点、父边、参考线、轨道复用、避碰、像素投�
 当前图仍渲染整个已加载集合，文件搜索首次仍需读取各版本差异，保留的磁盘证据没有自动清理。这些是明确的规模边界。只有实际长历史测量证明需要时，再加入虚拟列表或索引数据库；保持完整 SHA、全部有序父边和历史来源契约。
 
 `tests/workspace-cache.test.cjs` 验证缓存淘汰后搜索与比较仍正确；Python 与真实浏览器回归验证业务/安全边界。CI 配置覆盖 macOS/Linux、最低 Python 与另一版本，以及全新安装；配置存在不等于远端执行已通过。
+
+## 0.4.0 便携 skill 与恢复
+
+`skills/reprise/` 仅维护通用指令和 CLI 入口，`scripts/build_skill.py` 在构建时收集 canonical Python 核心、web 资源与许可，生成自包含 ZIP 及逐文件 SHA-256 manifest。入口从自己的文件位置定位运行时，无全局 agent 环境或当前目录假设。WorkBuddy 变体仅增加其平台所需的前置元数据。客户端加载、运行包 CLI 与真实浏览器分别验证，不把标准兼容等同于每个 agent 的实际调用成功。
+
+`recovery.py` 复用 `Repository.materialize`，与运行进程、证据及 Git 身份分离。排队前固定 SHA，恢复路径不得存在，也不得位于任何登记的源 worktree、Git 目录或共用 Git 目录内；执行时复查并独占创建。ZIP 保留安全符号链接和执行位，托管 ZIP 通过已完成回执提供下载，外部 CLI 导出路径不通过 HTTP 公开。恢复是文件快照，不伪造 Git 历史。回执、部分结果和快照无自动删除。
+
+`live-workspace.js` 管理恢复对话框、结果和按需嵌入预览；新任务沿用持久任务队列与取消机制。agent 负责确定项目，CLI 默认使用当前目录，也接受显式仓库路径。运行框架命令必须先核对保存配方，静态入口将 JSON 放入高级展开项。实时预览仅在用户点击嵌入时加载，按项目和精确 SHA 过滤。

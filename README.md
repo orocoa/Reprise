@@ -4,7 +4,13 @@
 
 版本来自已有 Git 记录。预览需要生成或导入，并绑定对应版本；更新说明可手工编辑，也可选择接入 AI。核心只依赖 Python 标准库与 Git，浏览、比较和运行不需要 AI。
 
-## 启动
+## 用 skill 打开（推荐）
+
+从 GitHub 下载 [通用 skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-skill.zip) 或 [WorkBuddy skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-workbuddy.zip)，保留完整的 `reprise/` 目录，让本机 agent 按其中的 `SKILL.md` 打开。适用于 Codex、TRAE 等本地脚本入口；WorkBuddy 包增加其平台元数据。需要 Python 3.9+ 和 Git，无须 pip 安装或原生 App。
+
+在目标项目里发命令，或告诉 agent 项目路径，即可直接打开历史、比较文件、配置独立预览，或把所选提交恢复到新目录 / 下载 ZIP。程序独立于 agent；[安装路径、兼容范围与完整流程](docs/AGENT-SKILL.md) 包含已测和待验证的部分。
+
+## 命令行启动（可选）
 
 需要 Python 3.9+ 和 Git。macOS/Linux 的回归、浏览器与安装检查见 [GitHub Actions](https://github.com/orocoa/Reprise/actions/workflows/ci.yml)。Git 读取与 Web 工作台使用 Python 标准库。
 
@@ -23,6 +29,8 @@ source ~/.venvs/reprise/bin/activate
 
 ```sh
 reprise .
+# open 默认使用当前项目目录
+reprise open
 ```
 
 已有安装可更新 Reprise 的源码目录，再重装同一个环境。先用 `reprise shutdown` 停止旧服务，随后重新运行 `reprise .`；本机版本说明、配置与预览继续保留。
@@ -62,7 +70,7 @@ python3 run.py history /path/to/project --limit 20
 python3 run.py detect /path/to/project --ref HEAD
 ```
 
-0.3.1 提供真实 Git 彩色路线、详细视图与 32px 紧凑视图、收藏定位，以及「本次更新 / 版本预览 / 版本对比」。缺少预览时可直接进入添加资料；运行记录显示独立副本和日志目录，安装、构建与启动阶段使用任务取消，服务就绪后才提供打开与停止。项目名使用 Departure Mono＋正格点黑，正文使用 Inter；按钮采用胶囊与圆形图标，编辑入口为无框铅笔。项目、提交、运行和媒体来自同一通用核心。支持中文/英文界面；Git 原始消息、路径、代码和手工资料标题保留原文。AI 提案一次生成中英标题、摘要及变化说明；显式保存后绑定完整 SHA，切换语言和重启不再请求模型。双语说明保存与运行配方批准是两个独立操作。
+0.4.0 提供真实 Git 彩色路线、详细视图与 32px 紧凑视图、收藏定位，以及「本次更新 / 版本预览 / 版本对比」。缺少预览时可直接进入添加资料；运行记录显示独立副本和日志目录，安装、构建与启动阶段使用任务取消，服务就绪后才提供打开与停止。项目名与正文统一使用 Inter，中文使用系统字体；按钮采用胶囊与圆形图标，编辑入口为无框铅笔。项目、提交、运行和媒体来自同一通用核心。支持中文/英文界面；Git 原始消息、路径、代码和手工资料标题保留原文。AI 提案一次生成中英标题、摘要及变化说明；显式保存后绑定完整 SHA，切换语言和重启不再请求模型。双语说明保存与运行配方批准是两个独立操作。
 
 所有创建的副本、失败日志和证据均保留，停止服务不会删除它们。不要将带有 AI 密钥的应用数据目录提交到 Git。
 

@@ -181,13 +181,15 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == 'histories' and method == 'PUT':
                 return self.send_json(app.projects.save_histories(identifier,
                     body.get('history_project_ids'), body.get('catalog')))
-            if suffix in ('run', 'capture', 'ai/suggest') and method == 'POST':
+            if suffix in ('run', 'capture', 'ai/suggest', 'restore', 'export') and method == 'POST':
                 return self.send_json(app.execute(identifier, suffix, body), 202)
             if suffix == 'evidence' and reading:
                 sha = repository.resolve(query['sha'][0]) if query.get('sha') else None
                 return self.send_json({'evidence': app.evidence.list(identifier, sha)})
             if suffix == 'evidence/manual' and method == 'POST':
                 return self.send_json(app.evidence.manual(repository, identifier, body), 201)
+        if reading and len(parts) == 2 and parts[0] == 'downloads':
+            return serve_file(self, app.recovery.download(parts[1]), attachment=True)
         if reading and path.startswith('/artifacts/'):
             candidate = app.evidence.file(path[len('/artifacts/'):])
             attachment = candidate.suffix.lower() not in ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.webm', '.mov')
