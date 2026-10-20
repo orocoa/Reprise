@@ -40,6 +40,12 @@ a remote/cloud-only runner cannot open the user's local folders. If a dependency
 or local permission is missing, report the exact doctor error. Do not silently
 install dependencies, change agent permissions, or switch models.
 
+Starting the local HTTP service and background process can require a separate
+execution confirmation in a sandboxed client. If the client blocks this or asks
+for approval, surface that exact pending action and wait for the user. Do not
+approve it on the user's behalf, disable the sandbox, or grant permanent access.
+Do not report a working URL until startup actually succeeds.
+
 ## Work with revisions
 
 The browser opens the selected repository with true Git history and parent relationships,

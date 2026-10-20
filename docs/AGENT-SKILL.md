@@ -25,13 +25,31 @@ agent 执行 `scripts/reprise.py doctor` 后打开同一个 CLI。没有浏览�
 | 客户端 | 安装 / 打开方式 | 验证范围 |
 | --- | --- | --- |
 | Codex | 将完整 `reprise/` 放到 `~/.agents/skills/` 或项目的 `.agents/skills/`，再调用 `$reprise`；已有同名技能时先选择单一版本，避免重复入口 | 通用格式、相对路径、独立运行包和本地 CLI；当前开发由 Codex 完成 |
-| TRAE CN | 完整目录放到项目 `.trae/skills/reprise/` 或全局 `~/.trae-cn/skills/reprise/`，在对话中要求使用 Reprise；也可启用 `.agents/skills` 发现 | 对照官方规范；对应目录的独立运行包与 CLI 已测，客户端内调用待测 |
-| WorkBuddy | 使用 `reprise-workbuddy.zip` 的技能导入入口，或解压后把 `SKILL.md` 路径交给本地 agent；保留全部资源 | 对照 Open Platform 必填字段；独立包与 CLI 已测，平台 ZIP 解析及客户端内调用待测 |
+| TRAE CN | 完整目录放到项目 `.trae/skills/reprise/` 或全局 `~/.trae-cn/skills/reprise/`，在对话中要求使用 Reprise；也可启用 `.agents/skills` 发现 | 3.4.3 客户端已原生识别并调用 0.4.0 发布包；doctor、实际启动、第一版预览与恢复通过，启动时由用户单次确认客户端运行权限 |
+| WorkBuddy | 技能板块 → 添加技能 → 上传技能，选择 `reprise-workbuddy.zip`；或解压后把 `SKILL.md` 路径交给本地 agent，保留全部资源 | 对照 Open Platform 必填字段；独立包与 CLI 已测，本机尚未安装客户端，平台 ZIP 解析及客户端内调用待测 |
 | 其他本地 agent | 读取完整目录的 `SKILL.md`，用本地命令工具执行脚本；原生技能目录按客户端说明选择 | 通用 Python CLI，不保证每个客户端的原生安装机制 |
 
 规范相同不代表执行环境相同。只有云端容器的 agent 无法直接访问用户电脑上的项目，需要本地执行功能及文件权限。如果某客户端导入只保存指令，须把完整目录保留在本机并告诉 agent 实际脚本路径。
 
 规范来源（2026-10-20）：[Agent Skills](https://agentskills.io/specification)、[Codex](https://learn.chatgpt.com/docs/build-skills)、[TRAE](https://docs.trae.cn/ide_skills)、[WorkBuddy](https://open.workbuddy.cn/en/docs/skill)。WorkBuddy ZIP 只有前置元数据有差异，其余代码和资源共用同一构建源。
+
+### 客户端的运行确认
+
+Reprise 会启动本机 HTTP 服务和后台进程。在启用沙箱的客户端中，读取技能、运行 `doctor` 与实际启动服务可能具有不同权限。TRAE CN 3.4.3 的实机检查出现「Allow commands ... to run outside the sandbox?」确认框；用户单次确认后成功启动。不能把技能识别成功直接记作服务已运行。
+
+遇到此类提示时，由用户检查具体命令并决定是否允许本次执行。技能不会替用户批准，也不要求关闭沙箱或把命令设为永久允许。命令未成功时不生成示例 URL 代替真实结果。WorkBuddy 的导入入口依据其[客户端技能文档](https://www.codebuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)，客户端执行权限仍须单独实测。
+
+### TRAE 实机验收范围
+
+2026-10-20，使用 GitHub 0.4.0 的完整通用 ZIP，在 TRAE CN 3.4.3 的独立两提交测试项目中执行：
+
+- `/reprise` 列出并加载项目技能；客户端返回 `doctor` 成功、59 个清单文件已检查。
+- 客户端启动真实本机服务，核对 HTTP 健康接口、版本、项目路径与两条 Git 提交。
+- 在工作台选择第一版，保存无项目命令的静态配方，实际运行独立副本；预览响应与该版 Git blob 逐字节一致。
+- 通过工作台恢复到新目录；恢复文件与同一 Git blob 逐字节一致，源 HEAD 和已跟踪文件保持不变。
+- 在 1360×900 与 390×844 检查预览 / 恢复结果；未发现页面脚本异常。截图使用 Chromium 补验，因为首选 ego lite 的窗口处于最小化状态。
+
+这验证了 TRAE 发起技能调用、Reprise 独立运行及工作台预览 / 恢复流程；没有把所有框架、所有仓库或 WorkBuddy 客户端都归为已实测。
 
 ## 项目里的完整流程
 
