@@ -35,6 +35,11 @@ class LauncherTests(unittest.TestCase):
         self.assertTrue(two['reused'])
         self.assertEqual(one['pid'], two['pid'])
         self.assertEqual(one['project_id'], two['project_id'])
+        import shlex
+        stopped = subprocess.run(shlex.split(one['stop_command']), cwd=str(self.root),
+                                 capture_output=True, text=True, timeout=15)
+        self.assertEqual(stopped.returncode, 0, stopped.stderr)
+        self.assertTrue(json.loads(stopped.stdout)['stopped'])
         self.assertTrue(self.cli('shutdown')['stopped'])
 
     def test_open_without_path_uses_current_repository(self):

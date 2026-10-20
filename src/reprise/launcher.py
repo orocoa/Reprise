@@ -105,7 +105,8 @@ def open_repository(directory, path='.', port=0, browser=True, language=None,
     if browser:
         webbrowser.open(url)
     return {'url': url, 'project_id': project['id'], 'path': canonical, 'pid': record['pid'],
-            'reused': reused, 'stop_command': 'reprise --data ' + shlex.quote(str(directory)) + ' shutdown'}
+            'reused': reused, 'stop_command': shlex.join([sys.executable, '-I', '-S',
+                str(Path(__file__).with_name('server_entry.py').resolve()), '--data', str(directory), 'shutdown'])}
 
 
 def shutdown(directory):
