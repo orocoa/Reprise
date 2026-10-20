@@ -1,14 +1,20 @@
-# Reprise
+# Reprise · 倒带 — Local Git History Browser
 
 给 Git 历史一个可浏览的读档界面。翻更新说明和已有预览，找印象里的旧页面；沿真实版本路线查看分叉与合并，比较任意两版的页面资料与文件变化。配好对应的运行方式后，还能在独立副本里打开历史页面。
 
 版本来自已有 Git 记录。预览需要生成或导入，并绑定对应版本；更新说明可手工编辑，也可选择接入 AI。核心只依赖 Python 标准库与 Git，浏览、比较和运行不需要 AI。
+
+Reprise is a local Git history browser for comparing commits and files, previewing configured versions in separate copies, and restoring or exporting snapshots. Core history and diff workflows need Python and Git; they do not require an AI connection.
+
+**Get started:** [Install the agent skill](docs/AGENT-SKILL.md) · [Command-line setup](#command-line-setup). Requires Python 3.9+ and Git. Previewing a historical page also requires that version's dependencies and an approved runtime configuration.
 
 ## 用 skill 打开（推荐）
 
 从 GitHub 下载 [通用 skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-skill.zip) 或 [WorkBuddy skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-workbuddy.zip)，保留完整的 `reprise/` 目录，让本机 agent 按其中的 `SKILL.md` 打开。适用于 Codex、TRAE 等本地脚本入口；WorkBuddy 包增加其平台元数据。需要 Python 3.9+ 和 Git，无须 pip 安装或原生 App。
 
 在目标项目里发命令，或告诉 agent 项目路径，即可直接打开历史、比较文件、配置独立预览，或把所选提交恢复到新目录 / 下载 ZIP。程序独立于 agent；[安装路径、兼容范围与完整流程](docs/AGENT-SKILL.md) 包含已测和待验证的部分。
+
+<a id="command-line-setup"></a>
 
 ## 命令行启动（可选）
 
