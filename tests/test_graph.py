@@ -155,7 +155,9 @@ class GraphTests(unittest.TestCase):
         git(path, 'config', 'user.email', 'graph@example.invalid')
         (path / 'README.txt').write_text('first')
         git(path, 'add', '.')
-        git(path, 'commit', '-m', 'first')
+        # Keep fixture setup from leaving a background Git maintenance process
+        # that changes metadata during the import's byte-for-byte inertness check.
+        git(path, '-c', 'maintenance.auto=false', '-c', 'gc.auto=0', 'commit', '-m', 'first')
         snapshot, graph = self.graph_snapshot(path)
         self.assertEqual(len(snapshot['project']['head']), 64)
         self.assertEqual(graph['rows'][0]['id'], snapshot['project']['head'])

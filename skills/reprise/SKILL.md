@@ -4,7 +4,7 @@ description: Open a local Git history workbench, compare revisions, preview hist
 license: MIT
 metadata:
   author: orocoa
-  version: "0.4.0"
+  version: "0.4.1"
 ---
 
 # Reprise
