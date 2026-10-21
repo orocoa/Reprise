@@ -1,4 +1,4 @@
-<!-- Preserved from the pre-split README; only relative link targets were adjusted for docs/. -->
+<!-- Preserved from the maintained pre-split README; only relative link targets were adjusted for docs/. -->
 
 # Reprise · 倒带 — Local Git History Browser
 
@@ -6,7 +6,7 @@
 
 版本来自已有 Git 记录。预览需要生成或导入，并绑定对应版本；更新说明可手工编辑，也可选择接入 AI。核心只依赖 Python 标准库与 Git，浏览、比较和运行不需要 AI。
 
-Reprise is a local Git history browser for comparing commits and files, previewing configured versions in separate copies, and restoring or exporting snapshots. Core history and diff workflows need Python and Git; they do not require an AI connection.
+Reprise is a local Git history browser by [orocoa](https://github.com/orocoa) for comparing commits and files, previewing configured versions in separate copies, and restoring or exporting snapshots. Core history and diff workflows need Python and Git; they do not require an AI connection.
 
 **Get started:** [Install the agent skill](AGENT-SKILL.md) · [Command-line setup](#command-line-setup). Requires Python 3.9+ and Git. Previewing a historical page also requires that version's dependencies and an approved runtime configuration.
 

@@ -6,6 +6,8 @@
 
 给 Git 历史一个可浏览的读档界面：比较提交与文件，在**独立副本**中预览已配置的历史版本，并支持恢复 / 导出快照。核心浏览与对比只需 **Python 3.9+ 与 Git**，不依赖 AI。更新说明可手写，也可选择接入 AI。
 
+由 [orocoa](https://github.com/orocoa) 维护。
+
 ![Reprise 工作台：static-web 示例的真实提交历史与文件变化](docs/preview-ui.png)
 
 截图来自本机运行的仓库自带 `static-web` 示例，包含两次真实 Git 提交。

@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/orocoa/Reprise/actions/workflows/ci.yml/badge.svg)](https://github.com/orocoa/Reprise/actions/workflows/ci.yml)
 
-Reprise is a **local Git history browser**: compare commits and files, preview configured versions in **isolated copies**, and restore or export snapshots. Core history and diff workflows need **Python 3.9+ and Git**; they do not require an AI connection. Release notes and previews can be edited by hand or optionally with AI.
+Reprise is a **local Git history browser** by [orocoa](https://github.com/orocoa): compare commits and files, preview configured versions in **isolated copies**, and restore or export snapshots. Core history and diff workflows need **Python 3.9+ and Git**; they do not require an AI connection. Release notes and previews can be edited by hand or optionally with AI.
 
 ![Reprise workbench showing the real commit history and changed files of the bundled static-web example](docs/preview-ui.png)
 
