@@ -6,11 +6,9 @@
 
 Reprise is a **local Git history browser**: compare commits and files, preview configured versions in **isolated copies**, and restore or export snapshots. Core history and diff workflows need **Python 3.9+ and Git**; they do not require an AI connection. Release notes and previews can be edited by hand or optionally with AI.
 
-<!-- Screenshot: add when ready
-![Reprise UI — commit route and file diff](docs/preview-ui.png)
--->
+![Reprise workbench showing the real commit history and changed files of the bundled static-web example](docs/preview-ui.png)
 
-> **Screenshot needed:** main workbench with colored Git route + file diff or version compare. Spec in `ASSET_SPEC.md` (this PR pack). Path: `docs/preview-ui.png`.
+Captured from a local run using the repository's generated `static-web` example, with two real Git commits.
 
 **Get started:** [Install the agent skill](docs/AGENT-SKILL.md) · [Releases](https://github.com/orocoa/Reprise/releases/latest) · CLI below.
 
@@ -39,6 +37,10 @@ reprise shutdown
 
 Data lives under `~/Library/Application Support/Reprise` (macOS) or `$XDG_DATA_HOME/reprise` (Linux), outside the imported repo.
 
+Previewing a historical page also needs that version's dependencies and a saved runtime configuration. Importing a repository does not install dependencies or run its commands. Approved commands run on your machine; isolated copies are not containers. The `network: local` option limits the capture browser, not approved install or build commands.
+
+Stop Reprise with the same data directory before upgrading or backing it up. Preserve the complete application data directory and back up source repositories separately. Application data may contain API keys and should remain private. Existing copies, media, logs, and failed captures are retained.
+
 ## What it is / is not
 
 | Is | Is not |
@@ -49,6 +51,8 @@ Data lives under `~/Library/Application Support/Reprise` (macOS) or `$XDG_DATA_H
 
 ## More
 
-[Agent skill guide](docs/AGENT-SKILL.md) · [CI](https://github.com/orocoa/Reprise/actions) · [Issues](https://github.com/orocoa/Reprise/issues)
+[Full user guide (Chinese)](docs/USER-GUIDE.zh-CN.md) preserves the previous detailed README, including automatic capture setup, runtime configuration, cancellation, backup and upgrade instructions.
 
-<!-- Optional: migrate longer feature notes from the previous monolingual README into docs/ -->
+[Agent skill guide](docs/AGENT-SKILL.md) · [Capture recipes](docs/RECIPES.md) · [Architecture](docs/ARCHITECTURE.md) · [Validation](docs/VALIDATION.md) · [Release checklist](docs/RELEASE-CHECKLIST.md) · [CI](https://github.com/orocoa/Reprise/actions) · [Issues](https://github.com/orocoa/Reprise/issues)
+
+Code is MIT licensed; fonts, icons and imported media retain their own terms. See [LICENSE](LICENSE) and [third-party notices](THIRD-PARTY-NOTICES.md).
