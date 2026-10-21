@@ -8,6 +8,8 @@ Reprise is a local Git history browser for comparing commits and files, previewi
 
 **Get started:** [Install the agent skill](docs/AGENT-SKILL.md) · [Command-line setup](#command-line-setup). Requires Python 3.9+ and Git. Previewing a historical page also requires that version's dependencies and an approved runtime configuration.
 
+由 [orocoa](https://github.com/orocoa) 维护 · [orocoa.com](https://orocoa.com/) · [kai-nex.com](https://kai-nex.com/)
+
 ## 用 skill 打开（推荐）
 
 从 GitHub 下载 [通用 skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-skill.zip) 或 [WorkBuddy skill](https://github.com/orocoa/Reprise/releases/latest/download/reprise-workbuddy.zip)，保留完整的 `reprise/` 目录，让本机 agent 按其中的 `SKILL.md` 打开。适用于 Codex、TRAE 等本地脚本入口；WorkBuddy 包增加其平台元数据。需要 Python 3.9+ 和 Git，无须 pip 安装或原生 App。
