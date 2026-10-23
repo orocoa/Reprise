@@ -1,0 +1,53 @@
+name: Usage feedback / 使用反馈
+description: Tell us whether Reprise helped with a real task, including failed attempts.
+title: "[Usage] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Successful, blocked, and abandoned attempts are all useful. No positive review, Star, private file, exact path, or log upload is required.
+        成功、受阻、放弃的经历都欢迎。不必好评、Star 或上传私人文件、路径和日志。
+  - type: textarea
+    id: task
+    attributes:
+      label: Your actual task / 实际想完成什么
+      description: Describe a recent task and its frequency, without identifying people or private projects.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and entry point / 版本与入口
+      description: Release, installed Skill, or source checkout; unknown is fine.
+  - type: textarea
+    id: previous-method
+    attributes:
+      label: Your previous method / 原来怎么做
+      description: Existing tool or manual steps; what already worked and what was difficult.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Outcome / 完成情况
+      options:
+        - Completed independently / 独立完成
+        - Completed with help / 提示后完成
+        - Blocked or abandoned / 受阻或放弃
+        - Only viewed the demo / 只看了演示
+        - Not attempted yet / 还没尝试
+    validations:
+      required: true
+  - type: textarea
+    id: experience
+    attributes:
+      label: What helped or blocked you / 有帮助或卡住的地方
+      description: Include setup time and task time only if you measured them. What would you choose next time, and why?
+  - type: dropdown
+    id: reuse
+    attributes:
+      label: Later use / 后续实际使用
+      options:
+        - No similar task yet / 暂无同类任务
+        - Used Reprise again without a reminder / 已主动再次使用
+        - Used it again after a reminder / 提醒后再次使用
+        - Chose another method / 选择了原方法或其他工具
+        - Prefer not to say / 不便回答

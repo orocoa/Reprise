@@ -1,0 +1,41 @@
+name: Bug report / 问题反馈
+description: Report a reproducible problem without sharing private data.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe a small, safe example. Do not upload private files, credentials, personal paths, or unredacted logs. Full diagnostic bundles are not required.
+        请描述可公开的最小例子，不必上传私人文件、完整路径或日志。公开发行、Skill 与开发源码可能有不同版本。
+  - type: input
+    id: version
+    attributes:
+      label: Version and entry point / 版本与使用入口
+      description: Release tag, commit or Skill version; say unknown if unavailable.
+      placeholder: "Example: v0.4.1 release ZIP / v0.4.1 source checkout"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment / 运行环境
+      description: OS, Python, Git, and browser versions if known. No machine name or account details needed.
+  - type: textarea
+    id: task
+    attributes:
+      label: Task and steps / 任务与重现步骤
+      description: What were you trying to do? Prefer synthetic files and generalized paths.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result / 预期与实际结果
+      description: Include a short redacted error only if useful. Note whether any source file appeared to change.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Optional context / 可选补充
+      description: Frequency, safe screenshot, or small synthetic example. Omit private paths, tokens, and file content.
