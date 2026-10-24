@@ -25,3 +25,11 @@ The reviewed final source Skill was installed at the existing Codex user-Skill l
 Using the installed entry, an empty workbench opened without importing the working directory. Two synthetic static webpage drafts produced actual 2880×1800 PNGs tied to their exact revisions. The browser selected blue A by its picture, switched to English and recovered it into the default new folder. Readback matched A, current source stayed B and the files were independent. Language/context, reopening persistence and normal shutdown passed; both test ports closed.
 
 The full Python run completed 564 tests: 549 passed, 15 skipped, 0 failed. All 88 Node contracts passed. The earlier unexplained timeout remains a separate historical result. These checks do not establish fresh-Mac dependency setup, native selector/composer actions, native WorkBuddy/TRAE use, every framework or independent user adoption. The complete macOS runtime test package was withdrawn.
+
+## 公开预览包身份 / Public preview identity
+
+公开ZIP从已提交源码构建，移除了仅供本地候选的提示文件，并刷新来源与完整性清单。功能源码、Skill指令、入口及其他载荷逐字节等同本机安装验证包。公开ZIP已单独完成CRC、清单和实际doctor检查；不把元数据更新说成新一轮全部功能测试。
+
+The public preview removes the local-only candidate notice and refreshes provenance/manifest metadata. All functional payload bytes match the installed proof package. The public archive separately passed CRC, manifest verification and an actual doctor call; this metadata refresh is not reported as another full functional run.
+
+Public Reprise-Skill.zip SHA-256: `10fb8d9bc6b9a50dd14db505e86c63e90224d68bdf287e73ba858fd90337ab5b`.

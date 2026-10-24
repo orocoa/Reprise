@@ -4,7 +4,7 @@
   "version": "0.8.0",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "55cdba4d40e2df006218d6332be9789f015aebb26838625416e7b62ec0fc0168"
+    "sha256": "10fb8d9bc6b9a50dd14db505e86c63e90224d68bdf287e73ba858fd90337ab5b"
   },
   "verification": {
     "exact_version": true,
@@ -84,6 +84,6 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "Installed source Skill and browser recovery; no mock pictures or substituted revisions. Public archive identity is verified separately against these unchanged core files."
+    "note": "Installed source Skill and browser recovery; the public archive differs only in release/provenance metadata and has byte-identical functional payload, verified by CRC, manifest hashes and actual doctor."
   }
 }
