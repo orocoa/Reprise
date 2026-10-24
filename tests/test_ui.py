@@ -1,5 +1,7 @@
-"""Opt-in real browser regression of locale, AI review and runtime controls."""
+"""Opt-in real browser regression of first-run drafts, locale and runtime controls."""
 import os
+import hashlib
+import json
 import struct
 import subprocess
 import sys
@@ -12,10 +14,42 @@ from reprise.service import Reprise
 from reprise.storage import write_json
 from test_runtime import fixture, commit_repo, http_server_command
 from test_git import git
-from test_ai import Stub, NOTES
+from test_ai import Stub
 
 @unittest.skipUnless(os.environ.get('REPRISE_BROWSER_TESTS') == '1', 'browser tests opt in')
 class BrowserUITests(unittest.TestCase):
+    def test_first_run_static_draft_without_ai_ui(self):
+        root = fixture('first-run-ui')
+        source = root / 'Synthetic website with spaces'
+        source.mkdir()
+        page = source / 'index.html'
+        page.write_text('<!doctype html><title>Morning Notes</title><h1>A slower start.</h1><p>Synthetic local website.</p>')
+        original_hash = hashlib.sha256(page.read_bytes()).hexdigest()
+        app = Reprise(root / 'state')
+        adapter = Stub()
+        app.ai.adapter = adapter
+        app.ai.save({'enabled': True, 'endpoint': 'https://fixture.invalid/v1',
+                     'model': 'exact-test-model', 'api_key': 'test-key'})
+        config = root / 'fixture.json'
+        config.write_text(json.dumps({'root': str(root), 'source': str(source)}))
+        server = LocalServer(('127.0.0.1', 0), app)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            result = subprocess.run([os.environ['REPRISE_NODE'], str(Path(__file__).with_name('ui_acceptance.mjs')),
+                                     'http://127.0.0.1:%s/' % server.server_port, str(config)],
+                                    capture_output=True, text=True, timeout=90)
+            (root / 'browser.log').write_text(result.stdout + '\n' + result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(adapter.calls, [])
+            self.assertEqual(hashlib.sha256(page.read_bytes()).hexdigest(), original_hash)
+            self.assertFalse((source / '.git').exists())
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+            app.close()
+
     def test_evidence_diagnostics_media_and_terminal_refresh(self):
         root=fixture('evidence-ui')
         repo=commit_repo(root/'source')
@@ -105,8 +139,10 @@ class BrowserUITests(unittest.TestCase):
                                   capture_output=True,text=True,timeout=120)
             (root/'browser.log').write_text(result.stdout+'\n'+result.stderr)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-            self.assertEqual(len(adapter.calls),1)
-            self.assertEqual(app.projects.record(project['id'])['version_notes'][sha]['localizations'],NOTES)
+            self.assertEqual(len(adapter.calls),0)
+            notes = app.projects.record(project['id'])['version_notes'][sha]['localizations']['en']
+            self.assertEqual(notes['title'], 'Edited locally')
+            self.assertEqual(notes['changes'], ['First update', 'Second update'])
             self.assertTrue(app.projects.get(project['id'])['recipe_approved'])
             self.assertFalse(any(r['running'] for r in app.runtime_list()))
         finally:

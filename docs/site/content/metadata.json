@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "version": "0.8.0",
+  "status": "prerelease",
+  "publish_ready": true,
+  "review_date": "2026-10-24",
+  "timezone": "Asia/Shanghai",
+  "public_download_url": "https://github.com/orocoa/Reprise/releases/download/v0.8.0-rc.1/Reprise-Skill.zip",
+  "production_origin": "https://orocoa.github.io",
+  "locale_tags": {
+    "zh": "zh-Hans",
+    "en": "en"
+  },
+  "pages": [
+    {
+      "locale": "zh",
+      "slug": "index",
+      "source": "zh/index.md",
+      "title": "倒带 Reprise：本地网页版本与画面找回",
+      "description": "为用AI或编辑器修改的本地网页保存稿件和画面，按图认出旧版，取回新副本。macOS与Codex已实测的开源Skill。"
+    },
+    {
+      "locale": "zh",
+      "slug": "getting-started",
+      "source": "zh/getting-started.md",
+      "title": "在Codex接入倒带并保存网页第一稿",
+      "description": "下载Reprise源码Skill，交给Agent检查环境、安装接入，保存网页文件和对应画面。"
+    },
+    {
+      "locale": "zh",
+      "slug": "find-compare-restore",
+      "source": "zh/find-compare-restore.md",
+      "title": "凭画面找回本地网页旧稿｜Reprise",
+      "description": "在Reprise画廊识别旧稿，默认恢复到新目录，并核验当前项目保持原样。真实合成样本与验证范围。"
+    },
+    {
+      "locale": "zh",
+      "slug": "privacy-and-faq",
+      "source": "zh/privacy-and-faq.md",
+      "title": "Reprise依赖、隐私与常见问题",
+      "description": "了解Python/Git、Node/Playwright与浏览器依赖、本地数据和AI Agent边界，以及Codex与其他客户端的验证范围。"
+    },
+    {
+      "locale": "en",
+      "slug": "index",
+      "source": "en/index.md",
+      "title": "Reprise: visual draft history for local webpages",
+      "description": "Save local webpage files and pictures with your AI agent, recognize an older draft and recover a copy. Open-source Skill verified on macOS with Codex."
+    },
+    {
+      "locale": "en",
+      "slug": "getting-started",
+      "source": "en/getting-started.md",
+      "title": "Install Reprise in Codex and save a webpage draft",
+      "description": "Download the source Skill, let your agent check tools and set it up, then save the current webpage and its picture."
+    },
+    {
+      "locale": "en",
+      "slug": "find-compare-restore",
+      "source": "en/find-compare-restore.md",
+      "title": "Recover an old local webpage draft by its picture",
+      "description": "Recognize an old Reprise draft and retrieve a new folder while keeping the current project. Actual synthetic example and verification scope."
+    },
+    {
+      "locale": "en",
+      "slug": "privacy-and-faq",
+      "source": "en/privacy-and-faq.md",
+      "title": "Reprise dependencies, privacy and FAQ",
+      "description": "Python/Git and Node Playwright requirements, local data and AI-agent privacy boundaries, and what was verified in Codex versus other clients."
+    }
+  ]
+}

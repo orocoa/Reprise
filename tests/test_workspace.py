@@ -91,6 +91,16 @@ class WorkspaceTests(unittest.TestCase):
         renamed = project_snapshot(self.app, self.project['id'])
         self.assertNotEqual(result['snapshot'], renamed['snapshot'], 'Ref changes matter even when tips are unchanged')
 
+    def test_renamed_file_comparison_reports_original_path_for_baseline_recovery(self):
+        # The renamed target path must not be reused for the old revision.
+        with patch.object(self.app.projects, 'repository', return_value=self.repo), patch.object(self.repo, 'diff', return_value={
+                'base': self.first, 'target': self.second,
+                'files': [{'path': 'renamed.html', 'old_path': 'index.html', 'status': 'R100'}]}):
+            result = file_comparison(self.app, self.project['id'], self.second, 'renamed.html', self.first)
+        self.assertEqual(result['base_path'], 'index.html')
+        self.assertIn('first', result['before']['text'])
+        self.assertEqual(result['path'], 'renamed.html')
+
     def test_file_comparison_uses_requested_base_and_rejects_unlisted_paths(self):
         result = file_comparison(self.app, self.project['id'], self.second, 'index.html', self.first)
         self.assertEqual(result['base'], self.first)

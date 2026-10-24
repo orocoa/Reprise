@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "status": "verified",
+  "version": "0.8.0",
+  "package": {
+    "filename": "Reprise-Skill.zip",
+    "sha256": "55cdba4d40e2df006218d6332be9789f015aebb26838625416e7b62ec0fc0168"
+  },
+  "verification": {
+    "exact_version": true,
+    "source_unchanged": true,
+    "recovery_readback": true
+  },
+  "assets": [
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8-gallery-zh.png",
+      "sha256": "17301c68a07381932492fc18f4541acc791e5e4818bc0a11b801619fcc9bdbd8",
+      "alt": {
+        "zh": "已安装Codex Skill的真实中文工作台，选中蓝色旧稿A。",
+        "en": "Actual Chinese workbench from the installed Codex Skill, selecting blue old draft A."
+      },
+      "caption": {
+        "zh": "已安装Codex Skill的真实中文工作台，选中蓝色旧稿A。",
+        "en": "Actual Chinese workbench from the installed Codex Skill, selecting blue old draft A."
+      }
+    },
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8-gallery-en.png",
+      "sha256": "4e9bdeda927efb6e76fef4827b59ee67919d74dd9615981c40b380f34b484a8c",
+      "alt": {
+        "zh": "同一旧稿与英文工作台；恢复已核验源B不变。",
+        "en": "The same old draft in the English workbench; recovery preserved source B."
+      },
+      "caption": {
+        "zh": "同一旧稿与英文工作台；恢复已核验源B不变。",
+        "en": "The same old draft in the English workbench; recovery preserved source B."
+      }
+    },
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8-save-a.png",
+      "sha256": "730fd1295912f5afbcbe2846573160cfb7e53c6be99f59a91177916e8a4c41ed",
+      "alt": {
+        "zh": "第一稿A的实际画面，绑定版本a21be57d8060b71644054669cfef8db13286c70c。",
+        "en": "Actual picture for draft A, bound to revision a21be57d8060b71644054669cfef8db13286c70c."
+      },
+      "caption": {
+        "zh": "第一稿A的实际画面，绑定版本a21be57d8060b71644054669cfef8db13286c70c。",
+        "en": "Actual picture for draft A, bound to revision a21be57d8060b71644054669cfef8db13286c70c."
+      }
+    },
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8-save-b.png",
+      "sha256": "2915d0b2952a91388b0ef5febf473528c7c8a816dd6942107b43e86ba555a1e3",
+      "alt": {
+        "zh": "第二稿B的实际画面，绑定版本246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e。",
+        "en": "Actual picture for draft B, bound to revision246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e."
+      },
+      "caption": {
+        "zh": "第二稿B的实际画面，绑定版本246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e。",
+        "en": "Actual picture for draft B, bound to revision246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e."
+      }
+    },
+    {
+      "kind": "download",
+      "path": "assets/reprise-two-drafts-0.8.zip",
+      "sha256": "fca9a1edf57b3b76ecd104b4029368dad0d5b30e4807dc1f68cf6d364f542200",
+      "alt": {
+        "zh": "两稿合成静态网页样本，不含私人内容。",
+        "en": "Two synthetic static webpage drafts without private content."
+      },
+      "caption": {
+        "zh": "两稿合成静态网页样本，不含私人内容。",
+        "en": "Two synthetic static webpage drafts without private content."
+      }
+    }
+  ],
+  "steps": [],
+  "scope": {
+    "sample_only": true,
+    "existing_host": true,
+    "fresh_machine_installation": false,
+    "native_selector_composer": false,
+    "note": "Installed source Skill and browser recovery; no mock pictures or substituted revisions. Public archive identity is verified separately against these unchanged core files."
+  }
+}

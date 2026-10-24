@@ -199,6 +199,17 @@ def _inspect_or_confirm_exit(pid, timeout=.5):
         time.sleep(.02)
 
 
+def strict_process_identity(pid):
+    """Return an identity or confirmed absence; never hide observation failure."""
+    if type(pid) is not int or pid <= 0:
+        raise ProcessObservationError('Invalid PID for process identity inspection')
+    try:
+        value = _inspect_or_confirm_exit(pid)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise ProcessObservationError('Process inspection failed: %s' % error) from error
+    return value['identity'] if value and not value['zombie'] else None
+
+
 def process_identity(pid):
     """Compatible with runtime and browser-worker identity strings."""
     try:
@@ -626,12 +637,26 @@ def launch_owned(argv, cwd, env, log, record_path, interval=.1):
     """
     if not isinstance(argv, (list, tuple)) or not argv or any(not isinstance(value, str) for value in argv):
         raise ValueError('Expected a nonempty argv sequence')
+    # Fail before creating even the exec gate when this environment cannot
+    # support retained ownership and cleanup. A later denial still fails closed.
+    try:
+        boot_identity()
+        identity = strict_process_identity(os.getpid())
+        observer = _uncached_process_table().get(os.getpid())
+        if not identity or not observer or observer['identity'] != identity:
+            raise ProcessObservationError('Cannot verify this process in the owned-user process table')
+    except (OSError, subprocess.SubprocessError, ProcessCleanupError) as error:
+        raise ProcessObservationError(
+            '当前沙箱无法可靠观察进程，未启动命令。请在客户端为本次命令批准可观察的运行权限后重试预览，无需重复保存。 '
+            'Process observation is unavailable in this sandbox; command was not started. '
+            'Approve observable execution for this command in your client and retry the preview, not the save. '
+            + str(error)) from error
     reader, writer = os.pipe()
     process = tree = None
     marker = uuid.uuid4().hex
     env = dict(env, **{OWNER_ENV: marker})
     try:
-        process = subprocess.Popen([sys.executable, '-I', '-S', '-c', _EXEC_GATE,
+        process = subprocess.Popen([sys.executable, '-I', '-S', '-B', '-c', _EXEC_GATE,
                                     str(reader), json.dumps(list(argv))],
                                    cwd=str(cwd), env=env, stdin=subprocess.DEVNULL,
                                    stdout=log, stderr=subprocess.STDOUT,

@@ -10,9 +10,50 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import unittest
 from unittest.mock import patch
 
-from reprise.capture import CaptureService
+from reprise.capture import CaptureService, stop_browser_from_record
+from reprise.processes import ProcessCleanupError, ProcessObservationError
 from reprise.runtime import RuntimeManager, process_identity
 from test_runtime import commit_repo, fixture
+
+
+class CaptureOwnershipTests(unittest.TestCase):
+    def test_failed_observation_is_not_reported_as_an_exited_browser(self):
+        root = fixture('capture-observation-denied')
+        record = root / 'browser.json'
+        record.write_text(json.dumps({'pid': 123, 'process_identity': 'recorded-birth'}))
+        with patch('reprise.capture.process_identity', side_effect=ProcessObservationError('cannot observe owned process')), \
+                patch('reprise.capture.OwnedProcessTree.adopt') as adopt:
+            with self.assertRaisesRegex(ProcessCleanupError, 'cannot observe owned process'):
+                stop_browser_from_record(record)
+        adopt.assert_not_called()
+        self.assertEqual(json.loads(record.read_text())['process_identity'], 'recorded-birth')
+
+    def test_worker_never_publishes_a_null_browser_identity_and_closes_its_handle(self):
+        node = os.environ.get('REPRISE_NODE') or shutil.which('node')
+        if not node:
+            self.skipTest('Node required for browser-worker protocol test')
+        root = fixture('worker-missing-identity')
+        closed, connected = root / 'closed', root / 'connected'
+        module = root / 'fake-playwright.cjs'
+        module.write_text('const fs = require("node:fs");\nmodule.exports = {chromium: {'
+            'launchServer: async () => ({process: () => ({pid: 2147483647}), '
+            'wsEndpoint: () => "ws://127.0.0.1:1/", close: async () => fs.writeFileSync(%s, "closed")}), '
+            'connect: async () => {fs.writeFileSync(%s, "unexpected connect"); throw Error("unexpected connect");}'
+            '}};\n' % (json.dumps(str(closed)), json.dumps(str(connected))))
+        inputs = root / 'input.json'
+        ownership, result = root / 'browser.json', root / 'result.json'
+        inputs.write_text(json.dumps({'browser_process_path': str(ownership), 'result_path': str(result),
+                                     'side': 'after', 'recipe': {'captures': []}}))
+        worker = Path(__file__).resolve().parents[1] / 'src/reprise/browser_worker.mjs'
+        completed = subprocess.run([node, str(worker), str(inputs)], capture_output=True, text=True,
+                                   env={**os.environ, 'REPRISE_PLAYWRIGHT': str(module)}, timeout=20)
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        outcome = json.loads(result.read_text())
+        self.assertTrue(any('process identity' in error['error'] for error in outcome['errors']), outcome)
+        self.assertEqual(outcome['items'], [])
+        self.assertFalse(ownership.exists())
+        self.assertFalse(connected.exists())
+        self.assertEqual(closed.read_text(), 'closed')
 
 
 class CaptureTests(unittest.TestCase):

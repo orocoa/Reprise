@@ -155,7 +155,11 @@ class RuntimeRecoveryTests(unittest.TestCase):
 
         @contextlib.contextmanager
         def finish_before_lock(lock_path, **options):
-            write_json(path, dict(state, status='running', started_at='finished', url='http://127.0.0.1:1234/'))
+            # This fixture represents completed startup followed by an observed
+            # child exit, not an unverified running record with a missing PID.
+            child = subprocess.run([sys.executable, '-c', 'pass'], check=True)
+            write_json(path, dict(state, status='exited', exit_code=child.returncode,
+                                  started_at='finished', url='http://127.0.0.1:1234/'))
             with locked(lock_path, **options):
                 yield
 

@@ -249,3 +249,21 @@ class RuntimeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_unknown_live_runtime_is_protected_without_sending_stop_signals(self):
+        from reprise.service import Reprise
+        from reprise.storage import write_json
+        identifier = 'a' * 32
+        write_json(self.manager._path(identifier), {'id': identifier, 'status': 'running',
+            'pid': os.getpid(), 'process_identity': None, 'source': str(self.repo.work_tree)})
+        app = Reprise(self.root / 'state')
+        try:
+            with patch('reprise.runtime.os.kill', wraps=os.kill) as signals:
+                runtime = app.runtimes.list()[0]
+                self.assertEqual(runtime['status'], 'cleanup_failed')
+                self.assertTrue(runtime['running'])
+                self.assertIn(str(self.repo.work_tree), app.relocation_protections())
+                self.assertTrue(signals.call_args_list)
+                self.assertTrue(all(call.args[1] == 0 for call in signals.call_args_list))
+        finally:
+            app.close()

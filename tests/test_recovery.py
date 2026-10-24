@@ -32,6 +32,21 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(job['status'], 'complete', job)
         return job['result']
 
+    def test_reveal_uses_only_completed_receipt_and_never_caller_path(self):
+        from unittest.mock import patch
+        result = self.app.recovery.create(self.repository, self.project, self.sha, 'restore')
+        with patch('subprocess.run') as command:
+            self.assertTrue(self.app.recovery.reveal(result['id'])['revealed'])
+            self.assertIn(result['path'], str(command.call_args[0][0]))
+            self.assertNotIn('shell', command.call_args.kwargs)
+        with self.assertRaises(ValueError):
+            self.app.recovery.reveal('../arbitrary')
+        receipt = self.app.recovery.directory / result['id'] / 'receipt.json'
+        record = json.loads(receipt.read_text());record['status'] = 'incomplete';write_json(receipt, record)
+        with patch('subprocess.run') as command, self.assertRaises(ValueError):
+            self.app.recovery.reveal(result['id'])
+        command.assert_not_called()
+
     def test_restore_and_zip_use_requested_sha_preserve_dirty_source_and_permissions(self):
         source = self.repository.path
         expected = self.repository.blob(self.sha, 'index.html')

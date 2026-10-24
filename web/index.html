@@ -3,9 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>项目版本</title>
+  <title>Reprise · 网页稿件</title>
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="live.css">
+  <link rel="stylesheet" href="content.css">
+  <link rel="stylesheet" href="text-diff.css">
+  <link rel="stylesheet" href="drafts.css">
+  <link rel="stylesheet" href="first-run.css">
   <script src="graph-layout.js" defer></script>
   <script src="locale.js" defer></script>
   <script src="live-copy.js" defer></script>
@@ -15,24 +19,31 @@
   <script src="live-features.js" defer></script>
   <script src="live-updates.js" defer></script>
   <script src="live-workspace.js" defer></script>
+  <script src="live-content.js" defer></script>
+  <script src="live-transfer.js" defer></script>
+  <script src="live-versions.js" defer></script>
+  <script src="live-imports.js" defer></script>
+  <script src="text-diff.js" defer></script>
+  <script src="live-drafts.js" defer></script>
+  <script src="live-first-run.js" defer></script>
   <script src="live.js" defer></script>
 </head>
 <body>
 <div class="app" id="app">
   <header class="chrome">
     <div class="brand"><strong id="project-name" data-user-content>读取项目…</strong></div>
-    <label class="search"><span id="search-icon"></span><input id="search" type="search" placeholder="搜索提交、文件或改动…" aria-label="搜索提交、文件或改动"><kbd>/</kbd></label>
-    <div class="chrome-actions"><button class="icon-button" data-action="refresh" aria-label="刷新项目" title="刷新项目">↻</button><button class="icon-button" id="settings-toggle" data-action="settings" aria-label="项目设置" title="项目设置">⚙</button></div>
+    <label class="search"><span id="search-icon"></span><input id="search" type="search" placeholder="搜索版本名称或文件…" aria-label="搜索版本名称或文件"><kbd>/</kbd></label>
+    <div class="chrome-actions"><div class="segmented language-switch" role="group" aria-label="Language"><button data-user-content data-action="language" data-language="zh">中文</button><button data-user-content data-action="language" data-language="en">EN</button></div><button class="secondary-button content-label" data-action="content-projects">项目</button><button class="primary-button content-label" id="content-save" data-action="content-snapshot" hidden>保存一稿</button><button class="icon-button" data-action="refresh" aria-label="刷新项目" title="刷新项目">↻</button><button class="icon-button" id="settings-toggle" data-action="settings" aria-label="项目设置" title="项目设置">⚙</button></div>
   </header>
   <div class="workspace">
     <aside class="history" aria-label="版本历史">
-      <div class="history-heading"><div class="history-title"><h1>版本</h1><span class="history-count" id="history-count"></span></div><div class="segmented" aria-label="列表显示"><button class="active" data-action="history-density" data-density="full" aria-pressed="true">详细视图</button><button data-action="history-density" data-density="compact" aria-pressed="false" title="同时查看更多版本，保留分叉与收藏标记">紧凑视图</button></div><div class="history-tools"><div class="graph-legend" id="graph-legend"></div><button class="bookmark-filter" id="bookmark-filter" data-action="filter" data-filter="starred" aria-pressed="false" title="定位收藏版本，保留分叉关系"><span id="bookmark-filter-icon"></span><span>收藏</span><span class="bookmark-count" id="bookmark-count">0</span></button></div><p id="history-origin" class="history-origin" hidden></p></div>
+      <div class="history-heading"><div class="history-title"><h1>版本</h1><span class="history-count" id="history-count"></span></div><div class="segmented draft-view-switch" aria-label="历史显示"><button data-action="draft-view" data-view="pictures">画面</button><button data-action="draft-view" data-view="graph">版本关系</button></div><div class="segmented graph-density" aria-label="列表显示"><button class="active" data-action="history-density" data-density="full" aria-pressed="true">详细视图</button><button data-action="history-density" data-density="compact" aria-pressed="false" title="同时查看更多版本，保留分叉与收藏标记">紧凑视图</button></div><div class="history-tools"><div class="graph-legend" id="graph-legend"></div><button class="bookmark-filter" id="bookmark-filter" data-action="filter" data-filter="starred" aria-pressed="false" title="定位收藏版本，保留分叉关系"><span id="bookmark-filter-icon"></span><span>收藏</span><span class="bookmark-count" id="bookmark-count">0</span></button></div><p id="history-origin" class="history-origin" hidden></p></div>
       <div class="search-status" id="search-status" role="status" aria-live="polite" hidden></div>
-      <div class="history-scroll" id="history-scroll"><div class="history-track" id="history-track"><svg class="route-map" id="route-map" aria-hidden="true"></svg><div id="version-list"></div></div></div>
+      <div class="draft-list" id="draft-list" hidden></div><div class="history-scroll" id="history-scroll"><div class="history-track" id="history-track"><svg class="route-map" id="route-map" aria-hidden="true"></svg><div id="version-list"></div></div></div>
     </aside>
-    <main class="detail" id="detail" aria-label="版本内容" tabindex="-1"><div class="empty-content">正在读取 Git 提交…</div></main>
+    <main class="detail" id="detail" aria-label="版本内容" tabindex="-1"><div class="empty-content">正在打开网页稿件…</div></main>
   </div>
-  <footer class="app-footer"><span id="source-status">读取本地项目</span><div><span id="snapshot-status"></span><button class="text-button" data-action="working">当前改动</button></div></footer>
+  <footer class="app-footer"><span id="source-status">读取本地项目</span><div><button class="text-button" data-action="content-privacy">本地数据与隐私</button><span id="snapshot-status"></span><button class="text-button" data-action="confirm-stop-workbench">停止 Reprise</button><button class="text-button" data-action="working">当前改动</button></div></footer>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 <dialog id="dialog" aria-labelledby="dialog-title"></dialog>

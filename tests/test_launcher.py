@@ -6,7 +6,7 @@ import subprocess
 import sys
 import unittest
 
-from reprise.launcher import shutdown
+from reprise.launcher import open_workbench, shutdown
 from test_runtime import fixture, commit_repo
 
 
@@ -42,10 +42,28 @@ class LauncherTests(unittest.TestCase):
         self.assertTrue(json.loads(stopped.stdout)['stopped'])
         self.assertTrue(self.cli('shutdown')['stopped'])
 
-    def test_open_without_path_uses_current_repository(self):
+    def test_restored_data_can_start_a_new_service_without_old_process_authority(self):
+        one = self.cli('open', str(self.repo.path), '--no-browser')
+        self.cli('shutdown')
+        backup, restored = self.root / 'backup', self.root / 'restored-state'
+        self.cli('backup', '--to', str(backup))
+        self.cli('data-restore', str(backup), '--to', str(restored))
+        self.data.rename(self.root / 'original-state-unavailable')
+        self.data = restored
+        marker = json.loads((self.data / 'server.json').read_text())
+        self.assertTrue(marker['restored_process_authority_disabled'])
+        self.assertIsNone(marker['pid'])
+        two = self.cli('open', str(self.repo.path), '--no-browser')
+        self.assertFalse(two['reused'])
+        self.assertEqual(two['project_id'], one['project_id'])
+        self.assertNotEqual(two['pid'], one['pid'])
+        self.assertTrue(self.cli('shutdown')['stopped'])
+
+    def test_open_without_path_does_not_import_current_repository(self):
         result = self.cli('open', '--no-browser')
-        self.assertEqual(result['path'], str(self.repo.path))
-        self.assertIsNotNone(result['project_id'])
+        self.assertIsNone(result['path'])
+        self.assertIsNone(result['project_id'])
+        self.assertEqual(self.cli('projects'), [])
 
     def test_explicit_related_history_is_saved_with_put(self):
         root = self.root / 'history.git'
@@ -93,3 +111,49 @@ class LauncherTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'outside'):
             open_repository(Path(self.repo.work_tree) / 'state', self.repo.work_tree, browser=False)
         self.assertFalse((Path(self.repo.work_tree) / 'state').exists())
+
+    def test_empty_workbench_starts_reuses_and_never_imports_a_folder(self):
+        from unittest.mock import patch
+        from reprise.projects import ProjectStore
+        with patch.object(ProjectStore, 'source', side_effect=AssertionError('No source was selected')):
+            one = open_workbench(self.data, browser=False, language='en')
+            two = open_workbench(self.data, browser=False)
+        self.assertIsNone(one['project_id'])
+        self.assertIsNone(one['path'])
+        self.assertNotIn('project=', one['url'])
+        self.assertIn('lang=en', one['url'])
+        self.assertFalse(one['reused'])
+        self.assertTrue(two['reused'])
+        self.assertEqual(one['pid'], two['pid'])
+        self.assertEqual(ProjectStore(self.data).records(), [])
+
+    def test_source_workbench_entry_works_outside_checkout_without_cwd_import(self):
+        from reprise.projects import ProjectStore
+        entry = Path(__file__).resolve().parents[1] / 'scripts' / 'start_workbench.py'
+        # A same-named module in the arbitrary current folder must not be loaded.
+        (self.repo.work_tree / 'reprise.py').write_text('raise RuntimeError("wrong import")\n')
+        process = subprocess.run([sys.executable, '-I', '-S', str(entry), '--data', str(self.data),
+                                  '--no-browser', '--json'], cwd=str(self.repo.work_tree),
+                                 capture_output=True, text=True, timeout=25)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        result = json.loads(process.stdout)
+        self.assertIsNone(result['project_id'])
+        self.assertEqual(ProjectStore(self.data).records(), [])
+        self.assertEqual((self.repo.work_tree / 'reprise.py').read_text(), 'raise RuntimeError("wrong import")\n')
+
+    def test_double_click_entry_accepts_package_path_with_spaces(self):
+        from reprise.projects import ProjectStore
+        package = self.root / 'Reprise package with spaces'
+        package.symlink_to(Path(__file__).resolve().parents[1], target_is_directory=True)
+        process = subprocess.run(['/bin/sh', str(package / 'Reprise.command'), '--data', str(self.data),
+                                  '--no-browser', '--json'], cwd=str(self.repo.work_tree),
+                                 capture_output=True, text=True, timeout=25)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertIsNone(json.loads(process.stdout)['project_id'])
+        self.assertEqual(ProjectStore(self.data).records(), [])
+
+    def test_workbench_does_not_reuse_incompatible_server(self):
+        from unittest.mock import patch
+        with patch('reprise.launcher.verified_server', return_value={'version': '0.0.0'}):
+            with self.assertRaisesRegex(ValueError, 'Another Reprise version'):
+                open_workbench(self.data, browser=False)

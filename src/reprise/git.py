@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import hashlib
 import posixpath
+import shutil
 import subprocess
 import tempfile
 import threading
@@ -42,6 +43,9 @@ def _environment():
                GIT_NO_REPLACE_OBJECTS='1', GIT_NO_LAZY_FETCH='1',
                GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                LC_ALL='C')
+    if env.get('REPRISE_BUNDLE_RESOURCES'):
+        from .desktop_bundle import git_exec_path
+        env['GIT_EXEC_PATH'] = git_exec_path(env['REPRISE_BUNDLE_RESOURCES'])
     return env
 
 
@@ -449,7 +453,7 @@ class Repository:
                     note='Nested submodule worktree modifications are not scanned.' +
                     (' External clean/process filters are disabled; filtered worktree files are compared without their custom conversion and may appear modified.' if filters else ''))
 
-    def materialize(self, revision, destination, cancel=None):
+    def materialize(self, revision, destination, cancel=None, paths=None, max_bytes=MAX_SNAPSHOT_BYTES):
         from .cancellation import check
         check(cancel)
         sha = self.resolve(revision)
@@ -463,9 +467,24 @@ class Repository:
         if os.path.lexists(destination):
             raise ValueError('Snapshot destination already exists; existing files are never overwritten')
         entries = self.tree(sha)
+        if paths is not None:
+            if not isinstance(paths, list) or not 1 <= len(paths) <= 200:
+                raise ValueError('Select 1–200 relative file or directory paths')
+            paths = list(dict.fromkeys(_safe_path(p) for p in paths))
+            directories = set(self.empty_directories(sha))
+            for selected in paths:
+                if (selected not in directories and
+                        not any(e['path'] == selected or e['path'].startswith(selected + '/') for e in entries)):
+                    raise ValueError('Path not present at this revision: ' + selected)
+            entries = [e for e in entries if any(e['path'] == p or e['path'].startswith(p + '/') for p in paths)]
         total = sum(item['size'] or 0 for item in entries)
-        if total > MAX_SNAPSHOT_BYTES:
-            raise ValueError('Snapshot exceeds the %d-byte extraction limit' % MAX_SNAPSHOT_BYTES)
+        if max_bytes is not None and total > max_bytes:
+            raise ValueError('Snapshot exceeds the %d-byte extraction limit' % max_bytes)
+        ancestor = destination.parent
+        while not ancestor.exists():
+            ancestor = ancestor.parent
+        if total > shutil.disk_usage(ancestor).free:
+            raise ValueError('Not enough free space to recover the selected contents')
         for item in entries:
             _safe_path(item['path'])
         destination.mkdir(parents=True, exist_ok=False)
@@ -573,3 +592,6 @@ class Repository:
         return dict(sha=sha, path=str(destination), files=files_written, bytes=total, warnings=warnings,
                     submodules=submodules, lfs_pointers=lfs, symlinks=[name for name, _ in symlinks],
                     method='git-object-database', filters_executed=False, object_hashes_verified=True)
+
+    def empty_directories(self, revision):
+        return []  # Ordinary Git trees cannot represent empty directories.

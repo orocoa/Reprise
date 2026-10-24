@@ -55,3 +55,34 @@ class JobsTests(unittest.TestCase):
             event.set()
             jobs.close()
         self.assertFalse(jobs.watcher.is_alive())
+
+    def test_cancel_after_verified_directory_switch_reports_actual_commit(self):
+        import shutil
+        from reprise.projects import ProjectStore
+        from reprise.relocation import migrate, relink
+        for operation, action in [('migrate', migrate), ('relink', relink)]:
+            with self.subTest(operation=operation):
+                root = fixture('jobs-relocation-commit')
+                source, target = root / 'source', root / 'target'
+                source.mkdir(); (source / 'draft.md').write_text('saved')
+                projects = ProjectStore(root / 'state')
+                project = projects.add(str(source), kind='folder')
+                projects.snapshot(project['id'], 'Saved')
+                if operation == 'relink':
+                    shutil.copytree(source, target)
+                jobs = Jobs(root / 'state')
+                try:
+                    def finish_then_cancel(cancel):
+                        result = action(projects, project['id'], str(target), cancel)
+                        write_json(cancel.request_path, {'requested_at': 'after-switch'})
+                        return result
+                    job = jobs.submit(project['id'], operation, finish_then_cancel, cancellable=True)
+                    jobs.close()
+                    completed = jobs.get(job['id'])
+                    self.assertEqual(completed['status'], 'complete', completed)
+                    self.assertTrue(completed['cancel_arrived_after_commit'])
+                    self.assertEqual(projects.record(project['id'])['path'], str(target))
+                    self.assertTrue(source.is_dir())
+                    self.assertEqual((target / 'draft.md').read_text(), 'saved')
+                finally:
+                    jobs.close()

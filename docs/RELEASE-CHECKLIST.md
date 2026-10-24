@@ -14,7 +14,6 @@
 | 平台 | macOS 和 Linux 对应 CI 实际通过；只通过 macOS 时仅把 macOS 标为已验证，不以 CI 配置代替结果 |
 | 发布内容 | 当前视觉定稿再跑受影响界面回归；最终安装物与其源码匹配；保留 MIT 和第三方许可，无本机应用数据/真实密钥进入发行物 |
 
-已有多组 PersonalWeb demo 能证明常见使用流程可行，不能替代空仓库、浅历史、裸仓库、多父合并、损坏记录、跨进程取消和独立安装这些边界回归。所有新诊断放在 `work/test-artifacts/`，本机不自动删除；CI 的日志和产物按工作流保存 90 天，正式发布证据应另行归档。
 
 ## 架构结论与规模边界
 
@@ -22,4 +21,4 @@ Git 对象、项目配置、运行生命周期、采集证据与 AI 提案的职
 
 不承诺任意历史提交能运行，也不把独立副本称为安全沙箱。长期磁盘证据按设计保留。每个 tip 的加载范围有明确边界；当前图仍渲染全部已加载节点，极大历史与首次全文件搜索的成本随规模增长。若以后主要面向数万提交，再依据实测增加分段显示或索引，并保持完整版本和父边契约。
 
-本次本机审计的基准、失败记录、最终回归和页面截图保存在 `work/test-artifacts/architecture-audit-20261009T234548/`，审核报告见同目录 `report.md`。该目录是诊断证据，不进入安装包。
+> Source-package note: internal acceptance notes and local evidence locations are omitted. This document does not substitute for validation of the exact candidate you installed.

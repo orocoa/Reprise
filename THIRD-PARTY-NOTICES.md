@@ -12,9 +12,22 @@ Bundled third-party assets retain their original licenses and notices:
 | Feather edit-2 icon and derived inline path | MIT | `web/icons/feather-LICENSE` |
 | Tabler pencil icon | MIT | `web/icons/tabler-LICENSE` |
 
-Playwright is an optional browser dependency installed separately, rather than
-bundled into the Python package. Its package includes its own license notices.
-Git, Python, Node and browsers are supplied by the user's environment.
+For source/Python-package installations, Playwright is an optional dependency
+installed separately, and Git, Python, Node and browsers come from the user's
+environment. The standalone macOS runtime package instead includes pinned
+copies of Python, Git, Node, Playwright Core and Chromium Headless Shell.
+
+In the standalone package, the asset paths above are prefixed with
+`app/reprise/` (for example `app/reprise/web/fonts/Inter-OFL.txt`). Runtime
+versions, upstream URLs and archive hashes are recorded in
+`runtime/upstream-lock.json`. Additional Python and Git licenses are under
+`licenses/`; Node's license remains in `runtime/node/LICENSE`, Playwright Core's
+LICENSE/NOTICE/ThirdPartyNotices.txt remain in `runtime/node_modules/playwright-core/`,
+and the browser notice remains beside its binary as `LICENSE.headless_shell`.
+Git and dugite-native source/build archives are included under `sources/`.
+These components retain their respective licenses; Reprise's MIT license does
+not replace them. The compact screenshot package does not include FFmpeg or
+support video recording.
 
 Imported repositories and screenshots/videos provided by users keep their
 original ownership and licenses. Reprise's license does not relicense them.

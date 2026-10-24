@@ -137,12 +137,14 @@ try {
   if (cancelled) throw new Error('Capture cancelled');
   try {
     browserServer = await chromium.launchServer(options);
-    const pid = browserServer.process().pid;
-    fs.writeFileSync(input.browser_process_path, JSON.stringify({pid, process_identity: identityFor(pid)}));
-    if (cancelled) throw new Error('Capture cancelled');
-    browser = await chromium.connect(browserServer.wsEndpoint());
   }
   catch (error) { throw new Error(`Chromium could not start. Install it with npx playwright install chromium or set REPRISE_BROWSER. ${message(error)}`); }
+  const pid = browserServer.process().pid;
+  const identity = identityFor(pid);
+  if (!identity) throw new Error('Cannot establish the Chromium process identity. Capture needs permission to observe its own child processes; no browser ownership record was published.');
+  fs.writeFileSync(input.browser_process_path, JSON.stringify({pid, process_identity: identity}));
+  if (cancelled) throw new Error('Capture cancelled');
+  browser = await chromium.connect(browserServer.wsEndpoint());
   output.browser_version = browser.version();
   for (const scenario of input.recipe.captures) {
     if (cancelled) break;

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reprise · 倒带"
+  short_description: "打开倒带，保存网页稿、按画面找回旧版 · Local webpage drafts"
+  default_prompt: "Use $reprise to open the workbench in the language of our conversation."

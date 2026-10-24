@@ -1,84 +1,95 @@
-# 用 AI agent 打开 Reprise
+# 通过 agent 使用倒带 / Reprise
 
-从 GitHub 下载完整 skill ZIP，交给本机 agent 打开，由 agent 使用当前项目或用户给出的路径直接打开。Reprise 无须安装成 App，也不依赖 Codex 账号、SDK 或专用浏览器工具。
+当前为 [0.8.0 预览发布](https://github.com/orocoa/Reprise/releases/tag/v0.8.0-rc.1)。主附件 `Reprise-Skill.zip` 包含脚本、核心源码和工作台，是主要交付。本次只交付源码 Skill 与双语内容包。
 
-## 下载与使用
+## 接入一次，之后说“打开”
 
-- [通用 skill ZIP](https://github.com/orocoa/Reprise/releases/latest/download/reprise-skill.zip)：Codex、TRAE，以及支持本地脚本的 Agent Skills 客户端。
-- [WorkBuddy skill ZIP](https://github.com/orocoa/Reprise/releases/latest/download/reprise-workbuddy.zip)：相同程序，附带 WorkBuddy 发布平台要求的描述与作者字段。
-- [GitHub Releases](https://github.com/orocoa/Reprise/releases)：选择指定版本，校验 `SHA256SUMS.txt`。
+将完整源码 Skill 包交给有本机文件和命令执行能力的 agent：
 
-解压后保留完整的 `reprise/` 目录，包括 `SKILL.md`、`scripts/` 和 `assets/`。只复制 `SKILL.md` 无法运行。本地需要 **Python 3.9+、Git、浏览器**，系统支持 macOS/Linux；Windows 请在 WSL 中运行，并使用可访问 WSL 本机服务的浏览器。
+> 帮我接入倒带 / Reprise。先检查并复用已有环境，缺少的依赖按官方方法和当前授权安装，然后打开。
 
-对 agent 说：
+导入或复制时保留 `SKILL.md`、`scripts/`、`assets/` 和参考文件；脚本从包内定位固定核心，不要求你手工拼备份逻辑或填写环境变量。agent 核对客户端真正支持的 Skill 位置或导入面板，不猜路径、不覆盖已有技能。仅上传一份 SKILL.md 不足以运行。
 
-> 使用这个目录里的 Reprise skill，先检查环境，再打开当前工作区的 Git 项目。目录是「这里填写解压后的 reprise 路径」。
+接入后选择 **Reprise Skill**，说“打开”。只打开工作台，不导入或保存当前目录。要留一稿时再说“保存当前网页这一稿，同时记住画面”，复用对话中已明确的项目。项目不明确时才询问位置。
 
-或者：
+Skill 标识为 `reprise`，“倒带”是中文产品名。显示名不等于注册了通用 `@倒带` / `@Reprise` 别名；选择方式由实际客户端决定。沿用对话中英文，不翻译用户标题和文件路径，也不配置另一套 AI Key 或模型。
 
-> 用 Reprise 打开「这里填写我的 Git 项目路径」，让我看历史和预览。
+## agent 先复用，再补缺项
 
-agent 执行 `scripts/reprise.py doctor` 后打开同一个 CLI。没有浏览器启动权限时加 `--no-browser`，把 JSON 中的 URL 交给用户。浏览器打开后，查看历史、比较文件、运行旧版和恢复均由本机 Reprise 服务处理，后续浏览无需持续调用 agent。
-
-## 各客户端入口
-
-| 客户端 | 安装 / 打开方式 | 验证范围 |
+| 任务 | 必需环境 | 检查边界 |
 | --- | --- | --- |
-| Codex | 将完整 `reprise/` 放到 `~/.agents/skills/` 或项目的 `.agents/skills/`，再调用 `$reprise`；已有同名技能时先选择单一版本，避免重复入口 | 通用格式、相对路径、独立运行包和本地 CLI；当前开发由 Codex 完成 |
-| TRAE CN | 完整目录放到项目 `.trae/skills/reprise/` 或全局 `~/.trae-cn/skills/reprise/`，在对话中要求使用 Reprise；也可启用 `.agents/skills` 发现 | 3.4.3 客户端已原生识别并调用 0.4.0 发布包；doctor、实际启动、第一版预览与恢复通过，启动时由用户单次确认客户端运行权限 |
-| WorkBuddy | 技能板块 → 添加技能 → 上传技能，选择 `reprise-workbuddy.zip`；或解压后把 `SKILL.md` 路径交给本地 agent，保留全部资源 | 对照 Open Platform 必填字段；独立包与 CLI 已测，本机尚未安装客户端，平台 ZIP 解析及客户端内调用待测 |
-| 其他本地 agent | 读取完整目录的 `SKILL.md`，用本地命令工具执行脚本；原生技能目录按客户端说明选择 | 通用 Python CLI，不保证每个客户端的原生安装机制 |
+| 打开工作台、保存、历史与恢复 | Python 3.9+、可运行的 Git；看工作台还需网页浏览器 | 普通文件夹也使用 Reprise 内部 Git 存储。Python 核心只用标准库，无须为核心 pip install。 |
+| 自动网页截图 | 再加 Node、Node 版 Playwright 和匹配的 Chromium，或已实际验证的兼容浏览器 | 项目锁定 Playwright 1.62.1，要求 Node 20+；新装选择受支持的 LTS 22/24。不是 Python Playwright，也不需要创建 Playwright 测试项目。 |
+| Vite 等需运行项目的画面 | 截图环境，加该网页自己的依赖和已确认配方 | 项目安装/运行命令另行明确批准，在独立副本执行；准备 Reprise 工具不等于批准网页脚本。 |
 
-规范相同不代表执行环境相同。只有云端容器的 agent 无法直接访问用户电脑上的项目，需要本地执行功能及文件权限。如果某客户端导入只保存指令，须把完整目录保留在本机并告诉 agent 实际脚本路径。
+Python 3.9 是代码最低要求，不是新装推荐；选择官方仍维护的版本。agent 先检查宿主公开提供或当前可用的工具，核对版本和可运行性。比如某台 Codex 已有依赖，不代表所有 Codex、WorkBuddy 或 TRAE 都提供同一能力。
 
-规范来源（2026-10-20）：[Agent Skills](https://agentskills.io/specification)、[Codex](https://learn.chatgpt.com/docs/build-skills)、[TRAE](https://docs.trae.cn/ide_skills)、[WorkBuddy](https://open.workbuddy.cn/en/docs/skill)。WorkBuddy ZIP 只有前置元数据有差异，其余代码和资源共用同一构建源。
+缺少时，agent 给出具体安装方案，在任务已有授权和宿主正常许可下继续，复用已有安装授权，不额外要求逐包确认；需要系统认证、管理员操作、网络或额外命令许可时，按真实流程处理。工具安装在 Reprise 自己的用户级位置，不写进受管网页源仓库，不默默改全局 shell、模型或权限设置。已核实的工具路径由 agent 用于当前命令，普通用户不需要手填环境变量。没有安装权限时说明缺项，基础文件操作仍可在其依赖齐全时进行。
 
-### 客户端的运行确认
+官方来源（2026-10-24 核对）：[Python 下载](https://www.python.org/downloads/)、[Git 安装](https://git-scm.com/install/)、[Node 下载](https://nodejs.org/en/download)、[Playwright Node library](https://playwright.dev/docs/library)、[浏览器版本与安装](https://playwright.dev/docs/browsers)。选择已有成熟工具，不临时编写跨系统安装器；安装请求发出不等于已安装成功。
 
-Reprise 会启动本机 HTTP 服务和后台进程。在启用沙箱的客户端中，读取技能、运行 `doctor` 与实际启动服务可能具有不同权限。TRAE CN 3.4.3 的实机检查出现「Allow commands ... to run outside the sandbox?」确认框；用户单次确认后成功启动。不能把技能识别成功直接记作服务已运行。
+自动截图还需要宿主允许创建本地服务、启动并观察自己的子进程。Skill 不授予系统权限。若当前环境禁止必要检查，明确报告并停止相关操作；使用宿主针对本次命令的正常许可流程，不改模型、全局或临时线程权限，不重复保存来重试画面。
 
-遇到此类提示时，由用户检查具体命令并决定是否允许本次执行。技能不会替用户批准，也不要求关闭沙箱或把命令设为永久允许。命令未成功时不生成示例 URL 代替真实结果。WorkBuddy 的导入入口依据其[客户端技能文档](https://www.codebuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)，客户端执行权限仍须单独实测。
+## 固定源码入口与结果
 
-### TRAE 实机验收范围
-
-2026-10-20，使用 GitHub 0.4.0 的完整通用 ZIP，在 TRAE CN 3.4.3 的独立两提交测试项目中执行：
-
-- `/reprise` 列出并加载项目技能；客户端返回 `doctor` 成功、59 个清单文件已检查。
-- 客户端启动真实本机服务，核对 HTTP 健康接口、版本、项目路径与两条 Git 提交。
-- 在工作台选择第一版，保存无项目命令的静态配方，实际运行独立副本；预览响应与该版 Git blob 逐字节一致。
-- 通过工作台恢复到新目录；恢复文件与同一 Git blob 逐字节一致，源 HEAD 和已跟踪文件保持不变。
-- 在 1360×900 与 390×844 检查预览 / 恢复结果；未发现页面脚本异常。截图使用 Chromium 补验，因为首选 ego lite 的窗口处于最小化状态。
-
-这验证了 TRAE 发起技能调用、Reprise 独立运行及工作台预览 / 恢复流程；没有把所有框架、所有仓库或 WorkBuddy 客户端都归为已实测。
-
-## 项目里的完整流程
-
-1. 在目标项目目录中要求 agent 打开 Reprise，或直接提供仓库路径。支持普通仓库、裸仓库和 worktree；无须在界面再次选择。导入不安装或执行代码。
-2. 选择提交查看文件和父子关系。空仓库显示空状态；缺失的历史对象和资源明确提示。
-3. 静态网页选择识别入口，保存配置后运行独立副本。其他类型需核对并保存命令配方；命令以当前用户权限执行。预览可新标签打开或手动嵌入。自动截图和录屏另需 Node/Playwright。
-4. 点击「恢复 / 导出」。恢复要求一个尚不存在、位于源仓库外的新目录；下载 ZIP 无须填写目录。两者按完整 SHA 读取并校验 Git blob，保留执行权限及安全的内部符号链接。
-5. 结果是**文件快照**，不含 `.git` 历史；子模块不会自动下载，LFS 指针不会伪装成真实大文件。任务提供路径或下载链接，取消或失败的输出和记录继续保留。
-
-默认资料目录在 macOS `~/Library/Application Support/Reprise`、Linux `$XDG_DATA_HOME/reprise`（未设置时 `~/.local/share/reprise`）。`--data` 可指定其他外部目录。项目、说明、配方和证据保存在本机，更新 skill 不替换这些资料。关闭标签页不会停止服务；需要时执行 `shutdown`，自定义资料目录必须一致。
-
-## 不使用 agent
-
-在解压后的目录运行，同样不需要 pip 安装：
+agent 使用已安装 Skill 的绝对 `scripts/reprise.py` 路径：
 
 ```sh
-python3 /path/to/reprise/scripts/reprise.py doctor
-python3 /path/to/reprise/scripts/reprise.py open .
-python3 /path/to/reprise/scripts/reprise.py open /path/to/my-project
-python3 /path/to/reprise/scripts/reprise.py shutdown
+python3 /absolute/path/reprise/scripts/reprise.py doctor
+python3 /absolute/path/reprise/scripts/reprise.py open --workbench --lang zh --no-browser
+python3 /absolute/path/reprise/scripts/reprise.py save /known/webpage --title "改颜色之前" --capture-static
 ```
 
-完整 GitHub 源码也能运行 `python3 run.py open` 或 `python3 skills/reprise/scripts/reprise.py open`。只复制 skill 子目录的第三方安装器会缺少运行代码，请使用自包含 release ZIP。
+英文打开显式传 `--lang en`。只打开使用 `open --workbench`，不猜当前目录。`doctor` 检查 Python/Git、核心与包完整性，**不代表 Node、Playwright 或截图浏览器已经可用**；画面必须以实际采集结果判断。
 
-维护者从同一源码生成两个包，不维护两套运行代码：
+普通“保存这一稿”沿用已有截图偏好，不自动加截图请求。明确要求本稿画面时，按包内 Skill 规则处理一次性采集；已批准 auto 继续用其模板。成功一次不会开启未来自动截图。
+
+文件已保存与画面完成分别回报。缺图不借用另一稿；截图失败不重复保存同样文件。文件未变时可复用旧稿及标题，不能声称新名字已创建。恢复取到新目录，保留当前项目。完整参数和边界以实际包内 Skill 为准，操作细节见[工作台任务](WORKSPACE-TASKS.md)。
+
+## 客户端接入与当前证据
+
+| 客户端 | 官方机制 | 本候选的验证范围 |
+| --- | --- | --- |
+| Codex | 用户 `~/.agents/skills/reprise` 或项目 `.agents/skills/reprise`；CLI / IDE 支持 `/skills` 或 `$`，桌面以实际入口为准 | 最终 Skill 已安装到本机 Codex，发现接口确认单一入口启用；实际保存两稿及画面，并在工作台按图恢复。原生选择器/输入框及所有权限模式没有因此通过。 |
+| TRAE CN | 用户 `~/.trae-cn/skills/reprise` 或项目 `.trae/skills/reprise`；支持面板导入与自然语言点名 | 本机 3.4.4 已安装，原生操作按用户安排延期。需核对导入后脚本与 assets 保留。 |
+| WorkBuddy | 技能页“添加技能 → 上传技能”，再按实际对话入口调用 | 本机 5.8.3 已安装，原生操作延期；本地上传与市场提交是不同接口，不据格式声明保证完整运行。 |
+
+来源：[OpenAI Build skills](https://learn.chatgpt.com/docs/build-skills)、[TRAE Skills](https://docs.trae.cn/ide_skills)、[WorkBuddy 技能](https://www.workbuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)、[WorkBuddy 平台字段](https://open.workbuddy.cn/docs/skill)。OpenAI 文档将 ChatGPT 的 `@` 与 Codex CLI/IDE 的入口分别说明，不能泛化成每个桌面版本都支持同一别名。
+
+本机源码 Skill 证明使用现成的 Codex Python/Git/Node/Playwright 和已有 Chrome，没有新装依赖或修改配置；它只证明这台机器的这组环境可用，不是全新 Mac 自动安装、跨客户端自动截图或外部用户独立成功。较早其他分发路线的诊断仅作历史记录，不作为本次接入步骤。
+
+## English
+
+The **0.8.0 preview source Skill**, delivered as `Reprise-Skill.zip`, is the primary path: keep its scripts, fixed source core, web UI and resources together. Give the full Skill package to a local agent, ask it to check and reuse the environment, install missing tools using official methods and current authorization, then open Reprise. Import must retain `scripts/` and `assets/`; SKILL.md alone is insufficient. Preserve existing Skills and verify the actual client entry.
+
+After setup, select Reprise and say **“Open.”** Opening does not import or save the current directory. Save only when requested, using the established project. The identifier is `reprise`; the Chinese name does not register a universal `@` alias. Follow the conversation language without translating titles or paths, adding an AI key, or changing models.
+
+| Task | Required environment | Limits |
+| --- | --- | --- |
+| Workbench, saving, history and recovery | Python 3.9+, runnable Git and a browser for the UI | Folder snapshots also use internal Git. The Python core uses the standard library and needs no pip package. |
+| Automatic pictures | Node, the Node Playwright library and matching Chromium or a verified compatible browser | Playwright 1.62.1 requires Node 20+; supported LTS 22/24 is recommended for new installations. This is not Python Playwright or a test-project scaffold. |
+| Build-based website pictures | Capture tools plus project dependencies and an approved recipe | Website scripts require separate approval and run in an independent copy. Tool setup does not approve project commands. |
+
+Version 3.9 is the Python code minimum, not a fresh-install recommendation. The agent first verifies available host tools and versions. If anything is missing, it reuses existing installation authorization and uses official installers or mature supported methods through normal authorization, without demanding confirmation for every package, in a Reprise-specific location outside the managed website source. Ordinary users do not enter environment variables; the agent passes verified tool paths for the current command without changing global shell, model or permission settings. Authentication, administrator interaction, network and command access remain real limits. Not every agent can install tools. Installation requests are not proof of completion.
+
+Official sources: [Python](https://www.python.org/downloads/), [Git](https://git-scm.com/install/), [Node](https://nodejs.org/en/download), [Playwright library](https://playwright.dev/docs/library) and [browser installation](https://playwright.dev/docs/browsers). Local services and subprocess identity checks also need normal host permission; if unavailable, report the boundary rather than changing settings or repeatedly saving/capturing.
+
+Use the source Skill’s absolute entry:
 
 ```sh
-python3 scripts/build_skill.py --output work/releases/reprise-skill.zip
-python3 scripts/build_skill.py --profile workbuddy --output work/releases/reprise-workbuddy.zip
+python3 /absolute/path/reprise/scripts/reprise.py doctor
+python3 /absolute/path/reprise/scripts/reprise.py open --workbench --lang en --no-browser
+python3 /absolute/path/reprise/scripts/reprise.py save /known/webpage --title "Before changing the colors" --capture-static
 ```
 
-打包只收集 skill 源、`src/reprise/`、`web/` 和许可文件，生成逐文件 SHA-256 manifest；不包含项目、注册表、证据、密钥、模型配置或 `work/`。已有目标不覆盖，请用新路径。`doctor` 检查环境及全部清单文件。
+`doctor` checks Python/Git, core and package integrity, not screenshot readiness. Ordinary saves retain the existing picture preference; explicit picture requests follow the packaged Skill’s rules. A successful capture does not enable future automatic capture. Report saved files and captured pictures separately, retain missing-picture status, and recover into a new folder. Unchanged files can reuse the existing title; do not claim a requested new title was created. See [workbench tasks](WORKSPACE-TASKS.md#english).
+
+| Client | Documented mechanism | Candidate evidence |
+| --- | --- | --- |
+| Codex | User `~/.agents/skills/reprise` or project `.agents/skills/reprise`; CLI/IDE `/skills` or `$`; desktop uses its actual entry | The final Skill was installed and discovered as one enabled entry in this Mac’s Codex. Actual draft/picture calls and browser recovery passed. Native selector/composer actions and every permission profile are not established by this evidence. |
+| TRAE CN | User `~/.trae-cn/skills/reprise` or project `.trae/skills/reprise`; panel import and natural-language invocation | Version 3.4.4 is installed here; native operations are deferred. Check that import retains scripts and assets. |
+| WorkBuddy | Add/upload a local Skill, then invoke it through the actual conversation entry | Version 5.8.3 is installed here; native operations are deferred. Market metadata and local import are separate contracts. |
+
+Client sources: [OpenAI](https://learn.chatgpt.com/docs/build-skills), [TRAE](https://docs.trae.cn/ide_skills), [WorkBuddy](https://www.workbuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market) and [platform fields](https://open.workbuddy.cn/docs/skill). Do not infer a universal `@` prefix.
+
+The host-source proof reused this Mac’s existing Codex Python/Git/Node/Playwright and Chrome, with no installation or configuration change. It does not establish fresh-Mac setup, automatic discovery in every agent, cross-client screenshots or independent adoption.

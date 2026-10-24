@@ -40,15 +40,41 @@ const parityActions={
  }
 };
 function changeLanguage(language){
+ if(!['zh','en'].includes(language))return;
+ const presentationDraft=$('#project-presentation')?.value;
  const settingsOpen=$('#dialog').open&&$('#dialog').classList.contains('settings-dialog');
+ const snapshotDraft=$('#dialog').open&&$('#content-version-title')?{title:$('#content-version-title').value,mode:$('#preview-preference-mode')?.value}:null;
+ const preferenceDraft=$('#dialog').open&&$('#dialog').dataset.previewPreferences?{mode:$('#preview-preference-mode').value}:null;
+ const recoveryDraft=$('#dialog').open&&$('#dialog').dataset.recoveryForm?{...state.recoveryTarget,to:$('#restore-path').value}:null;
+ const recoveryResultJob=$('#dialog').open&&$('#dialog').dataset.recoveryResult?state.recoveryResultJob:null;
+ const fileComparison=$('#dialog').open&&$('#dialog').dataset.fileComparison?state.fileComparison:null;
+ const returnContext=dialogParent;
+ const savedPreview=$('#dialog [data-saved-preview]')?state.savedPreviewJob:null;
+ const quickPreview=$('#dialog').open&&$('#dialog').dataset.quickPreview?{...state.quickPreviewTarget}:null;
+ const importDraft=$('#dialog #folder-import-name')?readImportDraft():null;
+ const importReport=$('#dialog #folder-import-report')?state.importReport:null;
+ const importCost=$('#dialog #folder-import-preflight')?state.importCost:null;
+ const importCostFailure=$('#dialog #folder-import-preflight-failure')?state.importCostFailure:null;
  uiLanguage=language;try{localStorage.setItem('reprise.language',uiLanguage);}catch{}
  const url=new URL(location.href);url.searchParams.set('lang',uiLanguage);history.replaceState(null,'',url);
- if(!settingsOpen)closeDialog();
+ // Keep unrelated editors and their user-entered values open while translating.
+
  const origin=$('#history-origin'),archive=state.historySources.filter(s=>s.kind==='archive').reduce((n,s)=>n+s.unique_commits,0),current=state.historySources.find(s=>s.kind==='current')?.count||state.commits.length;
  origin.textContent=uiLanguage==='en'?`${current} repository commits · ${archive} archived records`:`当前仓库 ${current} 条 · 历史存档 ${archive} 条`;
  renderHistory();keepSelectedHistoryVisible();renderDetail();
- if(settingsOpen){const dialog=$('#dialog'),top=dialog.scrollTop;$('#dialog .dialog-body').innerHTML=settingsContent();dialog.scrollTop=top;}
- localizeDOM();if(settingsOpen)$(`#dialog [data-action=language][data-language=${uiLanguage}]`)?.focus({preventScroll:true});
+ if(settingsOpen){const dialog=$('#dialog'),top=dialog.scrollTop;$('#dialog .dialog-body').innerHTML=settingsContent();dialog.scrollTop=top;if(presentationDraft)$('#project-presentation').value=presentationDraft;}
+ if(recoveryDraft)recoveryDialog(recoveryDraft.paths,recoveryDraft,{parent:returnContext});
+ else if(recoveryResultJob)recoveryResult(recoveryResultJob,{parent:returnContext});
+ else if(fileComparison){renderFileComparison();}
+ else if(snapshotDraft)snapshotDialog(snapshotDraft);
+ else if(preferenceDraft)previewPreferencesDialog(preferenceDraft);
+ else if(savedPreview)savedPreviewDialog(savedPreview);
+ else if(quickPreview)quickPreviewDialog(quickPreview.root,quickPreview).catch(error=>notify(error.message));
+ else if(importDraft)importFoldersDialog(importDraft);
+ else if(importReport)importReportDialog(importReport);
+ else if(importCost)importCostDialog(importCost.preview,importCost.input);
+ else if(importCostFailure)importCostFailureDialog(importCostFailure);
+ localizeDOM();refreshContentStatus();if(settingsOpen)$(`#dialog [data-action=language][data-language=${uiLanguage}]`)?.focus({preventScroll:true});
 }
 document.addEventListener('change',async e=>{try{if(['compare-base','compare-target'].includes(e.target.id))await changeComparison(e.target);}catch(error){notify(error.message);}});
 window.addEventListener('hashchange',()=>{if(state.project)setWorkspaceView(location.hash==='#resources'?'resources':'versions');});

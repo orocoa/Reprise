@@ -8,11 +8,14 @@ import urllib.parse
 
 from . import __version__
 from .http_files import serve_file
+from .launcher import service_source_id
 from .service import Reprise
 from .storage import now, write_json
 from .processes import ProcessCleanupError
 from .static_server import LoopbackHTTPServer
-from . import workspace
+from . import workspace, experience, desktop
+from .recovery_destination import suggest_destination
+from .text_diff import build_text_diff
 
 WEB = Path(__file__).resolve().parent / 'web'
 if not WEB.is_dir():
@@ -31,6 +34,8 @@ class LocalServer(LoopbackHTTPServer):
         self.service = service
         self.token = secrets.token_urlsafe(32)
         self.instance_id = secrets.token_hex(24)
+        # Keep the startup origin even if the package is moved while running.
+        self.source_id = service_source_id()
         super().__init__(address, Handler)
 
 
@@ -110,9 +115,44 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ValueError('JSON body must be an object')
         app = self.server.service
+        if len(parts) == 4 and parts[:2] == ['api', 'recoveries'] and parts[3] == 'reveal' and method == 'POST':
+            return self.send_json(app.recovery.reveal(parts[2]))
+        if path == '/api/desktop' and reading:
+            return self.send_json(desktop.capabilities())
+        if path == '/api/desktop/choose-folder' and method == 'POST':
+            return self.send_json(desktop.choose_folder())
+        if path == '/api/privacy' and reading:
+            return self.send_json(app.privacy())
+        if path == '/api/storage' and method == 'POST':
+            return self.send_json(app.inspect_storage(), 202)
+        if path == '/api/transfer' and reading:
+            return self.send_json(app.transfer_info())
+        if path == '/api/folder-imports/preflight' and method == 'POST':
+            return self.send_json(app.folder_imports.start_analysis(body), 202)
+        if path == '/api/folder-imports' and method == 'POST':
+            return self.send_json(app.folder_imports.start(body), 202)
+        if len(parts) == 3 and parts[:2] == ['api', 'folder-imports'] and reading:
+            return self.send_json(app.folder_imports.get(parts[2]))
+        if len(parts) == 4 and parts[:2] == ['api', 'folder-imports'] and parts[3] == 'review' and method == 'POST':
+            report = app.folder_imports.get(parts[2])
+            return self.send_json(app.jobs.submit(report['project_id'], 'folder-import-review',
+                lambda cancel: app.folder_imports.review(parts[2], cancel),
+                request={'report_id': parts[2]}, cancellable=True), 202)
+        if path in ('/api/backup-check', '/api/data-restore') and method == 'POST':
+            return self.send_json(app.data_transfer(path.rsplit('/', 1)[1], body), 202)
+        if len(parts) == 3 and parts[:2] == ['api', 'organization'] and reading:
+            return self.send_json(app.organization.get(parts[2]))
+        if len(parts) == 4 and parts[:2] == ['api', 'organization'] and parts[3] == 'selection' and method == 'POST':
+            return self.send_json(app.organization.select(parts[2], body.get('paths')))
         if path == '/api/health' and reading:
-            return self.send_json({'ok': True, 'version': __version__, 'instance_id': self.server.instance_id})
+            return self.send_json({'ok': True, 'version': __version__, 'instance_id': self.server.instance_id,
+                                   'source_id': self.server.source_id})
         if path == '/api/shutdown' and method == 'POST':
+            # A desktop window may only stop the service instance it started.
+            # Check on the receiving server as well as in the launcher so a
+            # replaced process or reused port cannot acquire shutdown authority.
+            if 'instance_id' in body and body['instance_id'] != self.server.instance_id:
+                return self.send_json({'stopped': False, 'reason': 'different-instance'})
             app.close()
             for runtime in app.runtimes.list():
                 if runtime['running']:
@@ -125,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
                 projects = []  # Project metadata is loaded once, in the workspace snapshot.
             else:
                 projects = [app.projects.get(query['project'][0])] if query.get('project', [''])[0] else app.projects.list()
-            return self.send_json({'token': self.server.token, 'projects': projects, 'runtimes': app.runtime_list(), 'ai': app.ai.state(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
+            return self.send_json({'token': self.server.token, 'projects': projects, 'runtimes': app.runtime_list(), 'data_directory': str(app.directory), 'version': __version__, 'jobs': app.jobs.list(), 'job_warnings': app.jobs.warnings()})
         if path == '/api/workspace/context' and reading:
             return self.send_json(workspace.context(app, query.get('project', [None])[0]))
         if path == '/api/workspace/snapshot' and reading:
@@ -138,13 +178,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({**repository.diff(query['target'][0], base=query['base'][0]),
                                    'source_project_id': source})
         if path == '/api/workspace/file' and reading:
-            return self.send_json(workspace.file_comparison(app, query['project'][0],
-                query['sha'][0], query['path'][0], query.get('base', [None])[0]))
+            pair = workspace.file_comparison(app, query['project'][0],
+                query['sha'][0], query['path'][0], query.get('base', [None])[0])
+            return self.send_json({**pair, 'text_diff': build_text_diff(pair)})
         if path == '/api/projects':
             if reading:
                 return self.send_json({'projects': app.projects.list()})
             if method == 'POST':
-                return self.send_json(app.projects.add(body.get('path'), body.get('name')), 201)
+                return self.send_json(app.projects.add(body.get('path'), body.get('name'), body.get('kind'), body.get('exclusions')), 201)
         if path == '/api/ai':
             if reading:
                 return self.send_json(app.ai.state())
@@ -152,6 +193,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(app.ai.save(body))
         if path == '/api/runtimes' and reading:
             return self.send_json({'runtimes': app.runtime_list()})
+        if len(parts) == 4 and parts[:2] == ['api', 'environments'] and method == 'POST':
+            if parts[3] == 'check':
+                return self.send_json(app.runtimes.environment_check(parts[2]))
+            if parts[3] == 'release':
+                if body.get('confirm') is not True:
+                    raise ValueError('请明确确认释放此环境。')
+                return self.send_json(app.runtimes.release_environment(parts[2]))
         if len(parts) == 3 and parts[:2] == ['api', 'jobs'] and reading:
             return self.send_json(app.jobs.get(parts[2]))
         if len(parts) == 4 and parts[:2] == ['api', 'jobs'] and parts[3] == 'cancel' and method == 'POST':
@@ -163,7 +211,59 @@ class Handler(BaseHTTPRequestHandler):
             suffix = '/'.join(parts[3:])
             if not suffix and reading:
                 return self.send_json(app.projects.get(identifier))
+            if suffix == 'visual-history' and reading:
+                return self.send_json(experience.visual_history(app, identifier))
+            if suffix == 'recovery-destination' and reading:
+                return self.send_json(suggest_destination(app.recovery, identifier, query['sha'][0]))
+            if suffix == 'quick-preview' and reading:
+                return self.send_json(experience.plan_draft_preview(app, identifier,
+                    query['sha'][0], root=query.get('root', [None])[0]))
+            if suffix == 'quick-preview' and method == 'POST':
+                return self.send_json(experience.queue_capture(app, identifier, body), 202)
+            if suffix == 'preview-preferences' and method == 'PUT':
+                return self.send_json(app.projects.save_preview_preferences(identifier, body.get('mode'), body.get('recipe_sha')))
+            if suffix == 'version-delete-plan' and method == 'POST':
+                return self.send_json(app.version_delete_plan(identifier, body.get('shas')))
+            if suffix in ('version-delete', 'version-estimate') and method == 'POST':
+                return self.send_json(app.execute(identifier, suffix, body), 202)
+            if suffix == 'environments' and reading:
+                app.projects.record(identifier)
+                return self.send_json({'environments': app.runtimes.environments.list(identifier, query.get('sha', [None])[0])})
+            if suffix in ('verify', 'relink-check', 'relink', 'migrate') and method == 'POST':
+                return self.send_json(app.execute(identifier, suffix, body), 202)
             repository = app.projects.repository(identifier)
+            if suffix == 'file-content' and reading:
+                sha = repository.resolve(query.get('sha', ['HEAD'])[0])
+                name = query.get('path', [''])[0]
+                data = repository.blob(sha, name, max_bytes=65536)
+                try:
+                    if b'\0' in data:
+                        raise UnicodeError()
+                    text = data.decode('utf-8')
+                except UnicodeError:
+                    return self.send_json({'sha': sha, 'path': name, 'text': None,
+                                           'note': '此文件不是 UTF-8 文本，可按原始字节恢复。'})
+                return self.send_json({'sha': sha, 'path': name, 'text': text})
+            if suffix == 'files' and reading:
+                sha = repository.resolve(query.get('sha', ['HEAD'])[0])
+                offset, limit = int(query.get('offset', ['0'])[0]), int(query.get('limit', ['200'])[0])
+                if not 0 <= offset <= 1000000 or not 1 <= limit <= 200:
+                    raise ValueError('文件列表范围无效。')
+                search = query.get('query', [''])[0].casefold()
+                entries = [e for e in repository.tree(sha) if search in e['path'].casefold()]
+                return self.send_json({'sha': sha, 'files': entries[offset:offset + limit], 'total': len(entries),
+                                       'offset': offset, 'next_offset': offset + limit if offset + limit < len(entries) else None})
+            if suffix == 'duplicates' and reading:
+                sha = repository.resolve(query.get('sha', ['HEAD'])[0])
+                groups = {}
+                for entry in repository.tree(sha):
+                    if entry['type'] == 'blob' and entry['mode'] != '120000':
+                        groups.setdefault(entry['oid'], []).append(entry)
+                duplicates = [{'oid': oid, 'size': files[0]['size'], 'paths': [f['path'] for f in files]}
+                              for oid, files in groups.items() if len(files) > 1]
+                duplicates.sort(key=lambda group: group['size'] * (len(group['paths']) - 1), reverse=True)
+                return self.send_json({'sha': sha, 'groups': duplicates[:200], 'total': len(duplicates),
+                                       'shared_bytes': sum(g['size'] * (len(g['paths']) - 1) for g in duplicates)})
             if suffix == 'history' and reading:
                 return self.send_json(repository.history(query.get('ref', ['--all'])[0], limit=int(query.get('limit', ['50'])[0]), offset=int(query.get('offset', ['0'])[0])))
             if suffix == 'refs' and reading:
@@ -181,7 +281,7 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == 'histories' and method == 'PUT':
                 return self.send_json(app.projects.save_histories(identifier,
                     body.get('history_project_ids'), body.get('catalog')))
-            if suffix in ('run', 'capture', 'ai/suggest', 'restore', 'export') and method == 'POST':
+            if suffix in ('run', 'capture', 'ai/suggest', 'restore', 'export', 'snapshot', 'organize') and method == 'POST':
                 return self.send_json(app.execute(identifier, suffix, body), 202)
             if suffix == 'evidence' and reading:
                 sha = repository.resolve(query['sha'][0]) if query.get('sha') else None
@@ -216,6 +316,14 @@ def serve(directory, port=51582, fallback_port=False):
     except BlockingIOError:
         lock.close()
         raise ValueError('这个数据目录已有服务在运行，请使用已有服务或不同的 --data 目录。')
+    from .processes import strict_process_identity, ProcessObservationError
+    try:
+        identity = strict_process_identity(os.getpid())
+        if not identity:
+            raise ProcessObservationError('Cannot establish this Reprise service process identity')
+    except (OSError, ProcessObservationError):
+        lock.close()
+        raise
     app = Reprise(directory)
     try:
         server = LocalServer(('127.0.0.1', port), app)
@@ -227,10 +335,9 @@ def serve(directory, port=51582, fallback_port=False):
             raise
         server = LocalServer(('127.0.0.1', 0), app)
     url = 'http://127.0.0.1:%d/' % server.server_port
-    from .processes import process_identity
-    write_json(directory / 'server.json', {'pid': os.getpid(), 'identity': process_identity(os.getpid()),
+    write_json(directory / 'server.json', {'pid': os.getpid(), 'identity': identity,
                'instance_id': server.instance_id, 'url': url, 'started_at': now(),
-               'data_directory': str(directory), 'version': __version__}, private=True)
+               'data_directory': str(directory), 'version': __version__, 'source_id': server.source_id}, private=True)
     print('Reprise ' + url + '\nData: ' + str(directory), flush=True)
     try:
         server.serve_forever(poll_interval=.3)
