@@ -42,6 +42,9 @@ def archive_fixture(root, data):
     view = root / 'view.git'
     subprocess.run(['git', 'clone', '--bare', str(repository.path), str(view)], check=True, capture_output=True)
     view_repository = Repository(view)
+    # Bare clones do not copy a source repository's local author identity.
+    view_repository._run('config', 'user.name', 'Reprise Test')
+    view_repository._run('config', 'user.email', 'test@example.invalid')
     view_sha = view_repository._run('commit-tree', tree, input=b'Independent view\n').decode().strip()
     view_repository._run('update-ref', 'refs/tags/L01', view_sha)
     view_repository._run('update-ref', 'refs/heads/master', view_sha)

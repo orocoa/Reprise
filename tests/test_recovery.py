@@ -1,6 +1,7 @@
 """The UI and agent CLI recover exact blobs without touching registered sources."""
 import json
 import os
+import sys
 from pathlib import Path
 import time
 import unittest
@@ -37,7 +38,8 @@ class RecoveryTests(unittest.TestCase):
         result = self.app.recovery.create(self.repository, self.project, self.sha, 'restore')
         with patch('subprocess.run') as command:
             self.assertTrue(self.app.recovery.reveal(result['id'])['revealed'])
-            self.assertIn(result['path'], str(command.call_args[0][0]))
+            expected = result['path'] if sys.platform in ('darwin', 'win32') else str(Path(result['path']).parent)
+            self.assertIn(expected, command.call_args[0][0])
             self.assertNotIn('shell', command.call_args.kwargs)
         with self.assertRaises(ValueError):
             self.app.recovery.reveal('../arbitrary')
