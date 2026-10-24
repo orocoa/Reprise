@@ -9,9 +9,10 @@ import uuid
 from pathlib import Path
 
 from .recipes import recipe_hash, validate_recipe
-from .runtime import process_identity, read_json, utcnow, write_json
+from .runtime import read_json, utcnow, write_json
 from .cancellation import Cancelled, check, wait_owned_process, cancellable_lock
-from .processes import OwnedProcessTree, ProcessCleanupError, launch_owned
+from .processes import (OwnedProcessTree, ProcessCleanupError, launch_owned,
+                        strict_process_identity as process_identity)
 
 RUNNER_VERSION = 'reprise-playwright-v4'
 
@@ -91,6 +92,14 @@ class CaptureService:
             raise ValueError('Manual adapter: attach a screenshot, video or other artifact to this Git version')
         if recipe['adapter'] == 'command-web' and approved is not True:
             raise ValueError('Save and approve the command recipe before automatic capture')
+        resources = os.environ.get('REPRISE_BUNDLE_RESOURCES')
+        if resources and any(scenario['record'] for scenario in recipe['captures']):
+            from .desktop_bundle import video_recording_available
+            if not video_recording_available(resources):
+                raise ValueError(
+                    '当前运行包支持截图，不包含录像组件。请关闭录像后重新采集。 '
+                    'This runtime bundle supports screenshots but does not include video recording. '
+                    'Turn off recording and capture again.')
         target = repository.resolve(sha)
         base = repository.resolve(base) if base is not None else None
         if base:
@@ -130,7 +139,7 @@ class CaptureService:
                     runtime = None
                     try:
                         check(cancel)
-                        runtime = self.runtime_manager.start(repository, revision, side_recipe, approved=side_approved, cancel=cancel)
+                        runtime = self.runtime_manager.start(repository, revision, side_recipe, approved=side_approved, cancel=cancel, project_id=project_id)
                         record['runtimes'].append({'id': runtime['id'], 'side': side, 'sha': revision, 'path': runtime['path'], 'log_path': runtime['log_path']})
                         result_path = folder / ('%s-result.json' % side)
                         input_path = folder / ('%s-input.json' % side)
@@ -190,7 +199,7 @@ class CaptureService:
                         if isinstance(error, ProcessCleanupError):
                             record['cleanup_failed'] = True
                     finally:
-                        if runtime:
+                        if runtime and not runtime.get('reused_running'):
                             try:
                                 self.runtime_manager.stop(runtime['id'])
                             except Exception as error:

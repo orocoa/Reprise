@@ -1,2 +1,2 @@
-"""Reprise: local-first Git history, runtimes and reproducible evidence."""
-__version__ = "0.4.1"
+"""Reprise: local content versions, Git history and verified recovery."""
+__version__ = "0.8.0"

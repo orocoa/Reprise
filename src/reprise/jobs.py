@@ -137,13 +137,24 @@ class Jobs:
         def finish(result=None, error=None):
             try:
                 with locked(path.with_suffix('.lock')):
-                    if cancellable and cancel.requested():
+                    # A directory registration already switched after verification.
+                    # A later cancel request cannot undo that commit or report it absent.
+                    committed = (error is None and isinstance(result, dict) and
+                                 ((operation in ('relink', 'migrate') and result.get('relinked') is True) or
+                                  (operation == 'snapshot' and result.get('saved') is True)))
+                    if cancellable and cancel.requested() and committed:
+                        item.update(status='complete', cancel_arrived_after_commit=True)
+                    elif cancellable and cancel.requested():
                         cleanup_errors = cancel.cleanup()
                         item.update(status='failed' if cleanup_errors else 'cancelled', error='；'.join(cleanup_errors) if cleanup_errors else str(Cancelled()))
                     elif error:
                         item.update(status='failed', error=str(error)[:3000])
-                    elif isinstance(result, dict) and result.get('status') in ('failed', 'partial'):
-                        item.update(status='failed', error='采集未完整通过，请查看证据诊断与保留的日志。')
+                        if operation in ('verify', 'backup-check', 'data-restore') and isinstance(getattr(error, 'report', None), dict):
+                            result = error.report
+                    elif isinstance(result, dict) and (result.get('status') == 'failed' or
+                            (result.get('status') == 'partial' and operation != 'storage')):
+                        item.update(status='failed', error=('采集未完整通过，请查看证据诊断与保留的日志。'
+                            if operation == 'capture' else '任务未完整通过，请查看结果与保留的日志。'))
                     else:
                         item.update(status='complete')
                     if result is not None:

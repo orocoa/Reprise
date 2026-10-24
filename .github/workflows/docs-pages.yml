@@ -1,0 +1,77 @@
+name: Prepare Reprise documentation
+
+# Manual only. The default run prepares an artifact and never deploys it.
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Deploy the reviewed production docs to GitHub Pages'
+        type: boolean
+        required: true
+        default: false
+      origin:
+        description: 'Verified HTTPS production origin, without /Reprise/ (publish only)'
+        type: string
+        required: false
+        default: ''
+      download_url:
+        description: 'Verified public download URL for this exact Skill version (publish only)'
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reprise-docs-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Build preview or explicitly requested production docs
+        env:
+          DOCS_PUBLISH: ${{ inputs.publish }}
+          DOCS_ORIGIN: ${{ inputs.origin }}
+          DOCS_DOWNLOAD_URL: ${{ inputs.download_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--out _site --base-path /Reprise/ --report "$RUNNER_TEMP/docs-build-report.json")
+          if [[ "$DOCS_PUBLISH" == "true" ]]; then
+            args+=(--mode production --origin "$DOCS_ORIGIN" --download-url "$DOCS_DOWNLOAD_URL")
+          fi
+          python scripts/build_docs.py "${args[@]}"
+      - name: Retain the site artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+          retention-days: 7
+
+  deploy:
+    # This job is unreachable on the default publish=false manual run.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == true }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy reviewed documentation
+        id: deployment
+        uses: actions/deploy-pages@v4

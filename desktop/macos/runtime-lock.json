@@ -1,0 +1,407 @@
+{
+  "schema": 1,
+  "platform": "darwin-arm64",
+  "min_macos": "13.5",
+  "profile": "screenshots-only",
+  "capabilities": {
+    "screenshots": true,
+    "video_recording": false
+  },
+  "description": "Offline, pinned standalone runtime for Reprise Skill entry or optional macOS app shell. Cache files are build inputs only; launch must not install or download dependencies.",
+  "paths": {
+    "python": "runtime/python/bin/python3",
+    "git": "runtime/git/bin/git",
+    "git_exec": "runtime/git/libexec/git-core",
+    "node": "runtime/node/bin/node",
+    "npm": "runtime/node/bin/npm",
+    "playwright": "runtime/node_modules/playwright-core",
+    "browser": "runtime/browsers/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell",
+    "browser_cache": "runtime/browsers"
+  },
+  "components": {
+    "python": {
+      "version": "3.12.15+20261021",
+      "archive": {
+        "cache_file": "archives/python-3.12.15-arm64.tar.gz",
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261021/cpython-3.12.15%2B20261021-aarch64-apple-darwin-install_only_stripped.tar.gz",
+        "sha256": "7b8d00b751db21cea87dc551a8f8165147c5fbc5251d5537d7e5497dde00a219",
+        "size_bytes": 25017408,
+        "verification": [
+          "upstream-sha256"
+        ]
+      },
+      "archive_top_level": "python",
+      "destination": "runtime/python",
+      "include": [
+        "**"
+      ],
+      "exclude": [],
+      "bundled_notices": []
+    },
+    "git": {
+      "version": "2.56.0 / dugite-native v2.56.0-1",
+      "archive": {
+        "cache_file": "archives/dugite-native-v2.56.0-1-arm64.tar.gz",
+        "url": "https://github.com/desktop/dugite-native/releases/download/v2.56.0-1/dugite-native-v2.56.0-7ce66f8-macOS-arm64.tar.gz",
+        "sha256": "ab756ab9a15241f14b6c0a0386c704a998bb710a837ab35dc55d4747a90f2ca0",
+        "size_bytes": 63488157,
+        "verification": [
+          "upstream-sha256"
+        ]
+      },
+      "archive_top_level": "",
+      "destination": "runtime/git",
+      "include": [
+        "bin/git",
+        "libexec/git-core/git*",
+        "share/git-core/templates/**"
+      ],
+      "exclude": [
+        "libexec/git-core/git-lfs",
+        "libexec/git-core/git-credential-manager*"
+      ],
+      "bundled_notices": []
+    },
+    "node": {
+      "version": "24.22.1",
+      "archive": {
+        "cache_file": "archives/node-v24.22.1-darwin-arm64.tar.xz",
+        "url": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-darwin-arm64.tar.xz",
+        "sha256": "654ba79de6155647e22321932b45f2a1ccb705976cc337c9b8e278beb085a628",
+        "size_bytes": 27518756,
+        "verification": [
+          "upstream-sha256"
+        ]
+      },
+      "archive_top_level": "node-v24.22.1-darwin-arm64",
+      "destination": "runtime/node",
+      "include": [
+        "bin/**",
+        "lib/**",
+        "LICENSE"
+      ],
+      "exclude": [],
+      "bundled_notices": [
+        "LICENSE",
+        "lib/node_modules/**/LICENSE*"
+      ]
+    },
+    "playwright-core": {
+      "version": "1.62.1",
+      "archive": {
+        "cache_file": "archives/playwright-core-1.62.1.tgz",
+        "url": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.62.1.tgz",
+        "sha256": "954be1e183d0ddb9748fe0d2d08b0b66a9210c74dd75c397aeb70303b9f08a00",
+        "size_bytes": 3070300,
+        "verification": [
+          "npm-sha512"
+        ]
+      },
+      "archive_top_level": "package",
+      "destination": "runtime/node_modules/playwright-core",
+      "include": [
+        "**"
+      ],
+      "exclude": [],
+      "bundled_notices": [
+        "LICENSE",
+        "NOTICE",
+        "ThirdPartyNotices.txt",
+        "**/*.LICENSE"
+      ]
+    },
+    "chromium-headless-shell": {
+      "version": "151.0.7922.34",
+      "archive": {
+        "cache_file": "archives/chrome-headless-shell-151.0.7922.34-mac-arm64.zip",
+        "url": "https://cdn.playwright.dev/builds/cft/151.0.7922.34/mac-arm64/chrome-headless-shell-mac-arm64.zip",
+        "sha256": "cb46a336dbe3d6f1339c5039c3083e4e5dd8e4379710790e34f8f4a865e2452d",
+        "size_bytes": 99275008,
+        "verification": [
+          "provider-gcs-md5"
+        ]
+      },
+      "archive_top_level": "chrome-headless-shell-mac-arm64",
+      "destination": "runtime/browsers/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64",
+      "include": [
+        "**"
+      ],
+      "exclude": [],
+      "revision": "1234",
+      "bundled_notices": [
+        "LICENSE.headless_shell"
+      ]
+    }
+  },
+  "license_files": [
+    {
+      "component": "git",
+      "cache_file": "licenses/dugite-native-LICENSE.md",
+      "url": "https://raw.githubusercontent.com/desktop/dugite-native/v2.56.0-1/LICENSE.md",
+      "sha256": "db296f2f7f35bca3a174efb0eb392b3b17bd94b341851429a3dff411b1c2fc73",
+      "size_bytes": 18046,
+      "verification": [],
+      "destination": "licenses/git/dugite-native-LICENSE.md"
+    },
+    {
+      "component": "git",
+      "cache_file": "licenses/git-2.56.0-COPYING",
+      "url": "https://raw.githubusercontent.com/git/git/a018953688f1b10bddf91bff8747068f5f4746a4/COPYING",
+      "sha256": "5b2198d1645f767585e8a88ac0499b04472164c0d2da22e75ecf97ef443ab32e",
+      "size_bytes": 18765,
+      "verification": [],
+      "destination": "licenses/git/git-2.56.0-COPYING"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE",
+      "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+      "size_bytes": 16725,
+      "verification": [],
+      "destination": "licenses/python/LICENSE"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.bdb.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.bdb.txt",
+      "sha256": "3bdff06e69991c94664f2ef5c5f8096f60b7dbec071756ea6cc26b445e06ec5b",
+      "size_bytes": 7293,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.bdb.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.bzip2.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.bzip2.txt",
+      "sha256": "1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441",
+      "size_bytes": 1743,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.bzip2.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.cpython.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.cpython.txt",
+      "sha256": "86e61415828a8b5b06ec8d024e6f086ce155a8b85fd0c419c0ba4dc004e74fdd",
+      "size_bytes": 36164,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.cpython.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.expat.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.expat.txt",
+      "sha256": "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534",
+      "size_bytes": 1144,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.expat.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libX11.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libX11.txt",
+      "sha256": "2daec087a88e7c9b8082557cdeebad5bbb8155a4137472f0b22e269cd99d0c1e",
+      "size_bytes": 47018,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libX11.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libXau.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libXau.txt",
+      "sha256": "56abe29bb1d9806a9e04fa9f80fed2c0f18027594df3f098148d814aef6bddfa",
+      "size_bytes": 1148,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libXau.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libedit.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libedit.txt",
+      "sha256": "29cea33c32bbc9785142386377915612a2fa786482c46843383384aded2e09b1",
+      "size_bytes": 1614,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libedit.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libffi.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libffi.txt",
+      "sha256": "deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0",
+      "size_bytes": 1132,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libffi.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.liblzma.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.liblzma.txt",
+      "sha256": "9a4062de0a2c388a98cf35a35d348b62fa97c838a71c3c28ee1a2d7d0a565b02",
+      "size_bytes": 660,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.liblzma.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libuuid.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libuuid.txt",
+      "sha256": "122ee1f7e258f2c3c0e538a75c037684f420454bf3850ddc74ce750bbf5fe86b",
+      "size_bytes": 1432,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libuuid.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.libxcb.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.libxcb.txt",
+      "sha256": "c5ffbfeaa501071ceeb97b7de2c0d703fdaa35de01c0fb6cbac1c28453a3e9fd",
+      "size_bytes": 1337,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.libxcb.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.mpdecimal.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.mpdecimal.txt",
+      "sha256": "669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b",
+      "size_bytes": 1284,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.mpdecimal.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.ncurses.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.ncurses.txt",
+      "sha256": "87a4c4442337b8968ef956031c406b74f9cb7149b7ba87311bdaba534816201c",
+      "size_bytes": 1447,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.ncurses.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.openssl-3.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.openssl-3.txt",
+      "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+      "size_bytes": 10175,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.openssl-3.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.sqlite.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.sqlite.txt",
+      "sha256": "38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719",
+      "size_bytes": 1481,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.sqlite.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.tcl.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.tcl.txt",
+      "sha256": "c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16",
+      "size_bytes": 2255,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.tcl.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.tix.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.tix.txt",
+      "sha256": "3ac5cdd0bef6c43ce34c6a7ced452081d9e5a0bf94082b9f9147d23ec9e214f5",
+      "size_bytes": 2826,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.tix.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.zlib-ng.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.zlib-ng.txt",
+      "sha256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee",
+      "size_bytes": 867,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.zlib-ng.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.zlib.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.zlib.txt",
+      "sha256": "818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c",
+      "size_bytes": 995,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.zlib.txt"
+    },
+    {
+      "component": "python",
+      "cache_file": "licenses/python-build-standalone-20261021/LICENSE.zstd.txt",
+      "url": "https://raw.githubusercontent.com/astral-sh/python-build-standalone/20261021/LICENSE.zstd.txt",
+      "sha256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8",
+      "size_bytes": 1549,
+      "verification": [],
+      "destination": "licenses/python/LICENSE.zstd.txt"
+    },
+    {
+      "component": "git",
+      "cache_file": "licenses/source-notices/git-a018953688f1b10bddf91bff8747068f5f4746a4/reftable/LICENSE",
+      "url": "https://raw.githubusercontent.com/git/git/a018953688f1b10bddf91bff8747068f5f4746a4/reftable/LICENSE",
+      "sha256": "8aa118e56e554e9086beb82494e8044d0856d5eb0b162a9061f3553a58f04d67",
+      "size_bytes": 1480,
+      "verification": [
+        "extracted-from-pinned-git-source-archive"
+      ],
+      "destination": "licenses/git/reftable/LICENSE"
+    },
+    {
+      "component": "git",
+      "cache_file": "licenses/source-notices/git-a018953688f1b10bddf91bff8747068f5f4746a4/sha1dc/LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/git/git/a018953688f1b10bddf91bff8747068f5f4746a4/sha1dc/LICENSE.txt",
+      "sha256": "9daac99c665ddc38fde6d7c91b9173c112d5e6c6e7e5f7d8bb8747c630efc83d",
+      "size_bytes": 1270,
+      "verification": [
+        "extracted-from-pinned-git-source-archive"
+      ],
+      "destination": "licenses/git/sha1dc/LICENSE.txt"
+    }
+  ],
+  "source_archives": [
+    {
+      "component": "git",
+      "cache_file": "sources/git-2.56.0-a018953688f1b10bddf91bff8747068f5f4746a4.tar.gz",
+      "url": "https://codeload.github.com/git/git/tar.gz/a018953688f1b10bddf91bff8747068f5f4746a4",
+      "sha256": "898ecd505bcec4390b3b7b2c1882509af3f11f3b62c56147d19f01e2a4e81355",
+      "size_bytes": 12796779,
+      "verification": [],
+      "destination": "sources/git-2.56.0-a018953688f1b10bddf91bff8747068f5f4746a4.tar.gz"
+    },
+    {
+      "component": "git",
+      "cache_file": "sources/dugite-native-v2.56.0-1-7ce66f82bdf74d34d47ea0fce4e20314512b1417.tar.gz",
+      "url": "https://codeload.github.com/desktop/dugite-native/tar.gz/7ce66f82bdf74d34d47ea0fce4e20314512b1417",
+      "sha256": "b1ef3496e92ffed799c5a930e2fe2b0e8a1093c119406d3ddc8fd70120ff7c06",
+      "size_bytes": 44156,
+      "verification": [],
+      "destination": "sources/dugite-native-v2.56.0-1-7ce66f82bdf74d34d47ea0fce4e20314512b1417.tar.gz"
+    }
+  ],
+  "copy_contract": {
+    "archive_top_level": "Strip exactly this leading directory before copying; empty string retains archive-root paths.",
+    "patterns": "Match file paths relative to the stripped root. Include matches recursively; exclusions win.",
+    "preserve_relative_symlinks": true,
+    "reject_paths_or_symlinks_outside_component": true,
+    "preserve_executable_permissions": true,
+    "verify_every_cache_file_sha256_before_extracting": true,
+    "retain_bundled_notices": true,
+    "user_paths_are_derived_from_runtime_root": true
+  },
+  "runtime_environment": {
+    "PATH": "trusted git/bin, node/bin, python/bin followed by macOS system directories",
+    "GIT_EXEC_PATH": "paths.git_exec under trusted runtime root; required because dugite default is //libexec/git-core",
+    "PLAYWRIGHT_BROWSERS_PATH": "paths.browser_cache under trusted runtime root",
+    "REPRISE_NODE": "paths.node under trusted runtime root",
+    "REPRISE_PLAYWRIGHT": "paths.playwright under trusted runtime root",
+    "REPRISE_BROWSER": "paths.browser under trusted runtime root",
+    "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"
+  },
+  "integrity_note": "All hashes are pinned and checked. The browser SHA-256 is a local digest of the TLS download; the provider MD5 was also checked. No independent browser SHA-256 signature or whole-bundle notarization is claimed."
+}

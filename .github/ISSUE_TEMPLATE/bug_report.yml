@@ -12,7 +12,7 @@ body:
     attributes:
       label: Version and entry point / 版本与使用入口
       description: Release tag, commit or Skill version; say unknown if unavailable.
-      placeholder: "Example: v0.4.1 release ZIP / v0.4.1 source checkout"
+      placeholder: "Example: v0.4.1 public release ZIP / 0.7.0 LOCAL CANDIDATE Skill / source commit"
     validations:
       required: true
   - type: input

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reprise-local"
-version = "0.4.1"
-description = "Local Git history, deterministic project detection and reproducible browser evidence"
+version = "0.8.0"
+description = "Local content versions, optional Git history and verified recovery"
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.9"

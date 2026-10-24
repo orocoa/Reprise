@@ -1,6 +1,7 @@
 /* UI copy only. Git paths, commit messages, user names and command JSON stay literal. */
 'use strict';
 const uiCopy = {
+ '画面':'Pictures','版本关系':'Version graph','保存一稿':'Save a draft','搜索版本名称或文件':'Search draft names or files','搜索版本名称或文件…':'Search draft names or files…','历史显示':'History view',
   '正在连接本地工作台…':'Connecting to the local workspace…','Reprise · Git 版本工作台':'Reprise · Git workspace',
   '版本浏览':'Browse versions','版本管理':'Manage versions','选择项目':'Choose a project','导入项目':'Import project',
   '导入 Git 项目':'Import Git project','返回版本列表':'Back to versions','搜索历史版本':'Search versions','当前 Git ↗':'Current Git ↗',
@@ -119,9 +120,37 @@ Object.assign(uiCopy, {
   '版本说明须包含 1–8 条变化说明':'Version notes require 1–8 change explanations',
 });
 const uiTerms = {'同时采集比较基准':'Also capture baseline','次采集记录':'capture records','所选基准':'Selected baseline','父提交':'Parent commit','基准':'Baseline','目标':'Target','个独立副本':'independent copies','配置':'Settings','自动采集':'Automatic capture','手工导入':'Manual import','缺失':'Missing','诊断':'Diagnostic','通过':'Passed','未提交':'uncommitted','本地服务返回了无法读取的内容':'Local server returned unreadable content','请求失败':'Request failed','项':'changes','保存目标':'Save target','空树':'Empty tree','合并提交':'Merge commit','合并':'Merge','已提交':'Committed','分离 HEAD':'Detached HEAD','JSON 格式不正确':'Invalid JSON','配置已保存到版本':'Settings saved for revision','请选择比较版本':'Choose comparison revisions','未生成':'Not generated','已结束，资料已保留。':'ended; artifacts retained.','预览服务已停止，但状态刷新失败':'Preview stopped, but refreshing state failed','状态刷新失败':'State refresh failed','正在重新连接本地服务；原任务状态尚未确认。':'Reconnecting; the task state is not confirmed.'};
-let uiLanguage;
-try {uiLanguage=new URLSearchParams(location.search).get('lang') || localStorage.getItem('reprise.language') || 'zh';}catch(_){uiLanguage='zh';}
-if(!['zh','en'].includes(uiLanguage))uiLanguage='zh';
+function preferredLanguage(explicit,saved,languages=[]){
+ for(const value of [explicit,saved])if(['zh','en'].includes(value))return value;
+ for(const value of languages){const code=String(value).toLowerCase().split('-')[0];if(['zh','en'].includes(code))return code;}
+ return 'en';
+}
+let savedLanguage=null;
+try {savedLanguage=localStorage.getItem('reprise.language');}catch(_){}
+let uiLanguage=preferredLanguage(new URLSearchParams(location.search).get('lang'),savedLanguage,typeof navigator==='undefined'?[]:(navigator.languages||[navigator.language]));
+Object.assign(uiCopy,{
+ '本地数据与隐私':'Local data and privacy','整理副本':'Review duplicate copies',
+ '项目':'Projects','加入文件夹':'Add folder','记录版本':'Save version','全部文件':'All files',
+ '重复内容':'Duplicate content','保存当前文件夹':'Save current folder','版本名称':'Version name',
+ '普通文件夹':'Folder','自动识别':'Detect automatically','作为普通文件夹':'Manage as a folder',
+ '本地文件夹路径':'Local folder path','记录方式':'Version source','选择项目':'Choose project',
+ '尚未记录版本':'No versions saved','记录第一个版本':'Save first version',
+ '文件夹内容保存在本机内容库。':'Folder contents are saved in the local content library.',
+ '本机已保存 · 未同步云端':'Saved locally · no cloud sync','本地内容版本':'Local content versions',
+ '恢复此文件':'Recover this file','读取文件…':'Loading files…','上一页':'Previous','下一页':'Next',
+ '查看重复内容':'Show duplicate content','搜索文件路径':'Search file paths','没有匹配文件':'No matching files',
+ '没有完全相同的文件内容。':'No identical file contents.','文件':'files',
+ '逻辑内容':'Logical content','不同内容':'Unique content','本次新增':'Added to library',
+ '相同内容共用存储，名称和目录分别保留。':'Identical contents share storage; names and locations are preserved.',
+ '这些是内容字节统计，不是磁盘实际释放量。':'These are content byte counts, not reclaimed disk space.',
+ '版本已保存。':'Version saved.','文件夹没有变化，沿用已有版本。':'Folder is unchanged; the existing version is retained.',
+ '首次记录需要读取文件，后续主要读取新增或变化内容。':'The first save reads the files. Later saves mainly read new or changed content.',
+ '记录版本不会修改原文件夹。当前仅保存到本机，尚未上传云端。':'Saving a version leaves the source folder intact. This version is local and has not been uploaded.',
+ '可加入普通文件夹或 Git 项目。':'Add a folder or an existing Git project.',
+ '版本记录与原文件夹分开保存。':'Version records are stored separately from the source folder.',
+ 'Git 提交':'Git commits','文件夹快照':'Folder snapshots','恢复范围':'Recovery selection',
+ '原文件夹不可用，仍可浏览和恢复已保存版本。':'The source folder is unavailable. Saved versions can still be browsed and recovered.'
+});
 const i18nMissing = new Set();
 let uiDictionary;
 const uiTextCache=new Map();

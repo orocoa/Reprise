@@ -16,6 +16,7 @@ from .recipes import recipe_hash, validate_recipe
 from .cancellation import Cancelled, check, wait_owned_process
 from .processes import OwnedProcessTree, ProcessCleanupError, process_identity, launch_owned
 from .storage import locked, now as utcnow, read_json as storage_read_json, write_json
+from .environments import EnvironmentStore
 
 STARTING = ('preparing', 'install', 'build', 'starting')
 
@@ -50,6 +51,7 @@ class RuntimeManager:
         self._lock = threading.RLock()
         self._processes = {}
         self._trees = {}
+        self.environments = EnvironmentStore(self.data_dir)
 
     def _path(self, runtime_id):
         if not isinstance(runtime_id, str) or not runtime_id or any(c not in '0123456789abcdef-' for c in runtime_id):
@@ -65,8 +67,21 @@ class RuntimeManager:
         proc = self._processes.get(state['id'])
         if proc is not None and proc.poll() is not None:
             return False
-        return bool(state.get('pid') and state.get('process_identity') and
-                    process_identity(state['pid']) == state['process_identity'])
+        pid, identity = state.get('pid'), state.get('process_identity')
+        if type(pid) is not int or pid <= 1:
+            if state.get('status') == 'running':
+                raise ProcessCleanupError('运行记录缺少可核验的进程身份；未发送停止信号。')
+            return False
+        actual = process_identity(pid)
+        if identity and actual is not None:
+            return actual == identity
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except OSError as error:
+            raise ProcessCleanupError('无法确认已登记进程退出；未发送停止信号：%s' % error) from error
+        raise ProcessCleanupError('无法确认已登记进程身份；未发送停止信号。')
 
     def _legacy_start_owner(self, state):
         if state.get('owner_pid') and state.get('owner_identity'):
@@ -232,7 +247,39 @@ class RuntimeManager:
             process.poll()  # Reap our child even when a reloaded manager stopped it.
         return terminated
 
-    def start(self, repository, sha, recipe, approved=False, cancel=None):
+    def environment_check(self, environment_id, cancel=None):
+        with self.environments.lease(environment_id, cancel=cancel):
+            return self.environments.inspect_release(environment_id, self.list(), cancel)
+
+    def release_environment(self, environment_id, cancel=None):
+        return self.environments.release(environment_id, self.list, cancel)
+
+    def start(self, repository, sha, recipe, approved=False, cancel=None, project_id=None):
+        recipe = validate_recipe(recipe)
+        if 'environment' not in recipe:
+            return self._start(repository, sha, recipe, approved, cancel, project_id=project_id)
+        if approved is not True:
+            raise ValueError('Save and approve this environment recipe before running project commands')
+        identity = self.environments.identity(repository, sha, recipe, project_id, cancel)
+        identifier = self.environments.key(identity)
+        with self.environments.lease(identifier, create=True, cancel=cancel):
+            active = [row for row in self.list() if row.get('environment_id') == identifier and
+                      (row.get('running') or row.get('status') in STARTING + ('cleanup_failed',))]
+            if active:
+                if len(active) == 1 and active[0].get('status') == 'running':
+                    record = self.environments.get(identifier)
+                    self.environments._verify_contents(record, cancel)
+                    return dict(active[0], environment_reused=True, reused_running=True)
+                raise ValueError('This environment has an active or uncertain runtime; stop it before retrying')
+            prepared = self.environments.prepare(identity, repository, cancel)
+            try:
+                return self._start(repository, sha, recipe, approved, cancel,
+                                   project_id=project_id, prepared=prepared)
+            except Exception as error:
+                self.environments.failed(prepared['record'], error)
+                raise
+
+    def _start(self, repository, sha, recipe, approved=False, cancel=None, project_id=None, prepared=None):
         check(cancel)
         recipe = validate_recipe(recipe)
         if recipe['adapter'] == 'manual':
@@ -243,12 +290,18 @@ class RuntimeManager:
         rid = uuid.uuid4().hex
         folder = self.directory / rid
         folder.mkdir()
-        snapshot = folder / 'source'
+        snapshot = prepared['workspace'] if prepared else folder / 'source'
         state = {'id': rid, 'sha': resolved, 'adapter': recipe['adapter'], 'recipe_hash': recipe_hash(recipe),
                  'path': str(snapshot), 'log_path': str(folder / 'runtime.log'), 'created_at': utcnow(),
                  'status': 'preparing', 'running': False, 'pid': None, 'process_identity': None,
                  'source': repository.info().get('path'), 'url': None, 'warnings': [],
                  'startup_lock': True, 'owner_pid': os.getpid(), 'owner_identity': process_identity(os.getpid())}
+        if project_id is not None:
+            state['project_id'] = project_id
+        if prepared:
+            state.update(environment_id=prepared['record']['environment_id'],
+                         environment_key=prepared['record']['environment_key'],
+                         environment_reused=prepared['reuse'])
         if cancel is not None and getattr(cancel, 'request_path', None) is not None:
             state['job_id'] = cancel.request_path.stem
         # The lock is held before publishing state and across every startup
@@ -259,7 +312,7 @@ class RuntimeManager:
             self._save(state)
             if cancel is not None:
                 cancel.cleanups.append(lambda: self.stop(rid))
-            materialized = repository.materialize(resolved, snapshot, cancel=cancel)
+            materialized = prepared['materialization'] if prepared else repository.materialize(resolved, snapshot, cancel=cancel)
             check(cancel)
             if isinstance(materialized, dict):
                 state['materialization'] = materialized
@@ -276,10 +329,14 @@ class RuntimeManager:
             state['root'] = str(root)
             state['port'] = port
             env = dict(os.environ, PORT=str(port), HOST='127.0.0.1', BROWSER='none', REPRISE_RUNTIME_ID=rid)
+            if prepared:
+                # Runtime imports must not mutate otherwise verified virtualenv
+                # outputs. Unexpected application writes still block release.
+                env['PYTHONDONTWRITEBYTECODE'] = '1'
             expand = lambda argv: [arg.replace('{port}', str(port)).replace('{host}', '127.0.0.1').replace('{root}', str(root)) for arg in argv]
             with open(state['log_path'], 'ab', buffering=0) as log:
                 for phase in ('install', 'build'):
-                    for command in recipe['commands'].get(phase, []):
+                    for command in ([] if prepared and prepared['reuse'] else recipe['commands'].get(phase, [])):
                         check(cancel)
                         state['status'] = phase
                         tree = self._launch(expand(command), root, env, state, log)
@@ -291,11 +348,13 @@ class RuntimeManager:
                         tree.terminate()
                         if code:
                             raise RuntimeError('%s exited with code %s; see %s' % (phase, code, state['log_path']))
+                if prepared:
+                    self.environments.built(prepared, rid, cancel)
                 if recipe['adapter'] == 'static-web':
                     # A repository is data, not an import location. Isolated mode
                     # excludes cwd/PYTHONPATH/user site; -S also excludes system
                     # site startup hooks. This trusted script uses only stdlib.
-                    argv = [sys.executable, '-I', '-S', str(Path(__file__).with_name('static_server.py').resolve()),
+                    argv = [sys.executable, '-I', '-S', '-B', str(Path(__file__).with_name('static_server.py').resolve()),
                             '--root', str(root), '--port', str(port)]
                     launch_root = folder
                 else:
@@ -322,6 +381,8 @@ class RuntimeManager:
                 else:
                     raise RuntimeError('Preview readiness failed at %s: %s; see %s' % (recipe['readiness']['path'], last_error, state['log_path']))
             check(cancel)
+            if prepared:
+                self.environments.ready(prepared, cancel)
             state.update({'status': 'running', 'running': True, 'started_at': utcnow()})
             self._save(state)
             return dict(state)

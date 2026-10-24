@@ -38,10 +38,48 @@ def _argv(value, name):
     return result
 
 
+def _environment(value):
+    if not isinstance(value, dict) or set(value) - {'outputs', 'inputs', 'tools'}:
+        raise ValueError('environment supports outputs, inputs and tools')
+    result = {}
+    for field in ('outputs', 'inputs'):
+        paths = value.get(field)
+        if not isinstance(paths, list) or not 1 <= len(paths) <= 16:
+            raise ValueError('environment.%s requires 1–16 relative paths' % field)
+        normalized = []
+        for path in paths:
+            path = _text(path, 'environment.' + field, 1024)
+            parsed = PurePosixPath(path)
+            if (path.startswith('/') or '\\' in path or ':' in path or
+                    any(part == '..' or part.casefold() == '.git' for part in parsed.parts) or str(parsed) == '.'):
+                raise ValueError('Environment paths must remain inside the historical workspace')
+            normalized.append(str(parsed))
+        result[field] = sorted(set(normalized))
+    for output in result['outputs']:
+        if any(other != output and (other.startswith(output + '/') or output.startswith(other + '/'))
+               for other in result['outputs']):
+            raise ValueError('Environment outputs must not overlap')
+        if any(path == output or path.startswith(output + '/') for path in result['inputs']):
+            raise ValueError('Environment inputs cannot be inside generated outputs')
+    tools = value.get('tools')
+    if not isinstance(tools, list) or not 1 <= len(tools) <= 8:
+        raise ValueError('environment.tools requires 1–8 Node/Python tool executable names or absolute paths')
+    normalized = []
+    for tool in tools:
+        tool = _text(tool, 'environment.tools', 4096)
+        basename = PurePosixPath(tool).name
+        if (not re.fullmatch(r'(?:node|npm|pnpm|yarn|python(?:[0-9]+(?:\.[0-9]+)?)?)', basename)
+                or ('/' in tool and not tool.startswith('/')) or '\\' in tool):
+            raise ValueError('Environment tools must name a Node/Python executable; probes only run --version')
+        normalized.append(tool)
+    result['tools'] = sorted(set(normalized))
+    return result
+
+
 def validate_recipe(value):
     if not isinstance(value, dict):
         raise ValueError('Recipe must be an object')
-    allowed = {'schema', 'adapter', 'root', 'commands', 'readiness', 'captures', 'network'}
+    allowed = {'schema', 'adapter', 'root', 'commands', 'readiness', 'captures', 'network', 'environment'}
     unknown = set(value) - allowed
     if unknown:
         raise ValueError('Unknown recipe fields: %s' % ', '.join(sorted(unknown)))
@@ -132,8 +170,13 @@ def validate_recipe(value):
                 item['ms'] = _integer(step.get('ms', 500), 'step.ms', 0, 60000)
             scenario['steps'].append(item)
         result.append(scenario)
-    return {'schema': 1, 'adapter': adapter, 'root': root, 'commands': normalized_commands,
-            'readiness': ready, 'captures': result, 'network': network}
+    recipe = {'schema': 1, 'adapter': adapter, 'root': root, 'commands': normalized_commands,
+              'readiness': ready, 'captures': result, 'network': network}
+    if 'environment' in value:
+        if adapter != 'command-web':
+            raise ValueError('Only command-web supports a managed environment')
+        recipe['environment'] = _environment(value['environment'])
+    return recipe
 
 
 def recipe_hash(recipe):

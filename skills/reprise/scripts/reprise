@@ -1,0 +1,43 @@
+#!/bin/sh
+# Thin Skill entry: reuse one installed runtime, never download dependencies.
+set -eu
+
+fail() {
+    printf '%s\n' "Reprise: $*" >&2
+    exit 1
+}
+
+script_directory=$(CDPATH= cd -P -- "$(/usr/bin/dirname -- "$0")" && pwd)
+skill_directory=$(CDPATH= cd -P -- "$script_directory/.." && pwd)
+packaged_root=$(CDPATH= cd -P -- "$skill_directory/../.." && pwd)
+
+if [ -n "${REPRISE_RUNTIME_ROOT:-}" ]; then
+    runtime_root=$REPRISE_RUNTIME_ROOT
+elif [ -f "$packaged_root/runtime/manifest.json" ]; then
+    runtime_root=$packaged_root
+elif [ -f "$skill_directory/bundle-location.json" ]; then
+    # The currently distributed runtime is macOS. plutil is supplied by macOS;
+    # no developer Python, Git, Node, or a JSON package is required to locate it.
+    [ -x /usr/bin/plutil ] || fail 'This runtime locator requires macOS.'
+    location="$skill_directory/bundle-location.json"
+    schema=$(/usr/bin/plutil -extract schema raw -expect integer -o - "$location") ||
+        fail 'Invalid bundle-location.json schema.'
+    [ "$schema" = 1 ] || fail 'Unsupported bundle-location.json schema.'
+    runtime_root=$(/usr/bin/plutil -extract resources raw -expect string -o - "$location") ||
+        fail 'bundle-location.json must name the installed runtime resources.'
+else
+    fail '找不到完整运行包。若此 Skill 从客户端导入，请先在完整 Reprise 文件夹双击 Prepare Skill.command，再导入生成的已连接 Skill ZIP。 / Runtime not found. In the complete Reprise folder, run Prepare Skill.command and import the connected Skill ZIP it creates. Copying the original Skill folder alone does not connect it. No download was attempted.'
+fi
+
+case "$runtime_root" in
+    /*) ;;
+    *) fail 'Runtime root must be an absolute path.' ;;
+esac
+runtime_root=$(CDPATH= cd -P -- "$runtime_root" && pwd) ||
+    fail 'The installed runtime directory is unavailable.'
+[ -f "$runtime_root/runtime/manifest.json" ] ||
+    fail 'The installed runtime manifest is missing.'
+[ -f "$runtime_root/reprise" ] && [ -x "$runtime_root/reprise" ] ||
+    fail 'The installed Reprise entry is missing or not executable.'
+
+exec "$runtime_root/reprise" "$@"

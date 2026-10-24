@@ -1,4 +1,4 @@
-/* Production workspace regression against an isolated service, with a stub AI. */
+/* Production workspace regression; the main UI exposes no AI workflow. */
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -7,16 +7,22 @@ const [url,project,sha,output]=process.argv.slice(2);
 const browser=await chromium.launch({headless:true,...(process.env.REPRISE_BROWSER?{executablePath:process.env.REPRISE_BROWSER}:{})});
 const page=await browser.newPage({viewport:{width:1360,height:900}});
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
+let aiRequests=0;page.on('request',request=>{if(request.method()==='POST'&&/\/ai\/suggest$/.test(request.url()))aiRequests++;});
 const runtimeResponses=[];
 page.on('response',async response=>{
  if(!/\/api\/(bootstrap|runtimes)(\?|$)/.test(response.url()))return;
  try{const body=await response.json();runtimeResponses.push({url:response.url(),rows:(body.runtimes||[]).map(r=>({sha:r.sha,status:r.status,running:r.running}))});}catch{}
 });
 const snapshot=()=>page.evaluate(()=>repriseWorkspace.snapshot());
+async function expandSettingsSection(name){
+ const section=page.locator(`#dialog details[data-keep-open="${name}"]`);
+ if(!await section.evaluate(element=>element.open))await section.locator(':scope > summary').click();
+}
 try {
  await page.goto(`${url}?project=${project}&sha=${sha}&lang=en`);
  await page.waitForFunction(()=>state.commits.length===2&&detail(state.selected)&&!state.loading);
- assert.equal(await page.locator('#search').getAttribute('placeholder'),'Search commits, files or changes…');
+ assert.equal(await page.locator('#search').getAttribute('placeholder'),'Search draft names or files…');
+ assert.equal(await page.locator('[data-action=ai-settings],[data-action=ai-suggest]').count(),0,'The main workspace has no AI entry');
  assert.equal(await page.locator('[data-density=compact]').innerText(),'Compact view');
  const initialGraph=await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph()));
  const graphStyle=await page.locator('#route-map').evaluate(svg=>({
@@ -38,8 +44,8 @@ try {
      return Math.abs(Number(circle.getAttribute('cy'))-(row.offsetTop+label.offsetTop+label.offsetHeight/2))<.1;
    })),true,'Circles align with their actual DOM rows');
  }
- assert.equal(await page.locator('button[data-action=run]').innerText(),'Run this revision');
- assert.equal(await page.locator('.chrome [data-action=language]').count(),0);
+ assert.equal(await page.locator('button[data-action=run]').innerText(),'Run preview');
+ assert.deepEqual(await page.locator('.chrome [data-action=language]').evaluateAll(buttons=>buttons.map(button=>button.dataset.language)),['zh','en']);
  assert.equal(await page.locator('[data-action=edit-version]').innerText(),'');
  await page.click('[data-action=star]');
  assert.equal((await snapshot()).sha,sha);
@@ -92,7 +98,7 @@ try {
  await page.screenshot({path:output+'/empty-preview-en.png',fullPage:true});
  await page.click('[data-action=preview-settings]');
  assert.equal(await page.locator('.preview-settings').evaluate(e=>e.open),true);
- assert.equal(await page.locator('[data-action=capture]').innerText(),'Capture this revision');
+ assert.equal(await page.locator('[data-action=saved-preview-capture]').innerText(),'Check website and capture');
  // Child-dialog Back and Escape restore the actual scroll container and origin.
  await page.setViewportSize({width:390,height:400});
  await page.locator('[data-action=manual]').scrollIntoViewIfNeeded();
@@ -115,17 +121,16 @@ try {
  assert.equal((await snapshot()).sha,sha);
  await page.click('[data-tab=updates]');
  await page.click('[data-action=settings]');
+ assert.equal(await page.locator('#dialog [data-action=ai-settings],#dialog [data-action=ai-suggest],#dialog [data-action=content-storage],#dialog [data-action=content-transfer]').count(),0,'Settings omit AI and whole-library maintenance entries');
+ await expandSettingsSection('project-activity');
  assert.equal(await page.locator('#settings-management').innerText().then(t=>t.includes('This job record cannot be read.')),true);
  assert.equal(await page.locator('#settings-management code').first().innerText(),'broken-record.json');
- await page.evaluate(()=>reviewAI({id:'legacy',project_id:state.project.id,result:{sha:state.selected,model:'legacy-model',title:'old'}}));
- assert.equal(await page.locator('#dialog [role=alert]').innerText(),'This legacy proposal has only one language. Request a new bilingual proposal.');
- assert.equal(await page.locator('[data-action=review-ai-notes]').count(),0);
  await page.click('#dialog [data-action=close]');
  await page.click('[data-action=settings]');
- await page.click('[data-language=zh]');
+ await page.click('#dialog [data-language=zh]');
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),true);
- assert.equal(await page.locator('[data-action=run]').innerText(),'运行此版本');
- await page.click('[data-language=en]');
+ assert.equal(await page.locator('[data-action=run]').innerText(),'运行预览');
+ await page.click('#dialog [data-language=en]');
  await page.click('[data-action=save-settings]');
  await page.click('[data-action=edit-version]');
  await page.fill('#inline-title','Edited locally');
@@ -143,25 +148,6 @@ try {
  await page.click('[data-action=save-inline-notes]');
  await page.waitForFunction(()=>!document.querySelector('#dialog').open);
  assert.equal(await page.locator('.release-notes li').count(),2);
- await page.click('[data-action=settings]');
- await page.click('[data-action=ai-settings]');
- await page.check('#ai-clear-key');
- await page.click('[data-action=save-ai]');
- await page.waitForFunction(()=>document.querySelector('#dialog').open&&document.querySelector('#dialog').classList.contains('settings-dialog'));
- assert.equal((await snapshot()).ai.model,'exact-test-model');
- assert.equal((await snapshot()).ai.has_key,false);
- await page.click('[data-action=ai-settings]');
- await page.click('[data-action=ai-suggest]');
- await page.click('#dialog [data-action=settings]');
- await page.waitForSelector('[data-action=review-ai]',{timeout:20000});
- await page.click('[data-action=review-ai]');
- await page.waitForSelector('[data-action=review-ai-notes]');
- assert.equal(await page.locator('#dialog').evaluate(e=>e.open),true);
- assert.equal(await page.evaluate(()=>detail(state.selected).recipe_approved),false);
- await page.click('[data-action=review-ai-notes]');
- await page.click('[data-action=save-notes]');
- await page.waitForFunction(()=>!document.querySelector('#dialog').open);
- assert.equal(await page.locator('.version-name h2').innerText(),'Static site');
  assert.equal(await page.evaluate(()=>detail(state.selected).recipe_approved),false);
  await page.click('[data-action=run]');
  await page.waitForSelector('#recipe-json',{state:'attached'});
@@ -174,15 +160,18 @@ try {
  await page.click('[data-action=run]');
  await page.waitForFunction(()=>state.runtimes.some(r=>r.running),null,{timeout:20000});
  await page.click('[data-action=settings]');
+ await expandSettingsSection('project-activity');
  const runningCopy=await page.evaluate(()=>state.runtimes.find(r=>r.status==='running').path);
  await page.click('.managed-runtime summary');
  assert.equal(await page.locator('.managed-runtime dd code').first().innerText(),runningCopy);
  await page.click('[data-action=stop-runtime]');
  await page.waitForFunction(()=>!state.runtimes.some(r=>r.running),null,{timeout:15000});
- await page.click('summary:text-is("Add previews")');
- await page.click('[data-action=capture]');
+ await expandSettingsSection('preview-help');
+ await page.click('#dialog [data-action=saved-preview-capture]');
+ await page.waitForSelector('#dialog [data-action=save-quick-preview],#dialog [data-action=capture]');
+ await page.click('#dialog [data-action=save-quick-preview],#dialog [data-action=capture]');
  await page.waitForFunction(()=>detail(state.selected)?.evidence.some(e=>e.status==='complete'),null,{timeout:30000});
- await page.click('#dialog [data-action=close]');
+ if(await page.locator('#dialog').evaluate(element=>element.open))await page.click('#dialog [data-action=close]');
  await page.click('[data-tab=preview]');
  await page.waitForSelector('.media-open');
  await page.click('.media-open');
@@ -229,6 +218,7 @@ try {
  assert.equal(installing,true,'The saved install command must actually be running');
  await page.click('[data-action=settings]');
  await page.waitForFunction(()=>document.querySelector('#dialog').open&&document.querySelector('#dialog').classList.contains('settings-dialog'));
+ await expandSettingsSection('project-activity');
  await page.click('[data-action=refresh-management]');
  assert.equal(await page.locator('.runtime-row').count(),0,'An installer is not a ready preview');
  const pending=page.locator('.managed-runtime').filter({hasText:'Installing'});
@@ -248,8 +238,9 @@ try {
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.screenshot({path:output+'/mobile-en.png',fullPage:true});
+ assert.equal(aiRequests,0,'The complete workflow sends no AI suggestion request');
  assert.deepEqual(errors,[]);
- await fs.writeFile(output+'/ui-result.json',JSON.stringify({ok:true,sha,model:'exact-test-model',ai_calls:1,notes_saved:true,recipe_explicitly_approved:true,run_stop:true,capture:true,bookmark_persistence:true,compact_height:32,auto_compare:true,compare_race:true,media_modal:true,empty_preview_entry:true,exact_revision_media:true,runtime_copy_path:true,install_cancel:true,mobile_overflow:false,errors},null,2));
+ await fs.writeFile(output+'/ui-result.json',JSON.stringify({ok:true,sha,model:'exact-test-model',ai_calls:0,ai_entries_absent:true,notes_saved:true,recipe_explicitly_approved:true,run_stop:true,capture:true,bookmark_persistence:true,compact_height:32,auto_compare:true,compare_race:true,media_modal:true,empty_preview_entry:true,exact_revision_media:true,runtime_copy_path:true,install_cancel:true,mobile_overflow:false,errors},null,2));
 } catch(error){
  await fs.writeFile(output+'/ui-failure.json',JSON.stringify(await page.evaluate(()=>({
   snapshot:repriseWorkspace.snapshot(),runtimes:state.runtimes,

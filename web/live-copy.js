@@ -28,8 +28,9 @@ Object.assign(uiCopy,{
  '启动尚未完成，可在下方操作进度取消任务。':'Startup is in progress. Cancel the task under Operation progress below.',
  '个活动或待确认的服务':'active or unconfirmed services','条保留记录':'retained records'
 });
-compileUICopy();
-localizeDOM();
+Object.assign(uiCopy,{'整理版本':'Manage versions','预览与文件':'Preview and files','虚线连接当前历史中不可读取的版本':'Dashed lines connect versions unavailable in the current history'});
+
+
 
 Object.assign(uiCopy,{
  '已中断':'Interrupted','确认结束':'Confirm stopped',
@@ -37,3 +38,11 @@ Object.assign(uiCopy,{
  '启动任务已中断，可停止残留进程。副本与日志会保留。':'Startup was interrupted. Stop the remaining processes; copies and logs will be retained.',
  '启动任务已中断，副本与日志已保留。':'Startup was interrupted. Copies and logs are retained.'
 });
+
+Object.assign(uiCopy,{'保存版本':'Save version','管理历史版本':'Manage history','文件变化':'File changes','全部文件':'All files','比较版本':'Compare versions'});
+
+
+Object.assign(uiCopy,{'返回上一页':'Back','恢复文件':'Recover files','运行预览':'Run preview','版本信息与存储':'Version details and storage'});
+
+compileUICopy();
+localizeDOM();

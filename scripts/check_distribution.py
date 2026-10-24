@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import subprocess
@@ -20,6 +21,123 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = tuple(str(p.relative_to(ROOT / 'web')) for p in sorted((ROOT / 'web').rglob('*')) if p.is_file())
+CANDIDATE_DOCS = frozenset({
+    'ARCHITECTURE.md', 'RECIPES.md', 'GIT-GRAPH.md', 'PRIVACY.md',
+    'BACKUP-AND-MIGRATION.md', 'AGENT-SKILL.md', 'VERSION-LIFECYCLE.md',
+    'RELEASE-CHECKLIST.md', 'implementation-contract.md', 'VALIDATION.md',
+    'QUICKSTART.md', 'FAQ.md', 'ROADMAP.md', 'USER-GUIDE.zh-CN.md',
+    'REFERENCE.zh-CN.md', 'REFERENCE.en.md', 'WORKSPACE-TASKS.md', 'PRODUCT-DIRECTION.md',
+})
+PUBLIC_SITE_TYPES = frozenset({'.md', '.json', '.css', '.js', '.html', '.svg',
+                               '.png', '.jpg', '.webp', '.webm', '.mp4', '.vtt', '.zip'})
+
+
+def public_site_file(relative):
+    path = Path(relative)
+    return (relative.startswith('site/') and path.suffix in PUBLIC_SITE_TYPES
+            and not any(part.startswith('.') for part in path.parts)
+            and (relative.startswith(('site/content/', 'site/assets/'))
+                 or relative in ('site/README.md', 'site/PUBLISH-CHECKLIST.md',
+                                 'site/metadata.json', 'site/recovery-demo.json')))
+
+
+def candidate_documents(source):
+    """Export a declared documentation surface without copying internal notebooks."""
+    target = source / 'docs'
+    target.mkdir()
+    policy = {'schema': 1, 'release_status': 'LOCAL CANDIDATE',
+              'policy': 'Only declared user/developer documents are exported; originals stay unchanged.',
+              'allowlist': sorted(CANDIDATE_DOCS), 'included': [], 'omitted': []}
+    for path in sorted((ROOT / 'docs').rglob('*')):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ROOT / 'docs').as_posix()
+        original = path.read_bytes()
+        row = {'path': 'docs/' + relative, 'source_sha256': hashlib.sha256(original).hexdigest()}
+        if relative not in CANDIDATE_DOCS and not public_site_file(relative):
+            row['reason'] = 'Outside the explicit public-document allowlist; internal material is retained at source.'
+            policy['omitted'].append(row)
+            continue
+        if public_site_file(relative) and path.suffix not in ('.md', '.json', '.css', '.js', '.html', '.svg', '.vtt'):
+            destination = target / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(original)
+            row.update(export_sha256=row['source_sha256'], transformations=[])
+            policy['included'].append(row)
+            continue
+        content = original.decode('utf-8')
+        changes = []
+        if relative == 'VALIDATION.md':
+            content = ('# Reproduce validation for this local candidate\n\n'
+                       'Historical internal reports and screenshots are not included in this source package. '
+                       'Their omission does not assert that a new package has passed those historical checks.\n\n'
+                       'Run `PYTHONPATH=src python3 -m unittest discover -s tests -v` for the core regressions. '
+                       'Run `node --test tests/*.test.cjs` for the Node contracts. Browser tests opt in with '
+                       '`REPRISE_BROWSER_TESTS=1` and require an explicitly available browser/runtime.\n\n'
+                       'Use `python3 scripts/check_distribution.py --local-candidate` for a new retained '
+                       'installation check when building from a Git source checkout. This command needs '
+                       'the documented offline Python build tools. A source archive alone has no Git identity.\n\n'
+                       'See [release checks](RELEASE-CHECKLIST.md), [Git graph contracts](GIT-GRAPH.md), '
+                       'and [the source export policy](../SOURCE-EXPORT-POLICY.json). Report the actual '
+                       'platform, source hashes, passes, failures and skipped checks for each new run.\n')
+            changes.append('Replace private historical validation log with reproducible verification instructions.')
+        elif relative == 'BACKUP-AND-MIGRATION.md':
+            content = re.sub(r'^## 本轮验收要求\n.*?(?=^## )', '', content, flags=re.MULTILINE | re.DOTALL)
+            content = re.sub(r'^## 最终验收[^\n]*\n.*\Z', '', content, flags=re.MULTILINE | re.DOTALL)
+            changes.append('Omit internal implementation/acceptance history; retain user workflow and limitations.')
+        elif relative == 'RELEASE-CHECKLIST.md':
+            content = '\n'.join(line for line in content.split('\n')
+                                if not line.startswith(('已有多组 PersonalWeb demo', '本次本机审计的基准')))
+            changes.append('Omit private project anecdotes and unavailable local report locations.')
+        if changes and relative != 'VALIDATION.md':
+            content = content.rstrip() + ('\n\n> Source-package note: internal acceptance notes and local '
+                'evidence locations are omitted. This document does not substitute for validation '
+                'of the exact candidate you installed.\n')
+        destination = target / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding='utf-8')
+        row.update(export_sha256=hashlib.sha256(destination.read_bytes()).hexdigest(), transformations=changes)
+        policy['included'].append(row)
+    return policy
+
+
+def audit_export_text(files):
+    """Check every UTF-8 payload, including provenance; never exempt source receipts."""
+    findings, scanned = [], 0
+    home = re.compile(r'/(?:Users|home)/([A-Za-z0-9_.-]+)/')
+    # A real deep link starts with an identifier/route. Do not mistake a scanner's
+    # own regex alternative ("thread://|...") for an exported conversation link.
+    private_chat = re.compile(r'''(?:thread|codex)://[A-Za-z0-9][^\s)'"\\|]*''')
+    private_link = re.compile(r'\]\((?:\.\./)*(?:work|outputs?)/[^)]+\)')
+    dated_evidence = re.compile(r'work/(?:test-artifacts|qa|visual-references)/[^\s`)]*[0-9]{8}')
+    for name, data in sorted(files.items()):
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError:
+            continue
+        scanned += 1
+        for number, line in enumerate(text.splitlines(), 1):
+            reasons = []
+            if any(match.group(1).lower() not in ('you', 'user', 'username', 'example') for match in home.finditer(line)):
+                reasons.append('machine-specific home path')
+            if private_chat.search(line):
+                reasons.append('private chat link')
+            if name.endswith('.md') and (private_link.search(line) or dated_evidence.search(line)):
+                reasons.append('unavailable private evidence reference')
+            if reasons:
+                findings.append({'path': name, 'line': number, 'reasons': reasons})
+    return {'status': 'passed' if not findings else 'failed', 'utf8_files_scanned': scanned,
+            'provenance_included_in_scan': True, 'findings': findings}
+
+
+def audit_archive(path):
+    if path.suffix == '.whl':
+        with zipfile.ZipFile(path) as archive:
+            files = {name: archive.read(name) for name in archive.namelist() if not name.endswith('/')}
+    else:
+        with tarfile.open(path) as archive:
+            files = {member.name: archive.extractfile(member).read() for member in archive.getmembers() if member.isfile()}
+    return audit_export_text(files)
 
 
 def clean_environment():
@@ -85,7 +203,8 @@ def unpack_sdist(archive_path, target):
     source = roots[0]
     for name in ('run.py', 'package.json', 'README.md', 'MANIFEST.in',
                  'docs/RECIPES.md', 'examples/command-web.recipe.json',
-                 'scripts/import_legacy_evidence.py', 'scripts/check_distribution.py'):
+                 'scripts/import_legacy_evidence.py', 'scripts/check_distribution.py',
+                 'scripts/start_workbench.py', 'Reprise.command'):
         if not (source / name).is_file():
             raise AssertionError('Source archive lacks ' + name)
     return source
@@ -159,6 +278,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'work/test-artifacts',
                         help='Parent for a new retained test directory')
+    parser.add_argument('--local-candidate', action='store_true',
+                        help='Label build artifacts as local candidates without changing package versions')
     args = parser.parse_args()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     output = args.output.expanduser().resolve() / ('distribution-' + stamp + '-' + uuid.uuid4().hex[:8])
@@ -174,11 +295,63 @@ def main():
         source = output / 'source'
         source.mkdir()
         for name in ('pyproject.toml', 'MANIFEST.in', 'README.md', 'CHANGELOG.md', 'AGENTS.md',
-                     'LICENSE', 'THIRD-PARTY-NOTICES.md', 'run.py', 'package.json'):
+                     'LICENSE', 'THIRD-PARTY-NOTICES.md', 'run.py', 'package.json', 'Reprise.command'):
             shutil.copy2(ROOT / name, source / name)
+        for path in sorted(ROOT.glob('README*.md')):
+            if path.name != 'README.md':
+                shutil.copy2(path, source / path.name)
+        if (ROOT / 'CONTRIBUTING.md').is_file():
+            shutil.copy2(ROOT / 'CONTRIBUTING.md', source / 'CONTRIBUTING.md')
         for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts', 'skills'):
+            if args.local_candidate and name == 'docs':
+                continue
             shutil.copytree(ROOT / name, source / name,
                             ignore=shutil.ignore_patterns('__pycache__', '*.egg-info', '*.pyc', '.DS_Store'))
+        export_policy = candidate_documents(source) if args.local_candidate else None
+        commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=ROOT,
+                                capture_output=True, text=True, check=True).stdout.strip()
+        status = subprocess.run(['git', 'status', '--porcelain=v1', '--untracked-files=normal'],
+                                cwd=ROOT, capture_output=True, check=True).stdout
+        if args.local_candidate:
+            notice = ('# LOCAL CANDIDATE\n\nThis is a local validation build, not a public release. '
+                      'It includes the copied working-tree source, which may differ from its recorded Git commit. '
+                      'See SOURCE-PROVENANCE.json for the exact build-input hashes.\n\n')
+            (output / 'LOCAL-CANDIDATE.md').write_text(notice)
+            (source / 'README.md').write_text(notice + (source / 'README.md').read_text())
+        # This manifest identifies the frozen inputs, not just their possibly dirty base commit.
+        # It intentionally excludes itself and build-generated files created later.
+        with (source / 'MANIFEST.in').open('a') as stream:
+            stream.write('\ninclude SOURCE-PROVENANCE.json\n')
+            if args.local_candidate:
+                stream.write('include SOURCE-EXPORT-POLICY.json\n')
+        if export_policy is not None:
+            policy_payload = json.dumps(export_policy, ensure_ascii=False, indent=2) + '\n'
+            (source / 'SOURCE-EXPORT-POLICY.json').write_text(policy_payload)
+            (output / 'SOURCE-EXPORT-POLICY.json').write_text(policy_payload)
+        inputs = {str(path.relative_to(source)): hashlib.sha256(path.read_bytes()).hexdigest()
+                  for path in sorted(source.rglob('*')) if path.is_file()}
+        provenance = {'source_commit': commit, 'source_dirty': bool(status.strip()),
+                      'source_status_sha256': hashlib.sha256(status).hexdigest(),
+                      'source_tree_sha256': hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest(),
+                      'scope': 'frozen distribution inputs, excluding this manifest and later build outputs',
+                      'files': inputs,
+                      'packaging_overlays': ['MANIFEST.in: include SOURCE-PROVENANCE.json']}
+        if args.local_candidate:
+            provenance['release_status'] = 'LOCAL CANDIDATE'
+            provenance['packaging_overlays'].append('README.md: prepend LOCAL CANDIDATE notice')
+            provenance['packaging_overlays'].append('docs/: explicit allowlist and documented internal-evidence omissions; see SOURCE-EXPORT-POLICY.json')
+            report['release_status'] = 'LOCAL CANDIDATE'
+        payload = json.dumps(provenance, ensure_ascii=False, indent=2) + '\n'
+        (output / 'SOURCE-PROVENANCE.json').write_text(payload)
+        (source / 'SOURCE-PROVENANCE.json').write_text(payload)
+        report['source_provenance'] = str(output / 'SOURCE-PROVENANCE.json')
+        if args.local_candidate:
+            audit = audit_export_text({str(path.relative_to(source)): path.read_bytes()
+                                       for path in source.rglob('*') if path.is_file()})
+            report['source_export_audit'] = audit
+            (output / 'source-export-audit.json').write_text(json.dumps(audit, indent=2) + '\n')
+            if audit['status'] != 'passed':
+                raise RuntimeError('Candidate source export contains private references; see source-export-audit.json')
         caller = output / 'outside-source'
         caller.mkdir()
         expected = {name: hashlib.sha256((source / 'web' / name).read_bytes()).hexdigest() for name in ASSETS}
@@ -186,6 +359,13 @@ def main():
         archive = build(source, output / 'sdist', 'sdist', output / 'build-sdist.log')
         unpacked = unpack_sdist(archive, output / 'unpacked-sdist')
         rebuilt = build(unpacked, output / 'sdist-wheel', 'wheel', output / 'build-sdist-wheel.log')
+        if args.local_candidate:
+            report['archive_export_audits'] = {}
+            for label, artifact in (('wheel', direct), ('sdist', archive), ('sdist-wheel', rebuilt)):
+                audit = audit_archive(artifact)
+                report['archive_export_audits'][label] = audit
+                if audit['status'] != 'passed':
+                    raise RuntimeError('Candidate %s contains private references; see report.json' % label)
         for label, artifact in (('wheel', direct), ('sdist', rebuilt)):
             check_wheel(artifact, expected)
             for mode in ('venv', 'user'):

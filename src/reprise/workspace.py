@@ -105,11 +105,11 @@ def file_comparison(service, identifier, sha, path, base=None):
         try:
             data = repository.blob(revision, name, max_bytes=65536)
             if b'\0' in data:
-                return {'text': '', 'error': '二进制文件，请查看变化清单。'}
+                return {'text': '', 'binary': True, 'error': '二进制文件，请查看变化清单。'}
             return {'text': data.decode('utf-8')}
         except (ValueError, UnicodeError) as error:
             return {'text': '', 'error': str(error)}
 
-    return {'sha': target, 'path': path, 'base': diff['base'],
+    return {'sha': target, 'path': path, 'base_path': item.get('old_path', path), 'base': diff['base'],
             'before': content(diff['base'], item.get('old_path', path), item['status'].startswith('A')),
             'after': content(target, path, item['status'].startswith('D'))}

@@ -1,0 +1,60 @@
+#!/bin/sh
+# One offline core for the Skill and the optional desktop window.
+set -eu
+ROOT=$(CDPATH= cd -- "$(/usr/bin/dirname -- "$0")" && /bin/pwd -P)
+if [ "$(/usr/bin/uname -s)" != Darwin ] || [ "$(/usr/bin/uname -m)" != arm64 ]; then
+  echo '此包适用于 Apple 芯片 Mac。 / This package requires an Apple silicon Mac.' >&2
+  exit 1
+fi
+# Read the build's declared minimum with system tools before loading any bundle binary.
+if ! MIN_MACOS=$(/usr/bin/plutil -extract min_macos raw -expect string -o - "$ROOT/runtime/manifest.json" 2>/dev/null); then
+  echo '无法读取运行包要求的 macOS 版本，请保留完整解压目录。 / Cannot read the required macOS version; keep the complete extracted package.' >&2
+  exit 1
+fi
+if ! CURRENT_MACOS=$(/usr/bin/sw_vers -productVersion 2>/dev/null); then
+  echo '无法读取当前 macOS 版本，尚未启动 Reprise。 / Cannot read the current macOS version; Reprise has not started.' >&2
+  exit 1
+fi
+if ! COMPATIBILITY=$(/usr/bin/awk -v current="$CURRENT_MACOS" -v minimum="$MIN_MACOS" 'BEGIN {
+  pattern = "^[0-9]+[.][0-9]+([.][0-9]+)?$"
+  if (minimum !~ pattern) { print "invalid-minimum"; exit }
+  if (current !~ pattern) { print "invalid-current"; exit }
+  split(current, actual, "[.]"); split(minimum, required, "[.]")
+  for (i = 1; i <= 3; i++) {
+    if (actual[i] + 0 > required[i] + 0) { print "supported"; exit }
+    if (actual[i] + 0 < required[i] + 0) { print "too-old"; exit }
+  }
+  print "supported"
+}'); then
+  echo '无法检查 macOS 兼容性，尚未启动 Reprise。 / Cannot check macOS compatibility; Reprise has not started.' >&2
+  exit 1
+fi
+case "$COMPATIBILITY" in
+  supported) ;;
+  too-old)
+    printf '此包需要 macOS %s 或更新版本；当前为 %s。 / This package requires macOS %s or later; this Mac has %s.\n' "$MIN_MACOS" "$CURRENT_MACOS" "$MIN_MACOS" "$CURRENT_MACOS" >&2
+    exit 1 ;;
+  invalid-minimum)
+    echo '运行包的最低 macOS 版本无效，请重新获取完整包。 / The package minimum macOS version is invalid; obtain a complete package.' >&2
+    exit 1 ;;
+  *)
+    echo '当前 macOS 版本格式无法识别，尚未启动 Reprise。 / The current macOS version is not recognized; Reprise has not started.' >&2
+    exit 1 ;;
+esac
+PYTHON="$ROOT/runtime/python/bin/python3"
+ENTRY="$ROOT/app/reprise/desktop_entry.py"
+if [ ! -x "$PYTHON" ] || [ ! -f "$ENTRY" ]; then
+  echo '请保留解压后的完整目录。 / Keep the complete extracted Reprise folder.' >&2
+  exit 1
+fi
+if [ "$#" -eq 0 ]; then
+  set -- open --workbench --lang zh
+fi
+case "$1" in
+  doctor|connect-skill)
+    COMMAND=$1
+    shift
+    exec "$PYTHON" -I -S -B "$ENTRY" "$COMMAND" --resources "$ROOT" "$@"
+    ;;
+  *) exec "$PYTHON" -I -S -B "$ENTRY" cli --resources "$ROOT" -- "$@" ;;
+esac

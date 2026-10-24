@@ -1,0 +1,105 @@
+---
+name: reprise
+description: 使用 Reprise 保存、预览、运行和恢复本地版本，解释所选版本删除损失与联合空间回收，校验保留内容；管理可重建旧环境，兼容只读 Git 与旧归档。不用于内存优化或全盘自动清理。
+license: MIT
+metadata:
+  version: "0.8.0"
+---
+
+# Reprise · 倒带
+
+一个本地版本管理器：有 Git 时读取真实历史，没有 Git 也可保存文件夹版本。Skill 与本体使用同一个 Python 核心；只需 Python 3.9+ 和 Git，不联网安装依赖。用户无需给文件夹初始化 Git。运行本目录的 `scripts/reprise.py`；先用 `doctor` 检查包完整性。
+
+## Language / 沟通语言
+
+Accept both Chinese and English requests. Follow the user's explicit language choice first; otherwise use the language of their current request, keeping the previous choice for ambiguous or mixed requests. A bare `$reprise` does not imply Chinese. Switch immediately when asked, without changing file names, version titles, paths, or command syntax. Communicate save results, screenshot questions, deletion consequences, estimates, and transfer exclusions in the same chosen language; translate diagnostic meaning while retaining original logs. Do not claim CLI JSON/error strings are fully localized.
+
+中文和英文调用使用同一功能，不要求用户写命令。打开网页时传入 `open ... --lang zh` 或 `--lang en`，保持与沟通语言一致。网页可手动切换并记住选择；无明确参数和已存偏好时跟随浏览器语言。网页切换不会自动改变聊天语言，用户在聊天中要求切换时立即遵循。
+
+保存首次成功后，在用户使用的语言中简短询问截图偏好；保存本身先完成，不以回答或截图为前提。提供 none（无需截图）、manual（自行提供，不再提醒）、remind（每次提醒）、auto（按已确认配置自动截图）。用 `preview-preferences PROJECT --mode MODE` 持久化选择；无已存偏好时为 remind。明确用户选择后不重复询问；manual 可随时主动附加，none 不主动采集。已有截图请求或偏好时复用，不重新打断用户。
+
+auto 必须由用户明确选择可复用的已保存配置：`preview-preferences PROJECT --mode auto --recipe-sha FULL_SHA`。它会在以后保存时按此固定配置运行独立副本并截图，不截桌面、不自动采用检测或 AI 建议。首次未配置时先保留版本，再询问是否配置。`save` / `snapshot` 返回 `result.preview`：如截图失败或取消，说明版本仍已保存；不要为了重试截图再保存一版。可用 `save PATH --preview MODE` 在保存时记住选择。恢复到新库后自动模式降为 remind，在目标电脑重新确认。
+
+Example: “Save this folder as Before redesign” and “保存这个文件夹，命名为改版前” both route to `save`; use the respective request language for the receipt and optional screenshot question. Never infer permission to run commands merely from saving.
+
+## 按用户目标选最短流程
+
+只处理用户给出的文件夹、项目或已登记名称，保留当前数据目录。名称歧义或缺少会改变结果的范围才询问；已有明确路径和授权时直接执行。
+
+| 用户要做什么 | 入口与完成标准 |
+|---|---|
+| 保存一稿、改坏前留一版 | `save`，回报版本和范围；无需启动网页或先做备份 |
+| 多个旧目录或发布 ZIP 归为同一项目 | 先 `import-folders --manifest FILE --check` 看范围、展开与容量预算；按已获导入授权执行时可附 `--preflight FINGERPRINT`，逐版实际恢复读回后给候选与成本；不删除原件 |
+| 看历史或哪两版不同 | `history` / `compare`；要求可视化时才 `open` |
+| 找回旧稿、单个文件 | 固定版本与相对路径，用 `restore --path` 写新目录并读回；保留当前稿 |
+| 判断重复、整理是否值得 | 先 `organize PROJECT --sha FULL_SHA --check` 读已存清单估算；需要实际审阅时再完整 `organize` |
+| 原目录不在、检查版本还能否用 | `verify` 检查库；要求实际找回时 `restore`，不把检查冒充恢复 |
+| 删除选定历史版本、释放版本库空间 | `version-delete-plan PROJECT --sha SHA`（可重复），说明损失与共同引用；已获明确选择与删除授权后 `version-delete PROJECT --plan ID --confirm`，核对回执 |
+| 不删除，想更准确估算空间收益 | 先取得新鲜删除预检计划，再 `version-estimate PROJECT --plan ID`；区分版本库文件减少、分配空间模型、估算记录成本与实际卷空闲未知 |
+| 释放旧环境，之后再运行 | `environments PROJECT` → `environment-check ID` → 明确授权后 `environment-release ID --confirm`；以后按原 SHA `run` 重建 |
+| 数据备份、项目搬家 | 下方备份与目录变更流程；区分 Reprise 数据库和外部原件 |
+
+“电脑卡顿”需要另行诊断进程和内存，不能用去重数字证明已经改善。旧环境按需重建指保留源码、输入与运行配方后重新安装依赖；不是把个人文件删掉再从远端取回。依赖重建可能需要网络，不能保证未来包源和系统工具永远可用。Git 原仓库没有暂存、提交或推送接口。用户只问占用时，先解释 `storage` 的范围，不为统计主动保存整份新版本或生成完整恢复副本。
+
+网页主流程：普通资料先看文件变化，网页按真实入口与此版本素材显示预览；用户可以在项目设置切换显示方式。比较文件时明确 A/B 的完整 SHA，再选择该侧恢复。结果交代版本、路径、范围及读回/对象校验口径，保留当前稿；不要让用户从任务 ID 推断是否成功。见[双语工作台任务](workspace-tasks.md)。
+
+## 默认流程
+
+- 旧目录归并：写入清单 `{"name":"项目名","versions":[{"path":"/old/draft","title":"旧稿"},{"path":"/current/folder","title":"当前稿"}]}`，先 `import-folders --manifest FILE --check` 只读元数据与 ZIP 目录。只问成本就停在预检，不保存或展开；预检不能证明可恢复或可删除。已有导入授权时展示成本并继续 `import-folders --manifest FILE --preflight FINGERPRINT`，不重复索要许可；输入变化或容量不足则重新预检，不先清理原件。输入按用户确认的旧→新顺序，最后目录保留；不能用目录名、mtime 或导入时间伪造原始 Git 历史。既有文件夹项目须明确 `project_id`，只追加记录，不改写已有 SHA/父边；Git 项目保持只读，另建文件夹快照合集。
+- ZIP 默认不能悄悄按内容替换。只有用户接受无法重现原 ZIP 字节、封装元数据及签名时，才给该项加 `"zip_mode":"contents"`。最外层逐文件流式去重，嵌套压缩包仍按普通文件保存；需要原包字节一致时保留原包。全部输入须由用户给出；普通归并入口不运行项目或自动截图。
+- 归并结果保留实际恢复副本，先解释原件候选大小、新增版本库及校验副本成本，再解释模型净变化；可能为负，实际物理释放量未知。条件模型中移除校验副本需另行决定，当前没有通用原件删除执行器。候选不是删除授权或外部依赖检查。使用 `folder-import-report ID --refresh` 重新核对源字节、路径、库对象与恢复结果；源变化、使用中、Git 未覆盖、硬链接、缺失或不完整批次均不能给可删除结论。详见 [归并范围与成本](folder-imports.md)。
+- 本地网站发布历史：同一个源码目录持续修改，同一个输出目录保存待发布结果，用 `save /site/dist --name "发布历史" --title "发布说明"` 留每版。Reprise 复用相同文件内容；它不代替构建或上传。可直接上传目录时不为留历史另造 ZIP；平台要求 ZIP 时仍生成所需包。已经存在的 ZIP 需要上面的明确内容模式才可按内部文件去重，不能把包外字节不同说成没有内部重复。真实大项目先盘点并预检，不把合成样本比例外推到 150 GB 或承诺省多少。
+
+- 按名称定位：`projects` 默认仅返回名称、标识与类型；名称或别名不明确时列候选，不猜。现维护源码与同名旧归档分别定位。名称登记和版本数据在用户数据目录，独立于聊天和 Skill 安装目录。
+- 保存：`save /path/to/folder --title "第二稿"`。可用 `--name "资料"` 指定名称，`--exclude 'private/**'` 排除相对路径或通配符。首次读取文件字节生成指纹，后续增量处理；相同字节共享存储，路径和版本分别保留。保存不会修改原文件夹。`.git` 自动排除，排除项会明确记录。
+- 保存进程中断后，先重新查看 `history`：有发布事务记录时会恢复到完整的旧版或已提交新版，失败对象和回执保留。核对完整 SHA 后再决定是否重试保存；若提示事务与内容库不一致，保留诊断，不手工改 Git 引用。未完成的保存事务会阻止离线备份，须先恢复一致状态。这是进程中断恢复，不代表已验证任意断电场景。
+- 查看：`history --project "资料"`。打开工作台用 `open --project "资料" --no-browser`；也支持 `open /path/to/folder --no-browser`、旧式 `open --repo /path/to/repo`。要求打开时执行命令并打开返回的本机 URL，核对项目身份；优先使用用户指定浏览器，否则按可用 ego-browser 指南操作。
+- 检查：`verify --project "资料" --ref FULL_SHA` 只读回选中文件夹版本的清单与内容对象，不需要原目录在线，不生成恢复副本。检查通过不代表其他版本、独立备份、实际恢复或程序运行通过。`storage` 只统计当前 Reprise 数据目录的文件元数据；分开报告文件长度、分配块估计和文件系统可用空间，不代表独占空间或可释放量。外部源目录、外部恢复目标和外部旧归档不在占用统计内。
+- 恢复：`restore --project "资料" --ref FULL_SHA --to /new/path`，或 `restore PROJECT_ID --sha FULL_SHA --path notes/draft.md --to /new/path`。目标必须是源目录和 Git 存储之外的新路径，不覆盖。`export PROJECT_ID --sha FULL_SHA --to /new/path.zip` 保留展开副本与回执。
+- 整理预检：`organize "资料" --sha FULL_SHA --check` 只读已存清单，返回快照内重复字节、完整恢复副本的新增逻辑字节和当时卷空闲；原目录可离线。它不生成恢复副本、不验证原文件安全性、不产生可删除清单，`reclaimable_bytes` 保持未知。用这些数字解释成本，不承诺净释放或实际物理占用。
+- 整理审阅：`organize "资料" --sha FULL_SHA` 实际恢复完整快照并读回核对，默认返回摘要；`review PLAN_ID --details` 查看已验证候选；`select PLAN_ID --path duplicate.txt` 保存明确选择。选择只是待执行清单，不移除文件。完整审阅优先复用同一项目、精确 SHA、完整范围的内部恢复副本，并重新读回；缺失、损坏、额外内容、元数据或来源不符时不复用，旧副本及诊断保留。没有有效副本才新建；`recovery_reused` 与 `additional_recovery_logical_bytes` 报告本次整版副本成本，小型回执另占空间。已有 PLAN_ID 时仍优先 `review`。当前候选只覆盖单份快照中的完全相同文件，不是跨项目或全盘清理；同一内容库跨版本共享存储是另一能力。不能将重复字节统计当作磁盘实际回收量。含缺失条件的内容不能宣称完整恢复，未覆盖的 Git 元数据、依赖、ACL、文件系统标志和所有者及运行验证分别说明。
+
+普通文件夹和 Git 使用相同的版本、比较和恢复界面。Git 原仓库只读，不自动提交、checkout、reset、fetch，不运行 hooks、filters 或安装命令。原始 Git 提交、文件夹快照和归档视图保留各自来源，不能把整理时间或视图 SHA 说成原项目开发历史。需要高级 Git 对比可用 `compare --repo PATH --base OLD --target NEW`、`refs --repo PATH`；`bundle --repo PATH --to NEW.bundle` 导出本地 refs 历史。启动历史项目须使用已明确保存的运行配方。
+
+## 版本删除与环境重建
+
+- 先用版本名、完整 SHA、文件列表、精确绑定截图或实际运行确认对象。截图属于所选版本才可作为识别依据；没有截图就明确缺失。
+- 版本删除只适用于 Reprise 管理的普通文件夹快照。预检在整个内容库检查共同引用，按本组选中版本计算独占内容；不能将逐版可回收量相加。即使独占字节为零，也会丢失该版的路径、元数据与文件组合，不能再按该版恢复。
+- 更准确的空间预检用 `version-estimate PROJECT --plan PLAN_ID`。它计量与执行路径相同规则的压缩数据流和 v2 索引、版本元数据，不保存整份模拟包、不安装替换库、不删除版本。单独报告既有库重打包收益与舍弃所选版本的额外收益；数值可为负。重复差异和另建保留库的对照误差，都不能冒充真实删除或卷空闲误差。分配空间按当前卷单位建模，APFS 共享块和快照等影响保持未知。保留的少量清单和回执也占空间，需扣除并注明额外任务记录未计入；库布局、配置或 Git 工具改变后重新预检。
+- 已有具体版本与明确删除授权时按该范围执行，不重复索要许可；否则先呈现可审阅的计划再取得选择。计划期间库发生变化就重新预检。不能把“保存”“整理一下”或选择待执行重复副本当成版本删除授权。
+- 删除先验证替换库，再回收已无引用的受管内容，最后核验全库保留版本。原文件夹、恢复副本、截图、日志、运行副本和失败诊断保留。分别回报独占未压缩字节、库文件长度变化、分配块变化、卷空闲差；负值照实报告。故障只在明确重试同一计划时续办，不自动清理。
+- `environment` 是已保存运行配方中的可选声明：`outputs` 指定此前源码里不存在的生成目录，`inputs` 指定已存锁文件/清单，`tools` 指定需要记录核验的工具。只有实际干净构建和启动成功、内容未变且进程已停止的登记产物可释放。修改过的输出、额外数据库、硬链接、无法确认的进程会阻止释放。
+- 源码、配方、输入、运行日志和回执持续保留。重建核验不等于系统库、宿主变量或外部服务完整归档；`network:local` 约束浏览器采集，不能限制包管理器命令联网。不要声称完全隔离或永远可重建。
+- 含外部解释器链接的环境不能冒充自包含备份。可先明确释放已经核验的依赖后再备份；备份不静默省略环境产物。恢复的环境必须重新构建，旧删除计划必须重新预检。
+- 0.7.0 首次删除会将受管库转换为独立快照目录，保留存活版本完整 SHA 与真实父边；旧版客户端不支持该目录。只用本版本及更新的兼容客户端访问，外部 Git 与旧归档格式不变。
+
+## 隐私与信任
+
+使用前可运行 `privacy` 或在工作台打开「本地数据与隐私」，核对实际数据目录和已加入范围。
+
+- 保存、指纹、去重、比较、恢复与整理由本地程序执行，不调用 AI、不自动上传、不上报遥测，没有后台全盘扫描；只处理明确加入的范围，不做 OCR、语义分类或向量索引。
+- 版本库保存原始文件内容；持久化索引保存路径、类型、大小、权限、时间、文件身份和哈希。不能说“只存指纹”。本地库未加密，也不是系统级沙箱；有账户文件访问权限的程序可能读取它。
+- 通过 Codex 等 AI 代理运行 Skill 时，工具输出、代理打开的文件可能进入模型上下文，适用该代理的数据政策。不得承诺“使用 Skill 的所有数据都不离开设备”。默认使用摘要，不主动把完整文件清单、正文或归档清单读入模型；仅在用户的查看、比较或选择请求需要时读取对应范围。
+- 可选 AI 建议会在用户主动操作时向其配置的服务发送部分路径、提交信息及有界构建清单；基础版本功能不依赖它。保留模型与权限设置，不自动启用 AI。
+- 排除规则不抹去已经保存的历史。版本库、索引、回执与恢复副本持续保留；移除登记或卸载 Skill 不应冒充删除内容。任何删除都需用户针对具体范围明确选择，不能因调用 Skill、保存版本或勾选待执行清单而自动清理。
+
+## 独立备份与目录变更
+
+跨电脑带走已保存版本：在源电脑创建并读回校验 `backup`，复制完整备份目录（`payload/`、`manifest.jsonl`、`receipt.json`）到目标电脑，用目标电脑的 Reprise `backup-check` → `data-restore --to NEW_DATA` → `--data NEW_DATA open --project NAME --lang zh|en`。无需逐版导出；不自动合并目标已有库。该流程是目录格式，尚无单文件拖入导入。普通文件夹已保存版本可不依赖源路径恢复；外部 Git 原仓库、未保存的修改和外部归档仍须另带，不把 Reprise 管理数据说成整个电脑环境。
+
+- `backup --to /new/backup` 备份当前 `--data` 的 Reprise 已管理数据。先显式 `shutdown` 同一数据目录，确认服务/任务和预览退出；活动租约会阻止备份，不自行结束其他应用。备份读回通过才算完成，原库与失败副本保留。
+- `backup-check /path/to/backup` 重新读回检查；`data-restore /path/to/backup --to /new/data` 还原到新数据目录并重定位已知内部路径。再用 `--data /new/data` 打开，不改默认数据位置；复制的进程身份不能用于停止原进程。
+- 备份范围是 Reprise 数据目录，外部源 Git、未保存的原文件和外部旧归档会单列为未纳入，不能称全部工程离线备份。备份未加密且可能含已保存密钥，摘要不输出密钥。不同设备编号也不证明独立物理介质。
+- `relink --project "资料" --to /existing/location --check` 先核对，再执行不带 `--check` 的相同命令更新关联；`migrate --project "资料" --to /new/location` 复制、读回通过后再切换，原目录不移除，项目标识和历史保持。
+- 原目录离线的文件夹用已保存版本核对；Git 需要可验证的提交锚点。无锚点、内容不符或路径属于其他项目时报告实际限制，不按同名合并。旧归档登记不改写；不能安全完整复制的 linked worktree、外部 Git 对象依赖等明确拒绝迁移。
+- 项目目录迁移复制当前源目录，保存版本的排除规则不等于迁移时丢弃原文件。完成后给新旧路径、固定项目标识、回执和校验范围，不把复制说成已释放空间。
+
+## 旧归档兼容
+
+已登记档案继续使用 `history --project "名称"`、`restore --project "名称" --ref TAG --to NEW`、`export --project "名称" --ref TAG --to NEW.tar.gz` 或 `bundle --project "名称" --to NEW.bundle`。自定义登记可传 `--registry PATH`。
+
+未指定归档版本时恢复该名称对应的全部登记组件，不擅自当成 latest；只有明确登记 latest 才使用它。验证标签与固定原始 SHA、视图 SHA 的对应关系，缺失或不一致则报告错误，不改用另一个同名项目。原始 SHA 与工作台 view_sha 分别报告。
+
+`reprise-selected-snapshot-v1` 自动还原原文件、嵌套 `.git` 和格式内元数据，支持超过 4 GiB 的档案；不能把 payload/、git-internals/ 当成交付文件。要看归档内原项目 Git 历史，先恢复到新的工作目录，再对核实的 Git 根查看，不执行旧工程。旧归档在本体中也使用同一恢复适配器；选择部分文件前先完整恢复旧档案。
+
+普通 Git 导出不含未提交文件、Git 历史、外部 LFS 对象或子模块内容，缺失提示必须保留。普通文件夹快照保存内容、权限、修改时间、扩展属性、安全相对链接与空目录，ACL、文件系统标志和所有者未完整覆盖，不能宣称完整恢复程序环境。失败输出与诊断保留。完成后给出版本、输出、回执、实际校验及缺失条件；仅在用户要求时用 `shutdown --data DATA` 停止对应服务。

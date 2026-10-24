@@ -1,9 +1,13 @@
-include README.md CHANGELOG.md AGENTS.md LICENSE THIRD-PARTY-NOTICES.md run.py package.json
+include README*.md CONTRIBUTING.md CHANGELOG.md AGENTS.md LICENSE THIRD-PARTY-NOTICES.md run.py package.json Reprise.command
 recursive-include web *.html *.js *.css *.svg *.ico *.woff2 *.ttf *.txt *LICENSE
 recursive-include docs *.md
+recursive-include docs/site *.json *.css *.js *.html *.svg *.png *.jpg *.webp *.webm *.mp4 *.vtt *.zip
 recursive-include examples *
 recursive-include scripts *.py
 recursive-include tests *.py *.mjs *.cjs
 global-exclude __pycache__ *.py[cod] .DS_Store
 
 recursive-include skills *.md *.py
+recursive-include desktop *.swift *.plist *.json
+include desktop/macos/reprise skills/reprise/scripts/reprise
+recursive-include skills *.yaml
