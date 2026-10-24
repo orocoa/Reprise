@@ -53,6 +53,7 @@ try{
  assert.equal(new Set(carousel.map(item=>item.record+':'+item.index)).size,3);
  while(!await page.locator('#dialog [data-direction="1"]').isDisabled())await page.click('#dialog [data-direction="1"]');
  assert.equal(await page.locator('#dialog .large-media img').count(),1);
+ await page.waitForFunction(()=>{const img=document.querySelector('#dialog .large-media img');return img?.complete&&img.naturalWidth>0;});
  assert.equal(await page.locator('#dialog .large-media img').evaluate(img=>img.complete&&img.naturalWidth>0),true);
  await page.click('#dialog [data-action=close]');
 
