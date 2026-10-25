@@ -4,7 +4,7 @@
   "version": "0.8.0",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "10fb8d9bc6b9a50dd14db505e86c63e90224d68bdf287e73ba858fd90337ab5b"
+    "sha256": "48b7095ef1631286b7fbc5d84a2e9911d2639dba2084dad139991f7bb2e322d1"
   },
   "verification": {
     "exact_version": true,
@@ -14,54 +14,54 @@
   "assets": [
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-gallery-zh.png",
-      "sha256": "17301c68a07381932492fc18f4541acc791e5e4818bc0a11b801619fcc9bdbd8",
+      "path": "assets/reprise-0.8-gallery-zh-20261026.png",
+      "sha256": "18e019ecbf4b5c499896c4ac68f323157972168603f11c814e06a16aa2adb79e",
       "alt": {
-        "zh": "已安装Codex Skill的真实中文工作台，选中蓝色旧稿A。",
-        "en": "Actual Chinese workbench from the installed Codex Skill, selecting blue old draft A."
+        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "已安装Codex Skill的真实中文工作台，选中蓝色旧稿A。",
-        "en": "Actual Chinese workbench from the installed Codex Skill, selecting blue old draft A."
+        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Current picture history using a synthetic personal webpage."
       }
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-gallery-en.png",
-      "sha256": "4e9bdeda927efb6e76fef4827b59ee67919d74dd9615981c40b380f34b484a8c",
+      "path": "assets/reprise-0.8-relations-zh.png",
+      "sha256": "4914ecaa434a14a2e61c31f4cbaee4a738c713629ca7f0af26c7c3ffaeec32ca",
       "alt": {
-        "zh": "同一旧稿与英文工作台；恢复已核验源B不变。",
-        "en": "The same old draft in the English workbench; recovery preserved source B."
+        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "同一旧稿与英文工作台；恢复已核验源B不变。",
-        "en": "The same old draft in the English workbench; recovery preserved source B."
+        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       }
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-save-a.png",
-      "sha256": "730fd1295912f5afbcbe2846573160cfb7e53c6be99f59a91177916e8a4c41ed",
+      "path": "assets/reprise-0.8-gallery-en-20261026.png",
+      "sha256": "2b236e3d558a06f351fcc012034bc712b556b388921686fcdec4363e1c638504",
       "alt": {
-        "zh": "第一稿A的实际画面，绑定版本a21be57d8060b71644054669cfef8db13286c70c。",
-        "en": "Actual picture for draft A, bound to revision a21be57d8060b71644054669cfef8db13286c70c."
+        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "第一稿A的实际画面，绑定版本a21be57d8060b71644054669cfef8db13286c70c。",
-        "en": "Actual picture for draft A, bound to revision a21be57d8060b71644054669cfef8db13286c70c."
+        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Current picture history using a synthetic personal webpage."
       }
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-save-b.png",
-      "sha256": "2915d0b2952a91388b0ef5febf473528c7c8a816dd6942107b43e86ba555a1e3",
+      "path": "assets/reprise-0.8-relations-en.png",
+      "sha256": "00d48bf14bbbe8ec41fbc837a6cff884a351de9b95b00b9ee91c5d8d9911734d",
       "alt": {
-        "zh": "第二稿B的实际画面，绑定版本246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e。",
-        "en": "Actual picture for draft B, bound to revision246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e."
+        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "第二稿B的实际画面，绑定版本246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e。",
-        "en": "Actual picture for draft B, bound to revision246e0c20fe8b3c8240e19af6b9329ec7ad27ad5e."
+        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       }
     },
     {
@@ -84,6 +84,6 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "Installed source Skill and browser recovery; the public archive differs only in release/provenance metadata and has byte-identical functional payload, verified by CRC, manifest hashes and actual doctor."
+    "note": "Synthetic local webpage and real Git-object fixtures; final package functional bytes match tested source and the installed entry. Original historical images remain retained."
   }
 }
