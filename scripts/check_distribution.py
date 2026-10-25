@@ -27,6 +27,7 @@ CANDIDATE_DOCS = frozenset({
     'RELEASE-CHECKLIST.md', 'implementation-contract.md', 'VALIDATION.md',
     'QUICKSTART.md', 'FAQ.md', 'ROADMAP.md', 'USER-GUIDE.zh-CN.md',
     'REFERENCE.zh-CN.md', 'REFERENCE.en.md', 'WORKSPACE-TASKS.md', 'PRODUCT-DIRECTION.md',
+    'FEATURES.md', 'FEATURES.en.md', 'FOLDER-IMPORTS.md',
 })
 PUBLIC_SITE_TYPES = frozenset({'.md', '.json', '.css', '.js', '.html', '.svg',
                                '.png', '.jpg', '.webp', '.webm', '.mp4', '.vtt', '.zip'})

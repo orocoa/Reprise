@@ -23,7 +23,8 @@ try {
  await page.waitForFunction(()=>state.commits.length===2&&detail(state.selected)&&!state.loading);
  assert.equal(await page.locator('#search').getAttribute('placeholder'),'Search draft names or files…');
  assert.equal(await page.locator('[data-action=ai-settings],[data-action=ai-suggest]').count(),0,'The main workspace has no AI entry');
- assert.equal(await page.locator('[data-density=compact]').innerText(),'Compact view');
+ assert.equal(await page.locator('[data-density]').count(),0);
+ assert.equal((await snapshot()).density,'compact');
  const initialGraph=await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph()));
  const graphStyle=await page.locator('#route-map').evaluate(svg=>({
    nodes:[...svg.querySelectorAll('[data-node]')].map(n=>[n.dataset.node,n.getAttribute('cx'),n.getAttribute('stroke')]),
@@ -36,10 +37,10 @@ try {
      nodes:[...svg.querySelectorAll('[data-node]')].map(n=>[n.dataset.node,n.getAttribute('cx'),n.getAttribute('stroke')]),
      edges:[...svg.querySelectorAll('path')].map(e=>[e.dataset.child,e.dataset.parent,e.getAttribute('stroke')])
    }));
-   assert.deepEqual(rendered,graphStyle,'Columns, colors and parent endpoints survive filtering and density changes');
+   assert.deepEqual(rendered,graphStyle,'Columns, colors and parent endpoints survive selection and filtering');
    assert.equal(await page.evaluate(()=>state.graph.rows.every(n=>{
      const row=document.querySelector(`.version-row[data-id="${n.id}"]`);
-     const label=row.querySelector(state.prefs.density==='compact'?'.version-title':'.version-meta');
+     const label=row.querySelector('.version-title');
      const circle=document.querySelector(`[data-node="${n.id}"]`);
      return Math.abs(Number(circle.getAttribute('cy'))-(row.offsetTop+label.offsetTop+label.offsetHeight/2))<.1;
    })),true,'Circles align with their actual DOM rows');
@@ -50,7 +51,6 @@ try {
  await page.click('[data-action=star]');
  assert.equal((await snapshot()).sha,sha);
  assert.equal(await page.locator('[data-action=star]').getAttribute('aria-pressed'),'true');
- await page.click('[data-density=compact]');
  assert.equal(await page.locator('.version-row.selected').evaluate(e=>e.getBoundingClientRect().height),32);
  assert.equal(await page.locator('.version-row').count(),2);
  await verifyGraphView();

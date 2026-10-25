@@ -1,6 +1,6 @@
 # 通过 agent 使用倒带 / Reprise
 
-当前为 [0.8.0 预览发布](https://github.com/orocoa/Reprise/releases/tag/v0.8.0-rc.1)。主附件 `Reprise-Skill.zip` 包含脚本、核心源码和工作台，是主要交付。本次只交付源码 Skill 与双语内容包。
+当前为 [Reprise 0.8.0](https://github.com/orocoa/Reprise/releases/tag/v0.8.0)。主附件 `Reprise-Skill.zip` 包含脚本、核心源码和工作台。
 
 ## 接入一次，之后说“打开”
 
@@ -10,9 +10,23 @@
 
 导入或复制时保留 `SKILL.md`、`scripts/`、`assets/` 和参考文件；脚本从包内定位固定核心，不要求你手工拼备份逻辑或填写环境变量。agent 核对客户端真正支持的 Skill 位置或导入面板，不猜路径、不覆盖已有技能。仅上传一份 SKILL.md 不足以运行。
 
-接入后选择 **Reprise Skill**，说“打开”。只打开工作台，不导入或保存当前目录。要留一稿时再说“保存当前网页这一稿，同时记住画面”，复用对话中已明确的项目。项目不明确时才询问位置。
+接入后选择 **Reprise Skill**，说“打开”。只打开工作台，不导入或保存当前目录。要留一稿时再说“保存当前网页这一稿”，复用对话中已明确的项目。项目不明确时才询问位置。
 
 Skill 标识为 `reprise`，“倒带”是中文产品名。显示名不等于注册了通用 `@倒带` / `@Reprise` 别名；选择方式由实际客户端决定。沿用对话中英文，不翻译用户标题和文件路径，也不配置另一套 AI Key 或模型。
+
+## 少说几次，沿用项目
+
+在当前网页目录已明确时，可以说“本轮修改前后都帮我留稿”。Agent 在开始修改前和本轮结束后各保存一次，名称按任务简短生成；只打开不会保存。已批准的安装继续完成，不因每个包重复询问；真正缺少许可时按宿主流程处理。
+
+首次为网页项目留稿时，只问一次以后是否一起保存画面，并立即按项目保存答案。配置尚未就绪也保留选择；确认实际运行配置后，后续普通保存持续沿用。完整新副本取回后，使用回执中的实际目录继续编辑。截图偏好不等于后台自动记录每次修改。
+
+工作台提供直接/快捷键留稿和可复制的继续修改指令。[完整范围](FEATURES.md)
+
+## 看已有 Git 版本关系
+
+明确要查看仓库历史时，用 `python3 /absolute/path/reprise/scripts/reprise.py open /known/repository --lang zh --no-browser`，并打开实际返回的 URL。工作台保留「画面」与「版本关系」，可按图片或真实 Git 分叉、合并选中旧版并取回副本。不会替用户提交或改变暂存区。
+
+`save` 保存当前文件为文件夹稿件；`snapshot` 与 `preview-preferences` 只用于文件夹项目。不要对 Git 历史项目调用这两个命令。同一目录可分别查看已有 Git 历史与保存文件夹稿件，身份和来源独立。
 
 ## agent 先复用，再补缺项
 
@@ -60,7 +74,12 @@ python3 /absolute/path/reprise/scripts/reprise.py save /known/webpage --title "�
 
 ## English
 
-The **0.8.0 preview source Skill**, delivered as `Reprise-Skill.zip`, is the primary path: keep its scripts, fixed source core, web UI and resources together. Give the full Skill package to a local agent, ask it to check and reuse the environment, install missing tools using official methods and current authorization, then open Reprise. Import must retain `scripts/` and `assets/`; SKILL.md alone is insufficient. Preserve existing Skills and verify the actual client entry.
+Use one explicit request for this editing task: “Save a draft before and after this edit.” Reuse the known folder, approved image preference and short task-based names. The before/after save request is limited to this editing task. The image choice is asked once per project, persisted before capture/configuration finishes, and reused on later saves. This does not enable background recording. After a whole-draft recovery, use the actual new folder in the continuation instruction. Local source shortcuts and copyable continuation instructions are unreleased; public v0.8.0-rc.1 downloads remain unchanged. [Feature scope](FEATURES.en.md)
+
+
+The **0.8.0 source Skill**, delivered as `Reprise-Skill.zip`, is the primary path: keep its scripts, fixed source core, web UI and resources together. Give the full Skill package to a local agent, ask it to check and reuse the environment, install missing tools using official methods and current authorization, then open Reprise. Import must retain `scripts/` and `assets/`; SKILL.md alone is insufficient. Preserve existing Skills and verify the actual client entry.
+
+For existing Git history, use `open /known/repository --lang en --no-browser`. Its picture and relationship views preserve real commits, branches, merges and exact-version images. Folder saves are a separate project kind; `snapshot` and capture preferences apply only to folder projects. Neither entry creates a source Git commit.
 
 After setup, select Reprise and say **“Open.”** Opening does not import or save the current directory. Save only when requested, using the established project. The identifier is `reprise`; the Chinese name does not register a universal `@` alias. Follow the conversation language without translating titles or paths, adding an AI key, or changing models.
 

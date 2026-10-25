@@ -162,7 +162,8 @@ class Reprise:
             if preferences is not None:
                 if not isinstance(preferences, dict):
                     raise ValueError('截图偏好格式无效。')
-                self.projects.save_preview_preferences(identifier, preferences.get('mode'), preferences.get('recipe_sha'))
+                self.projects.save_preview_preferences(identifier, preferences.get('mode'), preferences.get('recipe_sha'),
+                                                      pending_recipe=preferences.get('pending_recipe', False))
             # Freeze the explicit template before queuing. Saving itself never
             # infers command approval from a newly imported or AI-produced recipe.
             preference = self.projects.record(identifier).get('preview_preferences', {'mode': 'remind'})

@@ -6,6 +6,33 @@ const vm=require('node:vm');
 const {test}=require('node:test');
 const web=path.resolve(__dirname,'../web');
 
+test('uncached file search loads only diff paths, including old rename paths',async()=>{
+ const context=vm.createContext({location:{hash:''},URLSearchParams});
+ vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
+ const result=await vm.runInContext(`(async()=>{
+  globalThis.uiLanguage='en';globalThis.revisionProject=()=> 'project';
+  state.project={id:'project'};state.commits=[{sha:'a'},{sha:'b'}];
+  renderHistory=()=>{};settleFilter=()=>{};updateSearchProgress=()=>{};
+  const calls=[];api=async url=>{calls.push(url);if(!url.includes('/diff?target='))throw Error('Search must not load full version details');return {files:[{path:'new.txt',old_path:'old.txt'}]};};
+  await searchAll();
+  return {calls,index:[...state.searchIndex.values()],details:state.details.size,searching:state.searching};
+ })()`,context);
+ assert.equal(result.calls.length,2);
+ assert.equal(result.details,0);
+ assert.equal(result.searching,false);
+ assert.deepEqual(Array.from(result.index[0]),['new.txt','old.txt']);
+});
+
+test('clearing a query cancels its pending full-history search',()=>{
+ const cancelled=[],input={value:'old query'},context=vm.createContext({location:{hash:''},URLSearchParams,document:{querySelector:()=>input},clearTimeout:id=>cancelled.push(id)});
+ vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
+ const result=vm.runInContext(`(()=>{searchTimer=42;state.query='old query';state.searching=true;settleFilter=()=>{};coreActions['clear-search']();return {query:state.query,searching:state.searching};})()`,context);
+ assert.deepEqual(cancelled,[42]);
+ assert.equal(result.query,'');
+ assert.equal(result.searching,false);
+ assert.equal(input.value,'');
+});
+
 test('refresh restores the same task, runtime or file and never steals outside focus',()=>{
  for(const [attribute,action] of [['data-job','cancel-job'],['data-runtime','stop-runtime'],['data-path','file']]){
   const document={body:{},activeElement:null},context=vm.createContext({document});
@@ -44,7 +71,7 @@ test('detail eviction retains selected/baseline revisions and renamed-file searc
   const retainedSearch=match(commit(ids[5])),evicted=!detail(ids[5]);
   const pinned=[0,1,2,3].every(n=>detail(ids[n]));
   const size=state.details.size;
-  renderHistory=()=>{};settleFilter=()=>{};
+  renderHistory=()=>{};settleFilter=()=>{};updateSearchProgress=()=>{};
   const before=calls;await searchAll();const repeatedSearchCalls=calls-before;
   await loadDetail(ids[5]);
   return {size,pinned,retainedSearch,evicted,repeatedSearchCalls,reloaded:!!detail(ids[5])};

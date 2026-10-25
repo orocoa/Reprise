@@ -23,3 +23,7 @@ Check files saved and picture captured separately. Change the site, then save �
 Single-entry static HTML is the direct route. Build-based sites save first and present an install-and-run plan. Approved commands run in a separate copy. Setting up Reprise tools does not approve website scripts.
 
 [Next: recover by its picture](find-compare-restore.md) · [Environment and permissions](privacy-and-faq.md)
+
+## One request for this edit
+
+With the project established, ask: “Save a draft before and after this edit.” Your agent saves at those two points and reports files and images separately. This does not enable background recording. The first yes/no answer is persisted before capture/configuration finishes, then reused across later saves and conversations. Failure does not reset it.

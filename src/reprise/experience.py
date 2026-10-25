@@ -92,7 +92,7 @@ def save_draft(app, identifier, title, preference, cancel):
         return result
     try:
         check(cancel)
-        if mode == 'quick':
+        if mode == 'quick' or preference.get('pending_recipe'):
             evidence = capture_draft(app, identifier, result['sha'], cancel=cancel)
         else:
             recipe = preference['recipe']

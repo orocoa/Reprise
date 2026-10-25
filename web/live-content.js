@@ -2,8 +2,46 @@
 // Ordinary folders share the existing version, comparison and recovery workspace.
 
 function contentText(zh,en){return uiLanguage==='en'?en:zh;}
+const draftSaveRequests=new Set();
+function defaultDraftTitle(){return contentText('留稿 · ','Draft · ')+new Intl.DateTimeFormat(uiLanguage==='en'?'en-GB':'zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date());}
+function draftSaveBusy(project=state.project?.id){return draftSaveRequests.has(project)||(state.jobs||[]).some(j=>j.project_id===project&&j.operation==='snapshot'&&['queued','running'].includes(j.status));}
+function saveDraftFromToolbar(){
+ if(state.project?.kind!=='folder'||draftSaveBusy())return;
+ // A saved project preference supplies the future capture scope. First use
+ // still explains that scope before any webpage is started.
+ if(state.commits.length&&['auto','none','manual'].includes(state.project.preview_preferences?.mode))return saveCurrentDraft(defaultDraftTitle());
+ snapshotDialog();
+}
+async function saveCurrentDraft(title,{fromDialog=false}={}){
+ const project=state.project?.id,request=state.dialogRequest;
+ if(state.project?.kind!=='folder'||draftSaveBusy(project))return;
+ if(fromDialog&&state.snapshotTarget!==project)throw Error(contentText('项目已经变化。','The project has changed.'));
+ const initialChoice=fromDialog?$('#initial-preview-choice')?.value:null;
+ if(!state.project.preview_preferences?.mode&&!['auto','none'].includes(initialChoice))throw Error(contentText('请先选择这个项目是否需要保存画面。','Choose whether this project should save images first.'));
+ const initialPreference=initialChoice?{mode:initialChoice,...(initialChoice==='auto'?{pending_recipe:true}:{})}:null;
+ draftSaveRequests.add(project);refreshDraftSaveControl();
+ try{
+  const job=await api(`/api/projects/${project}/snapshot`,{method:'POST',body:JSON.stringify({title:title.trim()||defaultDraftTitle(),capture_static:initialPreference?false:!['none','manual','auto'].includes(state.project.preview_preferences?.mode),...(initialPreference?{preview_preferences:initialPreference}:{})})});
+  mergeWorkspaceJobs([job]);
+  if(fromDialog&&request===state.dialogRequest&&state.project?.id===project&&$('#dialog').open)dialogShell(contentText('正在保存这一稿','Saving this draft'),`<p data-folder-job="${esc(job.id)}" role="status">${contentText('正在保存文件，并按项目偏好准备画面。','Saving files and preparing the image with this project’s preference.')}</p><p>${contentText('画面未完成时，已保存文件仍然保留。','Saved files remain available if the image is incomplete.')}</p>`,`<button class="secondary-button" data-action="close">${uiText('返回版本')}</button><button class="secondary-button" data-action="cancel-job" data-job="${esc(job.id)}">${uiText('取消任务')}</button>`);
+  else notify(contentText('正在留稿，可继续查看其他版本。','Saving a draft. You can keep browsing.'));
+  pollWorkspaceJob(job.id);
+ }finally{draftSaveRequests.delete(project);refreshDraftSaveControl();}
+}
+function refreshDraftSaveControl(){
+ const button=$('#content-save');if(!button)return;
+ button.disabled=draftSaveBusy();
+ button.title=contentText('保存一稿：Ctrl / ⌘ + S；命名保存：Ctrl / ⌘ + Shift + S','Save a draft: Ctrl / ⌘ + S; name a draft: Ctrl / ⌘ + Shift + S');
+}
+function rememberCaptureControl(d){
+ const sha=d.commit?.sha,mode=state.project?.preview_preferences?.mode;
+ if(state.project?.kind!=='folder'||sha!==state.selected||['auto','none','manual'].includes(mode)||!d.recipe_approved||!['static-web','command-web'].includes(d.recipe?.adapter))return '';
+ const captured=(d.evidence||[]).some(record=>record.sha===sha&&record.status==='complete'&&!record.errors?.length&&record.source!=='manual'&&(record.items||[]).some(item=>!['base','before'].includes(item.side)&&(!item.sha||item.sha===sha)&&!item.missing&&!item.error&&item.url&&item.media_type?.startsWith('image/')));
+ return captured?`<div class="draft-preference-hint"><p>${contentText('这一稿的画面已保存。记住配置后，下次点击「保存一稿」即可直接留稿。','This draft’s image is saved. Remember these settings to save your next draft in one click.')}</p><button class="secondary-button" data-action="remember-draft-preview" data-sha="${esc(sha)}">${contentText('记住画面设置…','Remember image settings…')}</button></div>`:'';
+}
 function contentBytes(bytes){return new Intl.NumberFormat(uiLanguage==='en'?'en-US':'zh-CN',{maximumFractionDigits:1}).format(bytes/((bytes>=1073741824)?1073741824:bytes>=1048576?1048576:bytes>=1024?1024:1))+' '+(bytes>=1073741824?'GiB':bytes>=1048576?'MiB':bytes>=1024?'KiB':'B');}
 function refreshContentStatus(){
+ refreshDraftSaveControl();
  const target=$('#source-status'),kind=state.project?.kind;
  if(!['folder','archive'].includes(kind)){target.removeAttribute('data-user-content');return;}
  // Render complete localized sentences; substring translation corrupts counts
@@ -48,11 +86,12 @@ function previewPreferenceFields(mode=state.project?.preview_preferences?.mode||
  const stored=state.project?.preview_preferences,recipe=stored?.recipe||detail(state.selected)?.recipe;
  const source=stored?.source_sha||state.selected;
  const template=configured?`<details><summary data-user-content>${contentText('自动模式会复用的配置','Settings reused by automatic mode')} · ${esc(source?.slice(0,8)||'')}</summary><pre data-user-content class="content-text">${esc(JSON.stringify(recipe,null,2))}</pre></details>`:'';
- return `<section class="settings-section"><h3 data-user-content>${contentText('保存后需要截图吗？','Screenshots after saving?')}</h3><label class="field"><span data-user-content>${contentText('记住这个项目的选择，可随时更改','Remember for this project; change anytime')}</span><select id="preview-preference-mode">${[['none','无需截图','No screenshots needed'],['manual','我自己提供，不再提醒','I will attach my own; no reminders'],['remind','每次保存后提醒我','Remind me after each save'],['auto','按已确认配置自动截图','Capture automatically with approved settings']].map(([v,zh,en])=>`<option data-user-content value="${v}" ${v===mode?'selected':''} ${v==='auto'&&!configured?'disabled':''}>${contentText(zh,en)}</option>`).join('')}</select></label><p class="snapshot-message" data-user-content>${contentText('截图可选，不会截取桌面。自动模式会在独立副本中运行已确认的配置，并用于以后保存；失败不影响版本保存。','Screenshots are optional; the desktop is never captured. Automatic mode runs the approved settings in an independent copy after future saves. Capture failure does not undo the saved version.')}</p>${template}${!configured?`<p data-user-content>${contentText('自动截图暂不可选：先保存一版，再核对并保存它的运行与截图配置。','Automatic capture is unavailable: save a version, then review and save its run and capture settings first.')}</p>`:''}</section>`;
+ return `<section class="settings-section"><h3 data-user-content>${contentText('保存后需要截图吗？','Screenshots after saving?')}</h3><label class="field"><span data-user-content>${contentText('记住这个项目的选择，可随时更改','Remember for this project; change anytime')}</span><select id="preview-preference-mode">${[['none','无需截图','No screenshots needed'],['manual','我自己提供，不再提醒','I will attach my own; no reminders'],['remind','每次保存后提醒我','Remind me after each save'],['auto','每次留稿都保存画面','Save images with future drafts']].map(([v,zh,en])=>`<option data-user-content value="${v}" ${v===mode?'selected':''} >${contentText(zh,en)}</option>`).join('')}</select></label><p class="snapshot-message" data-user-content>${contentText('截图可选，不会截取桌面。自动模式会在独立副本中运行已确认的配置，并用于以后保存；失败不影响版本保存。','Screenshots are optional; the desktop is never captured. Automatic mode runs the approved settings in an independent copy after future saves. Capture failure does not undo the saved version.')}</p>${template}${!configured?`<p data-user-content>${contentText('先记住选择。可直接打开的网页会准备画面；需要运行命令时先确认配置，之后沿用，不再重复询问是否截图。','Your choice is remembered first. Directly viewable webpages can prepare an image; command-based projects need reviewed settings, then reuse them without asking about images again.')}</p>`:''}</section>`;
 }
 function previewPreferenceRequest(){
  const mode=$('#preview-preference-mode')?.value||state.project?.preview_preferences?.mode||'remind';
- return {mode,...(mode==='auto'&&state.project?.preview_preferences?.mode!=='auto'?{recipe_sha:state.selected}:{})};
+ if(mode!=='auto'||state.project?.preview_preferences?.mode==='auto')return {mode};
+ return {mode,...(detail(state.selected)?.recipe_approved&&detail(state.selected)?.recipe?.adapter!=='manual'?{recipe_sha:state.selected}:{pending_recipe:true})};
 }
 function previewPreferencesDialog(draft={}){
  state.previewPreferenceTarget=state.project.id;
@@ -63,19 +102,30 @@ function snapshotDialog(draft={}){
  if(state.project?.kind!=='folder')return;
  state.snapshotTarget=state.project.id;
  const mode=state.project.preview_preferences?.mode;
- const description=mode==='auto'?contentText('保存文件，并按已确认的配置截图。','Saves the files and captures using your approved settings.'):['none','manual'].includes(mode)?contentText('按你的截图偏好，仅保存文件。','Saves files only, following your screenshot preference.'):contentText('保存文件；识别到可直接打开的网页时，在独立副本中保存画面。只允许本机网络，不执行安装或构建命令。','Saves the files and captures directly viewable webpages in an independent copy. Local network only; no install or build commands.');
- dialogShell(contentText('保存一稿','Save a draft'),`<label class="field">${contentText('给这一稿起个名字','Name this draft')}<input id="content-version-title" maxlength="120" value="${esc(draft.title||'')}" placeholder="${contentText('例如：蓝色按钮，第二稿','For example: blue button, second draft')}"></label><p>${description}</p><p class="snapshot-message">${contentText('截图失败也会保留文件。保存后继续修改原文件夹即可。','Files remain saved even if capture fails. Continue editing your original folder afterward.')}</p><details><summary>${contentText('保存位置与范围','Source and scope')}</summary><p data-user-content>${esc(state.project.path)}</p><p>${contentText('当前仅保存在本机，尚未上传云端。','Saved on this computer only; not uploaded to the cloud.')}</p></details>`,`<button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" data-action="save-content-version">${contentText('保存这一稿','Save this draft')}</button>`);
- $('#content-version-title').focus();
+ const description=!mode?contentText('先保存文件；画面按上面的选择处理。','Files are saved first; the image follows your choice above.'):mode==='auto'?contentText(state.project.preview_preferences.pending_recipe?'截图选择已记住；保存文件后准备画面，配置缺失时给出下一步。':'保存文件，并按已确认的配置截图。',state.project.preview_preferences.pending_recipe?'Your image choice is remembered. Save files, then prepare the image or explain the missing settings.':'Saves the files and captures using your approved settings.'):['none','manual'].includes(mode)?contentText('按你的截图偏好，仅保存文件。','Saves files only, following your screenshot preference.'):contentText('保存文件；识别到可直接打开的网页时，在独立副本中保存画面。只允许本机网络，不执行安装或构建命令。','Saves the files and captures directly viewable webpages in an independent copy. Local network only; no install or build commands.');
+ dialogShell(contentText('保存一稿','Save a draft'),previewLanguageControls()+`<label class="field">${contentText('稿件名称（可选）','Draft name (optional)')}<input id="content-version-title" maxlength="120" value="${esc(draft.title||'')}" placeholder="${contentText('例如：蓝色按钮，第二稿','For example: blue button, second draft')}"></label>${!mode?`<label class="field">${contentText('这个项目以后留稿时，需要一起保存画面吗？','Should future drafts of this project include an image?')}<select id="initial-preview-choice" required><option value="" ${!draft.initialPreviewMode?'selected':''}>${contentText('请选择一次，之后沿用','Choose once; remembered for this project')}</option><option value="auto" ${draft.initialPreviewMode==='auto'?'selected':''}>${contentText('是，留稿时一起保存画面','Yes, save an image with each draft')}</option><option value="none" ${draft.initialPreviewMode==='none'?'selected':''}>${contentText('否，只保存文件','No, save files only')}</option></select></label><p class="snapshot-message">${contentText('选择按项目记住。需要安装或运行网页时先确认配置，以后按这份已确认配置执行；可随时在设置中更改。','Remembered for this project. Review install/run settings when needed; future saves reuse those approved settings. Change your choice in settings anytime.')}</p>`:''}<p>${description}</p><p class="snapshot-message">${contentText('截图失败也会保留文件。保存后继续修改原文件夹即可。','Files remain saved even if capture fails. Continue editing your original folder afterward.')}</p><details><summary>${contentText('保存位置与范围','Source and scope')}</summary><p data-user-content>${esc(state.project.path)}</p><p>${contentText('当前仅保存在本机，尚未上传云端。','Saved on this computer only; not uploaded to the cloud.')}</p></details>`,`<button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" data-action="save-content-version">${contentText('保存这一稿','Save this draft')}</button>`);
+ const input=$('#content-version-title');
+ input.placeholder=defaultDraftTitle();
+ input.setAttribute('aria-label',contentText('稿件名称（可选，留空按时间命名）','Draft name (optional; leave blank to use the time)'));
+ input.insertAdjacentHTML('afterend',`<small>${contentText('名称可留空，按时间命名；之后可随时修改。Ctrl / ⌘ + Enter 保存。','Leave blank to use the time; rename anytime. Ctrl / ⌘ + Enter saves.')}</small>`);
+ const choice=$('#initial-preview-choice'),button=$('#dialog [data-action="save-content-version"]');
+ if(choice){button.disabled=!choice.value;choice.addEventListener('change',()=>{button.disabled=!choice.value;});choice.focus();}
+ else input.focus();
 }
 async function folderSnapshotFinished(job){
  const ownDialog=$('#dialog [data-folder-job]')?.dataset.folderJob===job.id;
  if(ownDialog)closeDialog();
  await refreshWorkspace();
  if(job.project_id===state.project?.id&&job.status==='complete'){
+  const selected=state.selected,tab=state.tab;
   await loadProject(job.project_id,{preserve:true});
-  if(job.result?.sha){state.tab='preview';await choose(job.result.sha);}
+  if(state.project?.id!==job.project_id)return;
+  if(ownDialog&&job.result?.sha){state.tab='preview';await choose(job.result.sha);}
+  else if(selected&&commit(selected)){state.tab=tab;await choose(selected);}
  }
- notify(job.status==='complete'?uiText(job.result?.unchanged?'文件夹没有变化，沿用已有版本。':'版本已保存。'):job.error||job.status);
+ const preview=job.result?.preview,unchanged=job.result?.unchanged;
+ notify(job.status!=='complete'?job.error||job.status:preview?.status==='complete'?contentText(unchanged?'沿用已有稿件，画面已完成。':'文件和画面已保存。',unchanged?'Existing draft reused; image captured.':'Files and image saved.'):['failed','cancelled','needs-configuration','needs-approval'].includes(preview?.status)?contentText('文件已保存，画面未完成；可为这一稿补画面。','Files saved; image incomplete. Capture this same draft later.'):uiText(unchanged?'文件夹没有变化，沿用已有版本。':'版本已保存。'));
+ refreshDraftSaveControl();
  if(ownDialog&&job.result?.saved&&job.project_id===state.project?.id){
   const preview=job.result.preview;
   const filesOnly=preview?.status==='needs-configuration'&&preview.plan?.reason==='no-static-entry'&&!visualPresentation(detail(job.result.sha));
@@ -132,15 +182,9 @@ Object.assign(workspaceActions,{
   if(!path)throw Error(contentText('请先选择或填写网页文件夹。','Choose or enter a website folder first.'));
   await addWebsiteFolder(path,state.dialogRequest);
  },
- 'content-snapshot':snapshotDialog,
- 'save-content-version':async()=>{
-  if(state.snapshotTarget!==state.project?.id)throw Error('项目已经变化。');
-  const request=state.dialogRequest,project=state.snapshotTarget;
-  const job=await api(`/api/projects/${project}/snapshot`,{method:'POST',body:JSON.stringify({title:$('#content-version-title').value.trim()||contentText('未命名稿件','Untitled draft'),capture_static:!['none','manual','auto'].includes(state.project.preview_preferences?.mode)})});
-  mergeWorkspaceJobs([job]);
-  if(request===state.dialogRequest&&state.project?.id===project&&$('#dialog').open)dialogShell('记录版本',`<p data-folder-job="${esc(job.id)}" role="status">${contentText('正在保存这一稿，并按你的偏好准备画面。截图失败也会保留文件。','Saving this draft and preparing its image according to your preference. Files remain saved if capture fails.')}</p><p>${uiText('记录版本不会修改原文件夹。当前仅保存到本机，尚未上传云端。')}</p>`,`<button class="secondary-button" data-action="close">${uiText('返回版本')}</button><button class="secondary-button" data-action="cancel-job" data-job="${esc(job.id)}">${uiText('取消任务')}</button>`);
-  pollWorkspaceJob(job.id);
- },
+ 'content-snapshot':saveDraftFromToolbar,
+ 'save-content-version':()=>saveCurrentDraft($('#content-version-title').value,{fromDialog:true}),
+ 'remember-draft-preview':b=>{if(b.dataset.sha!==state.selected)return;previewPreferencesDialog({mode:'auto'});},
  'preview-preferences':()=>previewPreferencesDialog(),
  'save-preview-preferences':async()=>{
   if(state.previewPreferenceTarget!==state.project?.id)throw Error(contentText('项目已经变化。','The project has changed.'));
@@ -162,6 +206,14 @@ document.addEventListener('input',e=>{
  if(e.target.id!=='content-file-query')return;
  state.contentFileQuery=e.target.value;clearTimeout(contentFileTimer);
  contentFileTimer=setTimeout(()=>loadFolderFiles(state.project.id,state.selected),180);
+});
+document.addEventListener('keydown',e=>{
+ if(e.isComposing||e.repeat||!(e.ctrlKey||e.metaKey)||e.altKey||state.project?.kind!=='folder')return;
+ if(e.key==='Enter'&&$('#dialog').open&&$('#content-version-title')){
+  e.preventDefault();Promise.resolve(workspaceActions['save-content-version']()).catch(error=>notify(error.message));return;
+ }
+ if(e.key.toLowerCase()!=='s'||$('#dialog').open||e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
+ e.preventDefault();Promise.resolve(e.shiftKey?snapshotDialog():saveDraftFromToolbar()).catch(error=>notify(error.message));
 });
 
 async function privacyDialog(){

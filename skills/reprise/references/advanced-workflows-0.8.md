@@ -8,7 +8,9 @@ metadata:
 
 # Reprise · 倒带
 
-一个本地版本管理器：有 Git 时读取真实历史，没有 Git 也可保存文件夹版本。Skill 与本体使用同一个 Python 核心；只需 Python 3.9+ 和 Git，不联网安装依赖。用户无需给文件夹初始化 Git。运行本目录的 `scripts/reprise.py`；先用 `doctor` 检查包完整性。
+> 按需兼容参考。当前默认任务为网页留稿、凭图认稿和取出新副本；通用功能扩展已冻结。本文件保留既有高级操作与校验边界，不作为首次使用流程。
+
+一个本地版本管理器：有 Git 时读取真实历史，没有 Git 也可保存文件夹版本。Skill 与本体使用同一个 Python 核心；核心只需 Python 3.9+ 和 Git；核心操作不联网安装依赖。用户无需给文件夹初始化 Git。运行本目录的 `scripts/reprise.py`；先用 `doctor` 检查包完整性。
 
 ## Language / 沟通语言
 
@@ -16,9 +18,9 @@ Accept both Chinese and English requests. Follow the user's explicit language ch
 
 中文和英文调用使用同一功能，不要求用户写命令。打开网页时传入 `open ... --lang zh` 或 `--lang en`，保持与沟通语言一致。网页可手动切换并记住选择；无明确参数和已存偏好时跟随浏览器语言。网页切换不会自动改变聊天语言，用户在聊天中要求切换时立即遵循。
 
-保存首次成功后，在用户使用的语言中简短询问截图偏好；保存本身先完成，不以回答或截图为前提。提供 none（无需截图）、manual（自行提供，不再提醒）、remind（每次提醒）、auto（按已确认配置自动截图）。用 `preview-preferences PROJECT --mode MODE` 持久化选择；无已存偏好时为 remind。明确用户选择后不重复询问；manual 可随时主动附加，none 不主动采集。已有截图请求或偏好时复用，不重新打断用户。
+网页截图选择遵循当前 SKILL.md 的“首次问清，之后沿用”和 [截图选择说明](capture-preferences.md)。首次只问一次并按项目持久化是/否；配置未完成和截图失败均不重置答案。既有 manual/remind 偏好保留兼容，不要求新用户先理解四种模式。
 
-auto 必须由用户明确选择可复用的已保存配置：`preview-preferences PROJECT --mode auto --recipe-sha FULL_SHA`。它会在以后保存时按此固定配置运行独立副本并截图，不截桌面、不自动采用检测或 AI 建议。首次未配置时先保留版本，再询问是否配置。`save` / `snapshot` 返回 `result.preview`：如截图失败或取消，说明版本仍已保存；不要为了重试截图再保存一版。可用 `save PATH --preview MODE` 在保存时记住选择。恢复到新库后自动模式降为 remind，在目标电脑重新确认。
+截图选择仅用于文件夹留稿，当前规则见 [首次选择与配置](capture-preferences.md)：首次询问后先持久化是/否；auto + pending_recipe 只保存意图，不批准命令。第一份显式保存的可采集配置成为后续模板；已有配置可用 `preview-preferences PROJECT --mode auto --recipe-sha FULL_SHA` 明确选择。失败或取消不撤销文件与选择；重试同一准确 SHA，不重复留稿。恢复到新库后的执行配置需要目标宿主重新确认，不能因此说用户从未选择过画面。
 
 Example: “Save this folder as Before redesign” and “保存这个文件夹，命名为改版前” both route to `save`; use the respective request language for the receipt and optional screenshot question. Never infer permission to run commands merely from saving.
 

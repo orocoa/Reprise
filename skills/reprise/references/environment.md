@@ -2,6 +2,19 @@
 
 Read this when resolving the source Skill's tools, preparing an automatic picture, or a dependency is missing. The source Skill carries core/web source, not new interpreters. Use the host environment for this source distribution.
 
+## Installation is an agent task / 由 Agent 完成接入
+
+The main user request is: “帮我安装倒带 / Reprise，检查复用现有环境，缺少的依赖按官方方法安装，然后打开。” Resolve the real client Skill location and keep the entire extracted `reprise/` directory together. Preserve an existing installation before updating it. Continue authorized setup through installation and first open; do not stop at a command proposal when permission already covers it.
+
+At completion, return the installed Skill entry, the verified absolute Python/`scripts/reprise.py` command, the workbench URL, and the actually checked capabilities. For an existing compatible environment, the core check/open commands are:
+
+```sh
+python3 /absolute/path/reprise/scripts/reprise.py doctor
+python3 /absolute/path/reprise/scripts/reprise.py open --workbench --lang zh --no-browser
+```
+
+Resolve the interpreter as described below. The returned URL is the actual result; do not invent a fixed port. Files-only readiness and actual picture capture are separate outcomes. The manual commands are a reference for users who already manage their environment, not extra steps imposed on ordinary users.
+
 ## Reuse the host first / 先复用宿主
 
 | Requested action | Required tools |

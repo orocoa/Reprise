@@ -221,7 +221,8 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == 'quick-preview' and method == 'POST':
                 return self.send_json(experience.queue_capture(app, identifier, body), 202)
             if suffix == 'preview-preferences' and method == 'PUT':
-                return self.send_json(app.projects.save_preview_preferences(identifier, body.get('mode'), body.get('recipe_sha')))
+                return self.send_json(app.projects.save_preview_preferences(identifier, body.get('mode'), body.get('recipe_sha'),
+                                                                            pending_recipe=body.get('pending_recipe', False)))
             if suffix == 'version-delete-plan' and method == 'POST':
                 return self.send_json(app.version_delete_plan(identifier, body.get('shas')))
             if suffix in ('version-delete', 'version-estimate') and method == 'POST':

@@ -9,15 +9,17 @@ Reprise is an open-source Skill for people repeatedly editing local webpages wit
 ## Start here
 
 1. [Download and connect the Skill](getting-started.md).
-2. Save the before-and-after drafts, including both pictures.
+2. Ask your agent: “Save a draft before and after this edit.”
 3. [Recognize and recover the old draft](find-compare-restore.md).
 
 <!-- RECOVERY_RESOURCES -->
 
 ## Current scope
 
-Version 0.8.0 is a preview release. Installation, discovery, two pictures, browser recovery, language switching and reopening passed in this Mac’s Codex. Fresh-machine dependency setup and native use in other clients remain unverified.
+Reprise 0.8.0 keeps folder drafts, version pictures and real Git relationships. Installation, discovery, two pictures, browser recovery, language switching and reopening passed in this Mac’s Codex. Fresh-machine dependency setup and native use in other clients remain unverified.
 
 Static HTML with a clear entry and local assets can attempt capture directly. Supported npm/Vite projects present an approved-run plan first. Files and pictures have separate outcomes.
 
 [Privacy, dependencies and FAQ](privacy-and-faq.md) · [GitHub source](https://github.com/orocoa/Reprise)
+
+Pictures shows thumbnails; Revision relationships uses the fixed compact Git route. Wide graphs scroll horizontally and missing pictures stay missing. General expansion is frozen while the current workflow is improved.

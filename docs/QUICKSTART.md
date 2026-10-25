@@ -1,107 +1,81 @@
 # 快速开始 / Quickstart
 
-[简体中文](#中文) · [English](#english) · [首页](../README.md)
+[中文](#中文) · [English](#english) · [首页](../README.md)
 
 ## 中文
 
-本页面向 [0.8.0 预览版源码 Skill](https://github.com/orocoa/Reprise/releases/tag/v0.8.0-rc.1)。下载完整的 [Reprise-Skill.zip](https://github.com/orocoa/Reprise/releases/download/v0.8.0-rc.1/Reprise-Skill.zip)。本机 Codex 安装与实际任务已通过；缺依赖的新机器和其他客户端原生接入仍未验证。
+### 1. 让 Agent 安装并打开
 
-### 1. 交给 agent 接入
+下载完整的 [Reprise-Skill.zip](https://github.com/orocoa/Reprise/releases/download/v0.8.0/Reprise-Skill.zip)，交给有本机文件与命令能力的 Agent：
 
-将主附件 `Reprise-Skill.zip` 交给有本机文件和命令执行能力的 agent：
+> 帮我安装倒带 / Reprise。先复用已有环境，缺少的依赖按官方方法和正常授权安装，然后打开。
 
-> 帮我安装倒带 / Reprise 并打开。
+Agent 核对客户端真正支持的技能位置，保留整个包，检查 Python/Git 和截图所需的 Node/Playwright/浏览器，再完成已获授权的安装。普通用户不需要额外 AI Key 或手填环境变量；真正需要系统认证或缺少许可时按宿主流程处理。[安装参考](AGENT-SKILL.md)
 
-由 agent 先检查复用已有环境，缺少时按官方方法和正常授权补齐。已有安装授权继续沿用，不额外要求每个包再确认一次；普通用户不需手填环境变量。真正缺少许可或需要系统认证时，按宿主流程处理，不能完成就说明阻塞。依赖和开发者细节见[接入说明](AGENT-SKILL.md)。
+### 2. 在当前网页对话里留稿
 
-接好后，选择 **Reprise Skill**，说“打开”。首次空列表正常；打开不会保存或自动加入当前目录。保留完整包，不只复制 SKILL.md；已有技能不删除，由 agent 核对实际版本和入口。
+项目路径已经明确时说：
 
-### 2. 修改前留一稿
+> 本轮修改前后都帮我留稿。
 
-在项目路径已经明确的网页对话里说：
+首次为这个网页项目留稿时，Agent 只问一次“以后每次留稿需要一起保存画面吗？”。回答“是”或“否”后，先把选择保存在项目中，之后留稿、重开或换聊天都会沿用，不再要求反复说“同时记住画面”。名称按任务简短生成；内容未变化时沿用已有稿及名称。
 
-> 保存当前网页这一稿，叫“改颜色之前”，同时记住画面。
+分别检查**文件已保存**和**画面已完成**。首张截图失败、缺依赖或配置未批准都不重置选择。入口明确的静态 HTML 可准备画面；需要运行项目命令时，只补充确认实际配置，确认后沿用。截图失败时补同一稿画面，不必重复留稿。用户可随时在设置修改长期选择。
 
-分别检查**文件是否保存、画面是否完成**。入口明确且素材在本机的静态 HTML 可以尝试出图；标准独立 npm/Vite 项目先保存文件，再给出待批准的安装/运行计划。确认后才在独立副本执行；项目依赖可能联网下载。准备 Reprise 的工具环境，不等于批准网页项目的安装脚本。单稿批准不自动批准未来每稿，Next 等其他配置仍需确认运行方式。
 
-截图没完成时文件可能已保存；补这一稿的画面即可，不必重复留稿。文件未变化时可能复用已有稿及名称，以实际回报为准。
+### 3. 按画面取回，再继续改副本
 
-继续修改配色，再保存一稿“改颜色之后”和对应画面。Reprise 只记录主动保存过的稿件，不能补回保存前已覆盖的内容。
+选择 Reprise Skill，说“打开”。按画面选稿，需要时比较，再点「取出这一稿」，取到新文件夹。确认副本属于目标稿，当前项目仍保留新稿，然后让 Agent 使用副本目录继续修改。
 
-### 3. 按图取回
+**快捷操作：** 工作台首次保存名称可留空，自动按时间命名；已有明确截图偏好的项目可点「保存一稿」或 Ctrl/⌘ + S 直接保存，需要命名时用 Ctrl/⌘ + Shift + S。名称对话框可用 Ctrl/⌘ + Enter 提交。整稿取回后可点「复制给 Agent 继续修改」，粘贴到当前网页对话。部分文件取回不提供整稿继续指令。
 
-选择 Reprise Skill，说“打开”。认出“改颜色之前”，需要时比较两稿，再点「取出这一稿」，取到新文件夹。打开副本确认旧配色在，原项目仍保留新配色，然后继续改副本。
+必须在修改前主动保存；“打开”不保存或导入当前目录。退出时正常停止 Reprise，关闭浏览器标签不等于停服。[详细任务](WORKSPACE-TASKS.md) · [功能范围与冻结边界](FEATURES.md)
 
-缺图时文件仍可取回，但不算完成“凭画面找回”。取回成功也不保证旧依赖或外部服务仍可运行。更多操作见[工作台任务](WORKSPACE-TASKS.md)。结束时让 agent 或工作台设置正常停止服务；只关浏览器标签不会停服。
+当前已有环境的 macOS＋Codex 实际任务通过；新机器补齐依赖、其他客户端原生接入仍未验证。文件可恢复不保证旧依赖、数据库或远程服务可运行。
 
 <details>
-<summary>开发者：已有基础环境与源码入口</summary>
+<summary>熟悉环境的用户：直接命令</summary>
 
-基础操作需要 Python 3.9+ 与 Git，核心没有第三方 Python 依赖，无须为核心执行 pip install。3.9 是代码最低要求；新装请选择官方仍维护的 Python 版本。自动截图另需 Node、Node 版 Playwright 与可运行的 Chromium/已验证兼容浏览器。本项目锁定 Playwright 1.62.1，其要求 Node 20+；新装建议仍受支持的 LTS 22 或 24。
-
-源码 Skill 的入口为：
+完整 Skill 使用绝对入口；先确认 Python 3.9+ 和 Git。自动截图另外需要 Node、Node 版 Playwright 与可用浏览器。
 
 ```sh
 python3 /absolute/path/reprise/scripts/reprise.py doctor
 python3 /absolute/path/reprise/scripts/reprise.py open --workbench --lang zh --no-browser
 ```
 
-`doctor` 检查 Python/Git、核心和包完整性，不代表截图链路已就绪。使用实际返回的本机 URL。完整开发仓库也可运行 `python3 scripts/start_workbench.py`；它与源码 Skill 使用同一核心。
-
-已有 Reprise 开发仓库准备截图依赖时，在 Reprise 自己的目录运行 `npm install` 和 `npx playwright install chromium`，不要在受管网页源仓库里安装 Reprise 工具。依赖的官方来源、复用与安装范围见[接入说明](AGENT-SKILL.md)。
-
-代码入口面向 macOS/Linux（Windows 使用 WSL），不声明原生 Windows 或所有宿主已实测。完整开发仓库可用 `examples/recovery-tutorial/prepare.py` 在新位置练习；较早 Python Skill / wheel 说明保留在[历史快速开始](REFERENCE-QUICKSTART-20261024.md)。
+使用实际返回的本机 URL。doctor 检查核心与包完整性，不代表截图已经验证。完整开发仓库也可运行 `python3 run.py`。[依赖复用与安装命令](AGENT-SKILL.md)
 
 </details>
 
 ## English
 
-This guide is for the [0.8.0 preview source Skill](https://github.com/orocoa/Reprise/releases/tag/v0.8.0-rc.1). Download the complete [Reprise-Skill.zip](https://github.com/orocoa/Reprise/releases/download/v0.8.0-rc.1/Reprise-Skill.zip). Installation and the actual task passed in this Mac’s Codex environment; fresh-machine dependency setup and native use in other clients remain unverified.
+### 1. Ask your agent to install and open
 
-### 1. Ask your agent to set it up
+Give the complete [Reprise Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.0/Reprise-Skill.zip) to an agent with local file and command access:
 
-Give the primary `Reprise-Skill.zip` attachment to an agent with local file and command access:
+> Install Reprise. Reuse existing tools, install missing dependencies through official methods and normal authorization, then open it.
 
-> Install Reprise and open it.
+The agent resolves the actual client Skill location, preserves the full package, checks Python/Git and Node/Playwright/browser capture tools, then completes authorized setup. Ordinary users need no extra AI key or manually assembled environment variables. Genuine credentials or missing permission use the host’s normal flow. [Setup reference](AGENT-SKILL.md#english)
 
-The agent checks and reuses available tools, then fills missing dependencies using official methods and normal authorization. Reuse existing installation authorization rather than asking again for every package. Ordinary users do not enter environment variables. Follow the host’s normal flow for genuinely missing permission or system authentication; report a blocker if setup cannot proceed. See [dependencies and developer details](AGENT-SKILL.md#english).
+### 2. Save in your webpage conversation
 
-Once connected, select **Reprise** and say “Open.” An empty list is normal; opening does not save or automatically add the current directory. Keep the complete package, not just SKILL.md. Preserve existing Skills and have the agent verify the actual version and entry.
+With the project already clear:
 
-### 2. Save before changing the site
+> Save a draft before and after this edit.
 
-In a conversation where the website project is already clear, say:
+On the first save of a webpage project, the agent asks once whether future drafts should include images. Yes or no is stored with the project before capture/configuration finishes. Later saves, reopening and other chats reuse it; no repeated image request is needed. Names follow the task, and unchanged files reuse their existing draft/title.
 
-> Save this website draft as “Before changing the colors”, including its screenshot.
+Check **files saved** and **picture complete** separately. Missing dependencies, a failed picture or pending command approval does not reset the choice. Static HTML can prepare its image; command-based projects need reviewed settings first, then reuse them. Retry the picture against the same saved revision. Change the ongoing choice in settings anytime.
 
-Check **files saved** and **picture captured** separately. Static HTML with a clear entry and local assets can attempt capture. Supported standalone npm/Vite projects save files first, then return an install-and-run plan. Approved commands run in a separate copy and may download project dependencies. Preparing Reprise’s tools does not approve website-project scripts. Approval for one draft does not approve future drafts; Next and other configurations still need run settings.
 
-If capture is incomplete, the files may already be saved. Complete the same draft’s picture instead of saving again. Unchanged files may reuse an existing draft and title; read the actual result.
+### 3. Recover by picture and edit the copy
 
-Change the colors, then save “After changing the colors”, including its screenshot. Reprise records only drafts you choose to save; it cannot recover content overwritten before saving.
+Select the Reprise Skill and say “Open.” Recognize an earlier appearance, compare if needed, then choose **Recover this draft**. Check the new copy and keep the current project in place; point your editing agent at the recovered folder.
 
-### 3. Recover by its picture
+**Shortcuts:** blank names use the time; projects with an explicit capture preference support direct saving and Ctrl/⌘ + S. Ctrl/⌘ + Shift + S names a draft first; Ctrl/⌘ + Enter submits that dialog. Whole-draft recovery offers **Copy instructions to continue** for pasting into your webpage conversation. Partial-file recovery does not claim a complete editable project.
 
-Select Reprise and say “Open.” Recognize “Before changing the colors”, compare drafts if needed, and use **Recover this draft** to retrieve it into a new folder. Confirm the old colors in the copy while the original project keeps the new colors, then edit the copy.
+Save before edits overwrite the draft. Opening does not import or save a directory. Stop Reprise normally when finished; closing the tab does not stop the service. [Workbench tasks](WORKSPACE-TASKS.md) · [Feature scope](FEATURES.en.md)
 
-Without a picture, file recovery remains available but the visual task is incomplete. Successful recovery does not guarantee working old dependencies or external services. See [workbench tasks](WORKSPACE-TASKS.md#english). Stop normally through your agent or workbench settings; closing the browser tab alone does not stop the service.
+Actual use passed in this existing macOS + Codex environment. Fresh-machine dependency setup and native use in other clients remain unverified. File recovery does not guarantee working old dependencies, databases or remote services.
 
-<details>
-<summary>Developers: an existing base environment and source entry</summary>
-
-Core operations need Python 3.9+ and Git, with no third-party Python package or pip installation for the core. Version 3.9 is the code minimum; choose a maintained official Python version for a new installation. Automatic capture also needs Node, the Node Playwright library and runnable Chromium or a verified compatible browser. The project pins Playwright 1.62.1, which requires Node 20+; supported LTS 22 or 24 is recommended for new installations.
-
-The source Skill entry is:
-
-```sh
-python3 /absolute/path/reprise/scripts/reprise.py doctor
-python3 /absolute/path/reprise/scripts/reprise.py open --workbench --lang en --no-browser
-```
-
-`doctor` checks Python/Git, the core and package integrity; it does not establish screenshot readiness. Use the actual returned local URL. A full development checkout can also use `python3 scripts/start_workbench.py` with the same core.
-
-In a Reprise development checkout, prepare capture tools with `npm install` and `npx playwright install chromium` from Reprise’s own directory, not the managed website source. See [official sources and setup scope](AGENT-SKILL.md#english).
-
-The code entry targets macOS/Linux (Windows via WSL); this does not establish native Windows or all-host verification. The source checkout’s `examples/recovery-tutorial/prepare.py` can create a sample at a new location. Earlier Python Skill / wheel instructions remain in the [historical quickstart](REFERENCE-QUICKSTART-20261024.md).
-
-</details>
+Experienced users can run the complete Skill’s absolute entry with `doctor`, then `open --workbench --lang en --no-browser`. Use the actual returned URL. See [environment reuse and install commands](AGENT-SKILL.md).

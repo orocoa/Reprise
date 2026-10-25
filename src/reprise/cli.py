@@ -138,9 +138,11 @@ def main(argv=None):
         preview_choice.add_argument('--preview', choices=('none', 'manual', 'remind', 'auto'), help='Remember screenshot preference for this project; auto needs an explicitly saved recipe')
         preview_choice.add_argument('--capture-static', action='store_true', help='After saving, try a local static website capture for this draft without changing the project screenshot preference')
         saving_command.add_argument('--preview-recipe-sha', help='Saved recipe revision explicitly approved for reuse after future saves')
+        saving_command.add_argument('--preview-pending', action='store_true', help='Remember the first yes to future capture before its recipe is ready; requires --preview auto')
     preview = commands.add_parser('preview-preferences', help='Inspect or explicitly set a project screenshot preference')
     preview.add_argument('project'); preview.add_argument('--mode', choices=('none', 'manual', 'remind', 'auto'))
     preview.add_argument('--recipe-sha')
+    preview.add_argument('--pending-recipe', action='store_true', help='Remember future capture intent without approving detected commands; requires --mode auto')
     listing = commands.add_parser('projects'); listing.add_argument('--details', action='store_true')
     commands.add_parser('privacy')
     commands.add_parser('storage', help='Inspect only this data directory; no file contents or cleanup')
@@ -193,6 +195,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if getattr(args, 'preview_recipe_sha', None) and args.preview != 'auto':
         parser.error('--preview-recipe-sha requires --preview auto')
+    if getattr(args, 'preview_pending', False) and (args.preview != 'auto' or args.preview_recipe_sha):
+        parser.error('--preview-pending requires --preview auto without --preview-recipe-sha')
+    if getattr(args, 'pending_recipe', False) and (args.mode != 'auto' or args.recipe_sha):
+        parser.error('--pending-recipe requires --mode auto without --recipe-sha')
     if args.command == 'open' and args.workbench and (
             args.path is not None or args.folder or args.history or args.history_catalog is not None):
         parser.error('--workbench cannot be combined with a path, --folder, --history or --history-catalog')
@@ -261,7 +267,7 @@ def main(argv=None):
             elif args.command == 'projects': result = projects.list() if args.details else projects.summaries()
             elif args.command == 'preview-preferences':
                 identifier = projects.identify(args.project)
-                result = (projects.save_preview_preferences(identifier, args.mode, args.recipe_sha) if args.mode else
+                result = (projects.save_preview_preferences(identifier, args.mode, args.recipe_sha, pending_recipe=args.pending_recipe) if args.mode else
                           projects.record(identifier).get('preview_preferences', {'mode': 'remind', 'not_configured': True}))
             else: result = projects.save_recipe(args.project, json.loads(Path(args.file).read_text()), args.sha)
         else:
@@ -310,6 +316,8 @@ def main(argv=None):
                     request = vars(args)
                     if args.command == 'snapshot' and args.preview:
                         request['preview_preferences'] = {'mode': args.preview, 'recipe_sha': args.preview_recipe_sha}
+                        if args.preview_pending:
+                            request['preview_preferences']['pending_recipe'] = True
                     job = app.execute(args.project, args.command, request)
                     result = wait_job(app, job)
             finally:

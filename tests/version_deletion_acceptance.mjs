@@ -15,8 +15,11 @@ const open=async(language='zh',project=fixture.project)=>{
 async function openVersionManager(){
  await page.click('#settings-toggle');
  await page.waitForSelector('#dialog.settings-dialog');
- assert.equal(await page.locator('#dialog [data-action=ai-settings],#dialog [data-action=content-storage],#dialog [data-action=content-transfer]').count(),0);
+ assert.equal(await page.locator('#dialog [data-action=ai-settings]').count(),0);
+ assert.equal(await page.locator('#dialog [data-action=content-storage]:visible,#dialog [data-action=content-transfer]:visible').count(),0,'Advanced tools stay collapsed initially');
  await page.locator('#dialog details[data-keep-open="saved-drafts"] > summary').click();
+ assert.equal(await page.locator('#dialog [data-action=content-storage]').isVisible(),true);
+ assert.equal(await page.locator('#dialog [data-action=content-transfer]').isVisible(),true);
  await page.click('#dialog [data-action=versions-manage]');
 }
 try{

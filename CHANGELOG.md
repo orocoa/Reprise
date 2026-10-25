@@ -1,5 +1,18 @@
 # 更新记录
 
+## 0.8.0 · 2026-10-26 · 版本图片与真实 Git 路线
+
+- 只保留「画面 / 版本关系」：前者显示缩略图，后者固定为紧凑路线。移除详细/紧凑选项，兼容旧偏好。
+- 宽分支图保留可读标题空间、按需横向滚动；跨视图定位旧稿时最多补入一张所选缩略图，不为定位旧稿渲染上千张卡片。
+- 文件搜索只读最小差异索引并持续显示进度；清空或选回关系节点会取消待执行搜索。新增 1301 提交、16 并行分支、320 合并的真实 Git 压力回归。原图谱语义和旧视觉档案保持。
+- 首次为文件夹项目留稿时，只问一次是否截图并持久化答案；待配置或截图失败不重置，明确确认的配置才可供后续复用。
+- 名称可留空、快捷键留稿、重复请求合并、后台完成不抢走当前版本；整稿恢复提供准确目录与版本的继续修改指令。
+- Agent 指令区分 Git 历史与文件夹留稿，避免对 Git 项目调用文件夹专用截图偏好或 snapshot。
+- 高级管理保留在折叠入口；更新真实浏览器回归，覆盖展开后可用、版本影响与删除、Git 只读及环境释放。
+- 重写中英文 README，使用本次合成个人网页的真实版本图和图片列表；保留原文档与视觉资料，冻结通用功能扩展。
+
+完整回归、实际工作流与平台边界见 [验证范围](docs/VALIDATION-0.8.0.md)。
+
 ## 0.8.0-rc.1 — local webpage drafts / 本地网页留稿
 
 Preview release focused on saving local webpage files and matching pictures through an agent Skill, then recovering the recognized draft into a new folder. The source Skill reuses host tools; the former complete macOS runtime test bundle is withdrawn.

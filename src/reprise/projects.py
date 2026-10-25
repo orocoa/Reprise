@@ -130,10 +130,12 @@ class ProjectStore:
                 raise ValueError('Git 项目使用已有提交历史；请在 Git 中明确提交改动。')
             return self.folders.snapshot(record, title, cancel)
 
-    def save_preview_preferences(self, identifier, mode, recipe_sha=None):
+    def save_preview_preferences(self, identifier, mode, recipe_sha=None, *, pending_recipe=False):
         """An explicit project choice; automatic capture reuses only saved settings."""
         if mode not in ('none', 'manual', 'remind', 'auto'):
             raise ValueError('截图偏好必须为 none、manual、remind 或 auto。')
+        if not isinstance(pending_recipe, bool) or (pending_recipe and (mode != 'auto' or recipe_sha)):
+            raise ValueError('待配置的截图选择仅用于 auto，不能同时指定配置版本。')
         with DataLease(self.directory), self.lock, locked(self.lockfile):
             document = read_json(self.file, {'schema': 1, 'projects': []})
             record = next((p for p in document['projects'] if p['id'] == identifier), None)
@@ -149,9 +151,15 @@ class ProjectStore:
                     preference.update(recipe=validate_recipe(saved), source_sha=sha)
                 else:
                     previous = record.get('preview_preferences', {})
-                    if previous.get('mode') != 'auto' or not previous.get('recipe'):
+                    if previous.get('mode') == 'auto' and previous.get('recipe'):
+                        preference.update(recipe=validate_recipe(previous['recipe']), source_sha=previous['source_sha'])
+                    elif pending_recipe or (previous.get('mode') == 'auto' and previous.get('pending_recipe')):
+                        # Persist the first answer even before an entry or
+                        # approved command recipe is available. This is intent,
+                        # never approval to execute detected project scripts.
+                        preference['pending_recipe'] = True
+                    else:
                         raise ValueError('自动截图需要明确选择已确认的配置版本。')
-                    preference.update(recipe=validate_recipe(previous['recipe']), source_sha=previous['source_sha'])
             record['preview_preferences'] = preference
             write_json(self.file, document, private=True)
             return preference
@@ -225,6 +233,14 @@ class ProjectStore:
                 entry = {'recipe': normalized, 'saved_at': now()}
                 record.setdefault('version_recipes', {})[revision] = entry
                 record.setdefault('recipe_history', []).append({'sha': revision, **entry})
+                preference = record.get('preview_preferences', {})
+                if (preference.get('mode') == 'auto' and preference.get('pending_recipe') and
+                        normalized and normalized['adapter'] != 'manual'):
+                    # The user already chose future capture. Only an explicitly
+                    # saved recipe can complete that pending choice. A detection
+                    # result or imported recipe never reaches this write path.
+                    record['preview_preferences'] = {'mode': 'auto', 'recipe': normalized,
+                                                     'source_sha': revision, 'saved_at': now()}
                 write_json(self.file, {'schema': 1, 'projects': records}, private=True)
             return self.get(identifier, revision)
 

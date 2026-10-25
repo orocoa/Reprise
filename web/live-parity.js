@@ -43,7 +43,7 @@ function changeLanguage(language){
  if(!['zh','en'].includes(language))return;
  const presentationDraft=$('#project-presentation')?.value;
  const settingsOpen=$('#dialog').open&&$('#dialog').classList.contains('settings-dialog');
- const snapshotDraft=$('#dialog').open&&$('#content-version-title')?{title:$('#content-version-title').value,mode:$('#preview-preference-mode')?.value}:null;
+ const snapshotDraft=$('#dialog').open&&$('#content-version-title')?{title:$('#content-version-title').value,initialPreviewMode:$('#initial-preview-choice')?.value,mode:$('#preview-preference-mode')?.value}:null;
  const preferenceDraft=$('#dialog').open&&$('#dialog').dataset.previewPreferences?{mode:$('#preview-preference-mode').value}:null;
  const recoveryDraft=$('#dialog').open&&$('#dialog').dataset.recoveryForm?{...state.recoveryTarget,to:$('#restore-path').value}:null;
  const recoveryResultJob=$('#dialog').open&&$('#dialog').dataset.recoveryResult?state.recoveryResultJob:null;

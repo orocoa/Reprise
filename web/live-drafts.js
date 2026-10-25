@@ -23,10 +23,12 @@ function renderDraftHistory(){
  $$('[data-action="draft-view"]').forEach(b=>{const selected=b.dataset.view===draftView();b.classList.toggle('active',selected);b.setAttribute('aria-pressed',selected);});
  if(!pictures)return;
  const scroll=list.scrollTop,focus=captureViewFocus(list),matches=results();
- const limit=state.draftLimit||60;
- list.innerHTML=(state.draftImagesError?`<p class="snapshot-message">${contentText('部分截图读取失败，可刷新重试。','Some images could not be read. Refresh to retry.')}</p>`:'')+matches.slice(0,limit).map(c=>{
+ const limit=state.draftLimit||60,visible=matches.slice(0,limit),selectedIndex=matches.findIndex(c=>c.sha===state.selected);
+ if(selectedIndex>=limit)visible.push(matches[selectedIndex]);
+ list.innerHTML=(state.draftImagesError?`<p class="snapshot-message">${contentText('部分截图读取失败，可刷新重试。','Some images could not be read. Refresh to retry.')}</p>`:'')+visible.map((c,index)=>{
   const image=draftImage(c),selected=c.sha===state.selected;
-  return `<button class="draft-card ${selected?'selected':''}" data-action="draft-select" data-id="${esc(c.sha)}" aria-current="${selected}" data-user-label aria-label="${esc(versionTitle(c))}"><span class="draft-image">${image?`<img src="${esc(image.url)}" alt="${esc(versionTitle(c))}" loading="lazy">`:`<span class="draft-missing">${icon('file')}<span>${contentText('此稿尚无截图','No image for this draft')}</span></span>`}</span><span class="draft-card-copy"><strong data-user-content>${esc(versionTitle(c))}</strong><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at))}</time>${image?.source==='manual'?`<small>${contentText('自行提供的截图','User-supplied image')}</small>`:''}${image&&(!image.complete||image.warnings?.length)?`<small>${contentText('画面有诊断提醒','Capture has diagnostics')}</small>`:''}${state.prefs.stars.includes(c.sha)?`<span class="draft-favorite">${icon('star')}${contentText('已收藏','Saved favorite')}</span>`:''}</span></button>`;
+  const gap=index===limit?`<p class="snapshot-message draft-gap">${contentText(`省略 ${selectedIndex-limit} 稿，已定位所选旧稿。`,`${selectedIndex-limit} drafts skipped to show the selected older version.`)}</p>`:'';
+  return gap+`<button class="draft-card ${selected?'selected':''}" data-action="draft-select" data-id="${esc(c.sha)}" aria-current="${selected}" data-user-label aria-label="${esc(versionTitle(c))}"><span class="draft-image">${image?`<img src="${esc(image.url)}" alt="${esc(versionTitle(c))}" loading="lazy">`:`<span class="draft-missing">${icon('file')}<span>${contentText('此稿尚无截图','No image for this draft')}</span></span>`}</span><span class="draft-card-copy"><strong data-user-content>${esc(versionTitle(c))}</strong><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at))}</time>${image?.source==='manual'?`<small>${contentText('自行提供的截图','User-supplied image')}</small>`:''}${image&&(!image.complete||image.warnings?.length)?`<small>${contentText('画面有诊断提醒','Capture has diagnostics')}</small>`:''}${state.prefs.stars.includes(c.sha)?`<span class="draft-favorite">${icon('star')}${contentText('已收藏','Saved favorite')}</span>`:''}</span></button>`;
  }).join('')+(!matches.length?`<p class="snapshot-message">${contentText(state.commits.length?'没有匹配的版本。':'保存第一稿后，画面会出现在这里。',state.commits.length?'No matching versions.':'Save your first draft to see it here.')}</p>`:'')+(matches.length>limit?`<button class="secondary-button" data-action="draft-more">${contentText(`再显示 60 稿 · 共 ${matches.length} 稿`,`Show 60 more · ${matches.length} drafts`)}</button>`:'');
  list.scrollTop=scroll;restoreViewFocus(focus,list);
 }
@@ -37,6 +39,14 @@ function scrollSelectedDraft(){
  const view=list.getBoundingClientRect(),item=card.getBoundingClientRect();
  if(item.top<view.top)list.scrollTop+=item.top-view.top;
  else if(item.bottom>view.bottom)list.scrollTop+=item.bottom-view.bottom;
+}
+function scrollSelectedHistory(){
+ if(draftView()==='pictures'){scrollSelectedDraft();return;}
+ const row=$(`.version-row[data-id="${state.selected}"]`),scroller=$('#history-scroll');
+ if(!row||!scroller)return;
+ const top=row.offsetTop,bottom=top+row.offsetHeight;
+ if(top<scroller.scrollTop)scroller.scrollTop=top;
+ else if(bottom>scroller.scrollTop+scroller.clientHeight)scroller.scrollTop=bottom-scroller.clientHeight;
 }
 async function quickPreviewDialog(root,target=null){
  const project=target?.project||revisionProject(),sha=target?.sha||state.selected;
@@ -67,7 +77,7 @@ async function quickPreviewDialog(root,target=null){
  if(approval){
   const commands=plan.recipe.commands;
   const scripts=Object.entries(plan.execution?.scripts||{}).map(([name,value])=>`${name}: ${value}`).join('\n');
-  $('#dialog .dialog-body').innerHTML=previewLanguageControls()+`<p data-user-content>${esc(versionTitle(commit(sha)))}</p><p>${contentText('文件已保存。这个 Vite 网页需要先安装依赖并启动，才能截图。','Files are saved. This Vite webpage needs dependencies installed and a server started before capture.')}</p><p>${contentText('以下命令只以这一稿的独立副本为工作目录；会联网下载依赖，并执行项目及依赖脚本、Vite 配置和插件。命令使用当前系统权限，独立副本不是安全沙箱。','These commands use an independent copy of this draft as their working directory. They download dependencies and execute project and dependency scripts, Vite configuration, and plugins with your current system permissions. The copy is not a security sandbox.')}</p><pre data-user-content>${esc([...(commands.install||[]),commands.start].map(argv=>argv.join(' ')).join('\n'))}</pre>${scripts?`<details><summary>${contentText('此稿的相关脚本','Related scripts in this draft')}</summary><pre data-user-content>${esc(scripts)}</pre></details>`:''}<p>${contentText('本次批准只保存到这一稿。浏览器截图仅允许本机网络；此限制不约束上面的命令。','Approval is saved for this draft only. Browser capture allows local network access; this limit does not restrict the commands above.')}</p>`;
+  $('#dialog .dialog-body').innerHTML=previewLanguageControls()+`<p data-user-content>${esc(versionTitle(commit(sha)))}</p><p>${contentText('文件已保存。这个 Vite 网页需要先安装依赖并启动，才能截图。','Files are saved. This Vite webpage needs dependencies installed and a server started before capture.')}</p><p>${contentText('以下命令只以这一稿的独立副本为工作目录；会联网下载依赖，并执行项目及依赖脚本、Vite 配置和插件。命令使用当前系统权限，独立副本不是安全沙箱。','These commands use an independent copy of this draft as their working directory. They download dependencies and execute project and dependency scripts, Vite configuration, and plugins with your current system permissions. The copy is not a security sandbox.')}</p><pre data-user-content>${esc([...(commands.install||[]),commands.start].map(argv=>argv.join(' ')).join('\n'))}</pre>${scripts?`<details><summary>${contentText('此稿的相关脚本','Related scripts in this draft')}</summary><pre data-user-content>${esc(scripts)}</pre></details>`:''}<p>${contentText(state.project?.preview_preferences?.pending_recipe?'本项目已选择以后留稿都保存画面。确认后，这份配置也用于后续留稿；新配置另行确认。浏览器的本机网络限制不约束上述命令。':'本次批准只保存到这一稿。浏览器截图仅允许本机网络；此限制不约束上面的命令。',state.project?.preview_preferences?.pending_recipe?'This project is set to save images on future drafts. Approving these settings also enables their reuse; changed settings need another review. The browser local-network limit does not restrict the commands above.':'Approval is saved for this draft only. Browser capture allows local network access; this limit does not restrict the commands above.')}</p>`;
   $('#dialog .dialog-footer').innerHTML=`<span id="dialog-status" role="status"></span><button class="secondary-button" data-action="close">${contentText('暂不运行','Not now')}</button><button class="primary-button" data-action="approve-draft-preview">${contentText('批准以上命令并截图','Approve these commands and capture')}</button>`;
   return;
  }
@@ -75,7 +85,7 @@ async function quickPreviewDialog(root,target=null){
  $('#dialog .dialog-footer').innerHTML=`<span id="dialog-status" role="status"></span><button class="secondary-button" data-action="close">${contentText('返回','Back')}</button>${ready?`<button class="primary-button" data-action="save-quick-preview">${contentText('保存配置并截图','Save settings and capture')}</button>`:multiple?'':`${plan.reason==='existing-settings'?`<button class="primary-button" data-action="capture">${contentText('按原配置截图','Capture with saved settings')}</button>`:''}<button class="secondary-button" data-action="recipe">${contentText('打开运行配置','Open run settings')}</button><button class="text-button" data-action="manual">${contentText('提供自己的截图','Attach my screenshot')}</button>`}`;
 }
 Object.assign(workspaceActions,{
- 'draft-view':b=>{state.prefs.historyView=b.dataset.view;savePrefs();renderHistory();},
+ 'draft-view':b=>{state.prefs.historyView=b.dataset.view;savePrefs();renderHistory();requestAnimationFrame(scrollSelectedHistory);},
  'draft-select':async b=>{await setDetailTab('preview');await choose(b.dataset.id);},
  'draft-more':()=>{state.draftLimit=(state.draftLimit||60)+60;renderDraftHistory();},
  'quick-preview':()=>quickPreviewDialog(),

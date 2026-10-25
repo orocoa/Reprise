@@ -6,14 +6,14 @@ const icons={search:'<circle cx="8" cy="8" r="5"/><path d="m12 12 4 4"/>',star:'
 // Feather edit-2 (MIT): a single outline on the existing 18px icon grid.
 icons.pencil='<g transform="scale(.75)" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></g>';
 const icon=n=>`<svg class="icon" viewBox="0 0 18 18" aria-hidden="true">${icons[n]||icons.file}</svg>`;
-const state={project:null,commits:[],refs:[],graph:null,selected:null,anchorSelection:null,tab:'updates',query:'',filter:'all',details:new Map(),prefs:{stars:[],main:null,density:'full'},historySources:[],loading:false,searching:false,error:null,snapshot:null,dialogRequest:0,comparison:null,comparisonDraft:null,comparisonLoading:false,comparisonError:null,comparisonRequest:0,view:location.hash==='#resources'?'resources':'versions',ref:'--all',refMembers:null,jobs:[],runtimes:[],jobWarnings:[],commitIndex:new Map(),searchIndex:new Map()};
+const state={project:null,commits:[],refs:[],graph:null,selected:null,anchorSelection:null,tab:'updates',query:'',filter:'all',details:new Map(),prefs:{stars:[],main:null,density:'compact'},historySources:[],loading:false,searching:false,error:null,snapshot:null,dialogRequest:0,comparison:null,comparisonDraft:null,comparisonLoading:false,comparisonError:null,comparisonRequest:0,view:location.hash==='#resources'?'resources':'versions',ref:'--all',refMembers:null,jobs:[],runtimes:[],jobWarnings:[],commitIndex:new Map(),searchIndex:new Map()};
 let token='',selectRequest=0,projectRequest=0,searchRequest=0,toastTimer,searchTimer,returnFocus,detailAbort;
 const colors=['#3978bf','#bf5751','#43856b','#8167ae','#a77736'];
 let routeColors=new Map();
 async function api(path,options={}){const r=await fetch(path,{cache:'no-store',...options,headers:{'Content-Type':'application/json','X-Reprise-Token':token,...options.headers}});const d=await r.json();if(!r.ok)throw Error(d.error||'读取失败');return d;}
 const query=(path,values)=>path+'?'+new URLSearchParams(values);
 const key=()=>`reprise-live-prefs:${state.project?.id}`;
-function readPrefs(){try{const p=JSON.parse(localStorage.getItem(key())||'{}');state.prefs={stars:Array.isArray(p.stars)?p.stars.filter(x=>typeof x==='string'):[],main:typeof p.main==='string'?p.main:null,density:p.density==='compact'?'compact':'full',historyView:['pictures','graph'].includes(p.historyView)?p.historyView:null,presentation:['files','visual'].includes(p.presentation)?p.presentation:'auto'};}catch{state.prefs={stars:[],main:null,density:'full'};}}
+function readPrefs(){try{const p=JSON.parse(localStorage.getItem(key())||'{}');state.prefs={stars:Array.isArray(p.stars)?p.stars.filter(x=>typeof x==='string'):[],main:typeof p.main==='string'?p.main:null,density:'compact',historyView:['pictures','graph'].includes(p.historyView)?p.historyView:null,presentation:['files','visual'].includes(p.presentation)?p.presentation:'auto'};}catch{state.prefs={stars:[],main:null,density:'compact'};}}
 function savePrefs(){try{localStorage.setItem(key(),JSON.stringify(state.prefs));return true;}catch{notify('浏览器无法保存偏好；本次会话仍然有效。');return false;}}
 function notify(s){clearTimeout(toastTimer);$('#toast').textContent=s;$('#toast').classList.add('visible');toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
 const commit=id=>state.commitIndex.get(id);
@@ -51,10 +51,10 @@ function renderHistory(){
  if(!state.graph)return;
  if(typeof renderDraftHistory==='function')renderDraftHistory();
  const focus=captureViewFocus($('#version-list'));
- const top=$('#history-scroll').scrollTop;$('#history-count').textContent=state.commits.length;$('#history-track').classList.toggle('compact',state.prefs.density==='compact');
+ const top=$('#history-scroll').scrollTop;$('#history-count').textContent=state.commits.length;$('#history-track').classList.add('compact');
  const n=results().length;$('#search-status').hidden=!state.query&&state.filter==='all'&&!state.searching;
- $('#search-status').innerHTML=`${state.searching?'正在搜索提交与文件…':state.filter==='starred'?(n?`<span>${n}</span> <span>个收藏 · 保留版本关系</span>`:'还没有收藏版本'):n?`${n} 个匹配 · 其余为关系节点`:'没有匹配版本'} <button data-action="clear-search">查看全部</button>`;
- $$('[data-action=history-density]').forEach(b=>{const yes=b.dataset.density===state.prefs.density;b.classList.toggle('active',yes);b.setAttribute('aria-pressed',yes);});
+ $('#search-status').innerHTML=`${state.searching?'<span id="search-progress"></span>':state.filter==='starred'?(n?`<span>${n}</span> <span>个收藏 · 保留版本关系</span>`:'还没有收藏版本'):n?`${n} 个匹配 · 其余为关系节点`:'没有匹配版本'} <button data-action="clear-search">查看全部</button>`;
+ if(state.searching)updateSearchProgress();
  const bookmarkFilter=$('#bookmark-filter'),focused=state.filter==='starred';bookmarkFilter.dataset.filter=focused?'all':'starred';bookmarkFilter.setAttribute('aria-pressed',focused);bookmarkFilter.classList.toggle('active',focused);$('#bookmark-filter-icon').innerHTML=icon('star');$('#bookmark-count').textContent=state.commits.filter(c=>state.prefs.stars.includes(c.sha)).length;$('#history-track').classList.toggle('bookmark-focus',focused);
  $('#version-list').innerHTML=state.commits.map(c=>{const matched=match(c),selected=matched&&state.selected===c.sha,starred=state.prefs.stars.includes(c.sha);return `${state.historyBreaks.has(c.sha)?'<div class="history-divider" role="separator" aria-label="独立历史" title="与上一段历史没有已记录的父子连接"><span>独立历史</span><span class="history-divider-note">与上方无连接</span></div>':''}<button class="version-row ${starred?'bookmarked':''} ${selected?'selected':''} ${matched?'':'dimmed context-row'}" data-action="select" data-id="${c.sha}" aria-current="${selected}" data-user-label aria-label="${uiText('版本')} ${esc(versionTitle(c))}${starred?'，'+uiText('已收藏'):''}${matched?'':'，'+uiText('关系节点')}"><span class="version-meta"><span class="version-identity"><span class="version-number">${esc(versionLabel(c))}</span>${state.prefs.stars.includes(c.sha)?icon('star'):''}${c.sha===state.project.head?'<span class="new-label">当前版本</span>':''}</span><time class="version-date" datetime="${esc(c.committed_at)}" title="${esc(formatDate(c.committed_at,true))}">${esc(formatDate(c.committed_at))}</time></span><span class="version-title" data-user-content title="${esc(versionTitle(c))}">${esc(versionTitle(c))}</span>${starred?`<span class="history-bookmark" title="已收藏" aria-label="已收藏">${icon('star')}</span>`:''}<span class="version-summary" data-user-content title="${esc(versionCaption(c))}">${esc(versionCaption(c))}</span></button>`;}).join('');
  if(state.graph.boundaries.length)$('#version-list').insertAdjacentHTML('beforeend','<p class="snapshot-message" style="padding-left:20px">虚线连接当前历史中不可读取的版本</p>');
@@ -65,8 +65,13 @@ function drawGraph(){
  if(!state.graph||$('#history-scroll').hidden)return;const svg=$('#route-map'),track=$('#history-track'),pos=new Map(),step=18,x=n=>19+n*step;
  // Reserve all node/bypass columns before measuring text-dependent row heights.
  const width=Math.max(76,x(state.graph.laneCount-1)+17);track.style.setProperty('--graph-gutter',`${width+2}px`);svg.setAttribute('width',width);
+ // Keep a readable title column when many real branches need extra lanes.
+ track.style.minWidth=`${width+202}px`;
+ $('.history').style.setProperty('--graph-panel-width',`${Math.max(334,width+226)}px`);
+ const overflow=$('#graph-width-hint');
+ if(overflow){overflow.hidden=$('#history-scroll').scrollWidth<=$('#history-scroll').clientWidth+1;overflow.textContent=contentText('分支较多，可横向滚动查看完整路线与标题。','Many branches: scroll horizontally for the complete routes and titles.');}
  const rows=new Map($$('.version-row[data-id]').map(row=>[row.dataset.id,row]));
- state.graph.rows.forEach(n=>{const r=rows.get(n.id),m=r?.querySelector(state.prefs.density==='compact'?'.version-title':'.version-meta');if(r)pos.set(n.row,r.offsetTop+(m?m.offsetTop+m.offsetHeight/2:r.offsetHeight/2));});
+ state.graph.rows.forEach(n=>{const r=rows.get(n.id),m=r?.querySelector('.version-title');if(r)pos.set(n.row,r.offsetTop+(m?m.offsetTop+m.offsetHeight/2:r.offsetHeight/2));});
  const height=$('#version-list').offsetHeight,y=n=>{const f=Math.floor(n),c=Math.ceil(n),a=pos.get(f)??height-12,b=pos.get(c)??height-12;return a+(b-a)*(n-f);};
  svg.setAttribute('height',height);svg.style.height=height+'px';
  svg.innerHTML=state.graph.edges.map(e=>`<path data-child="${e.childId}" data-parent="${e.parentId}" d="${rounded(e.points.map(p=>({x:x(p.x),y:y(p.y)})))}" fill="none" stroke="${routeColors.get(e.routeId)}" stroke-width="2" stroke-linecap="round" ${e.missingParent?'stroke-dasharray="3 3"':''}/>`).join('')+state.graph.rows.map(n=>{const selected=n.id===state.selected&&match(commit(n.id)),color=routeColors.get(n.routeId);return `${selected?`<circle cx="${x(n.lane)}" cy="${y(n.row)}" r="8" fill="#fff" stroke="#34363a" stroke-width="1.5"/>`:''}<circle data-node="${n.id}" cx="${x(n.lane)}" cy="${y(n.row)}" r="${n.isMerge?4.6:3.8}" fill="${selected?color:'var(--side)'}" stroke="${color}" stroke-width="1.8"/>`;}).join('');
@@ -93,7 +98,7 @@ function renderChanges(d){
 function mediaItems(d){return d?evidenceItems(d.evidence,d.commit.sha,{side:'target'}):[];}
 function renderPreview(d,{comparison=false,pairedTarget=null}={}){
  if(d.content&&!comparison){
-  const visual=visualPresentation(d),preview=`<section class="version-recognition"><div class="version-recognition-heading"><h3>${contentText('此版本的预览','Preview of this version')}</h3><button class="text-button" data-action="quick-preview">${contentText('保存此稿画面','Capture this draft')}</button></div><p class="snapshot-message">${contentText('只显示绑定此版本的资料；运行使用独立副本。','Only evidence bound to this version appears; runtime previews use a separate copy.')}</p>${renderRuntimes(d)}${renderPreview(d,{comparison:true})}</section>`;
+  const visual=visualPresentation(d),preview=`<section class="version-recognition"><div class="version-recognition-heading"><h3>${contentText('此版本的预览','Preview of this version')}</h3><button class="text-button" data-action="quick-preview">${contentText('保存此稿画面','Capture this draft')}</button></div><p class="snapshot-message">${contentText('只显示绑定此版本的资料；运行使用独立副本。','Only evidence bound to this version appears; runtime previews use a separate copy.')}</p>${rememberCaptureControl(d)}${renderRuntimes(d)}${renderPreview(d,{comparison:true})}</section>`;
   return (visual?preview:'')+(visual?`<details class="draft-file-disclosure" data-keep-open="draft-files"><summary>${contentText('查看这一稿的文件','Inspect this draft’s files')}</summary>${renderFolderFiles()}</details>`:`<h3>${contentText('此版本的文件','Files in this version')}</h3>${renderFolderFiles()}`)+(visual?'':`<details data-keep-open="optional-preview"><summary>${contentText('可选：截图与运行预览','Optional: screenshots and runtime preview')}</summary>${preview}</details>`);
  }
  const items=pairedTarget&&pairedTarget.commit.sha!==d.commit.sha?baselineMediaItems(pairedTarget,d,d.commit.sha):mediaItems(d),[title,message]=previewEmptyText(d);
@@ -132,12 +137,34 @@ async function loadDetail(id,signal,source=revisionProject(id)){
 }
 async function choose(id,{resetTab=false,fromComparison=false}={}){
  if(!commit(id)){notify(state.project?.kind==='folder'?contentText('该历史版本当前不可读取，原有关系记录仍保留。','This historical version is unavailable; its recorded relationship remains.'):uiText('父提交尚未加载，当前历史保留了它的边界。'));return;}
- const c=commit(id);if(id!==state.selected){state.comparison=null;if(!fromComparison){++state.comparisonRequest;state.comparisonDraft=null;state.comparisonLoading=false;state.comparisonError=null;}}if(!match(c)){state.query='';state.filter='all';state.ref='--all';state.refMembers=null;$('#search').value='';}
+ const c=commit(id);if(id!==state.selected){state.comparison=null;if(!fromComparison){++state.comparisonRequest;state.comparisonDraft=null;state.comparisonLoading=false;state.comparisonError=null;}}if(!match(c)){clearTimeout(searchTimer);++searchRequest;state.searching=false;state.query='';state.filter='all';state.ref='--all';state.refMembers=null;$('#search').value='';}
  state.selected=id;if(!state.query&&state.filter==='all')state.anchorSelection=id;if(resetTab)state.tab=draftView()==='pictures'?'preview':'updates';const url=new URL(location.href);url.searchParams.set('sha',id);history.replaceState(null,'',url);$('#detail').scrollTop=0;renderHistory();renderDetail();requestAnimationFrame(()=>{if(typeof scrollSelectedDraft==='function')scrollSelectedDraft();const row=$(`.version-row[data-id="${id}"]`),scroller=$('#history-scroll');if(row&&scroller){const top=row.offsetTop,bottom=top+row.offsetHeight;if(top<scroller.scrollTop)scroller.scrollTop=top;else if(bottom>scroller.scrollTop+scroller.clientHeight)scroller.scrollTop=bottom-scroller.clientHeight;}});
  detailAbort?.abort();detailAbort=new AbortController();const n=++selectRequest;
  try{const d=await loadDetail(id,detailAbort.signal);if(n===selectRequest&&state.selected===id){renderHistory();renderDetail();if(state.tab==='updates'){await ensureUpdateBaseline(d,detailAbort.signal);if(n===selectRequest&&state.selected===id&&state.tab==='updates')renderDetail();}}}catch(e){if(e.name==='AbortError')return;if(n===selectRequest){$('#live-content').innerHTML=`<div class="empty-preview"><h3>读取失败</h3><p>${esc(e.message)}</p><button class="secondary-button" data-action="retry">重试此提交</button></div>`;}}
 }
-async function searchAll(){const n=++searchRequest;state.searching=true;renderHistory();const project=state.project.id;let cursor=0;try{await Promise.all(Array.from({length:4},async()=>{while(cursor<state.commits.length){const id=state.commits[cursor++].sha;if(!state.searchIndex.has(id))await loadDetail(id);if(n!==searchRequest||project!==state.project.id)return;}}));if(n!==searchRequest||project!==state.project.id)return;state.searching=false;settleFilter();}catch(e){if(n!==searchRequest)return;state.searching=false;renderHistory();notify('部分文件变化读取失败，搜索结果可能不完整：'+e.message);}}
+function updateSearchProgress(){
+ const label=$('#search-progress');if(!label)return;
+ label.textContent=contentText(`正在搜索版本与文件… ${state.searchIndex.size}/${state.commits.length}`,`Searching revisions and files… ${state.searchIndex.size}/${state.commits.length}`);
+}
+async function searchAll(){
+ const n=++searchRequest;state.searching=true;renderHistory();const project=state.project.id;let cursor=0;
+ try{
+  await Promise.all(Array.from({length:4},async()=>{
+   while(cursor<state.commits.length){
+    const id=state.commits[cursor++].sha;
+    if(!state.searchIndex.has(id)){
+     const diff=await api(query(`/api/projects/${revisionProject(id)}/diff`,{target:id}));
+     if(n!==searchRequest||project!==state.project.id)return;
+     state.searchIndex.set(id,(diff.files||[]).flatMap(f=>[f.path,f.old_path||'']));
+     updateSearchProgress();
+    }
+    if(n!==searchRequest||project!==state.project.id)return;
+   }
+  }));
+  if(n!==searchRequest||project!==state.project.id)return;
+  state.searching=false;settleFilter();
+ }catch(e){if(n!==searchRequest)return;state.searching=false;renderHistory();notify('部分文件变化读取失败，搜索结果可能不完整：'+e.message);}
+}
 function settleFilter(){const matches=results();if(!matches.some(c=>c.sha===state.selected))state.selected=matches.find(c=>c.sha===state.anchorSelection)?.sha||matches[0]?.sha||null;renderHistory();renderDetail();if(state.selected)choose(state.selected);}
 async function loadProject(id,{preserve=false}={}){
  const n=++projectRequest;++selectRequest;++searchRequest;detailAbort?.abort();state.comparison=null;state.comparisonDraft=null;state.comparisonLoading=false;state.comparisonError=null;++state.comparisonRequest;state.loading=true;state.searching=false;$('#source-status').textContent='正在读取项目…';
@@ -220,7 +247,7 @@ const coreActions={
   settleFilter();
  },
  'clear-search':()=>{
-  ++searchRequest;state.searching=false;state.query='';state.filter='all';state.selected=state.bookmarkOrigin||state.selected;
+  clearTimeout(searchTimer);++searchRequest;state.searching=false;state.query='';state.filter='all';state.selected=state.bookmarkOrigin||state.selected;
   state.bookmarkOrigin=null;state.ref='--all';state.refMembers=null;$('#search').value='';settleFilter();
  },
  star:()=>toggleBookmark(),

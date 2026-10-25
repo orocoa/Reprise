@@ -18,6 +18,31 @@ from test_ai import Stub
 
 @unittest.skipUnless(os.environ.get('REPRISE_BROWSER_TESTS') == '1', 'browser tests opt in')
 class BrowserUITests(unittest.TestCase):
+    def test_large_git_history_readable_without_density_controls(self):
+        from test_graph_scale import scale_repository, fingerprint
+        root = fixture('graph-scale-ui')
+        source, expected = scale_repository(root)
+        before = fingerprint(source)
+        app = Reprise(root / 'state')
+        project = app.projects.add(str(source))
+        config = root / 'fixture.json'
+        config.write_text(json.dumps({'root': str(root), 'project': project['id'], 'expected': expected}))
+        server = LocalServer(('127.0.0.1', 0), app)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            result = subprocess.run([os.environ['REPRISE_NODE'], str(Path(__file__).with_name('graph_scale_acceptance.mjs')),
+                                     'http://127.0.0.1:%s/' % server.server_port, str(config)],
+                                    capture_output=True, text=True, timeout=150)
+            (root / 'browser.log').write_text(result.stdout + '\n' + result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(fingerprint(source), before, 'Large-history browsing keeps every source and Git file unchanged')
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+            app.close()
+
     def test_first_run_static_draft_without_ai_ui(self):
         root = fixture('first-run-ui')
         source = root / 'Synthetic website with spaces'

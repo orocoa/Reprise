@@ -22,6 +22,28 @@ function delayed() {
   return {promise, resolve};
 }
 
+test('legacy detailed history preferences retain selection settings but use the one relationship layout', () => {
+  const state={prefs:{}};
+  const context=vm.createContext({state,key:()=> 'project',localStorage:{getItem:()=>JSON.stringify({density:'full',historyView:'graph',stars:['old-sha'],main:'refs/heads/main'})}});
+  productionFunction(context,'live.js','function readPrefs()','function savePrefs()');
+  context.readPrefs();
+  assert.equal(state.prefs.density,'compact');
+  assert.equal(state.prefs.historyView,'graph');
+  assert.deepEqual(Array.from(state.prefs.stars),['old-sha']);
+  assert.equal(state.prefs.main,'refs/heads/main');
+});
+
+test('an older selected picture is included without rendering the entire long history', () => {
+  const commits=Array.from({length:1301},(_,i)=>({sha:`sha-${i}`,subject:`Draft ${i}`,committed_at:'2026-10-26'}));
+  const list={innerHTML:'',scrollTop:0},state={project:{id:'project',kind:'git'},commits,selected:'sha-1300',prefs:{historyView:'pictures',stars:[]}};
+  const context=vm.createContext({state,workspaceActions:{},uiCopy:{},$:s=>s==='#draft-list'?list:s==='.history'?{classList:{toggle(){}}}:{},$$:()=>[],captureViewFocus:()=>null,restoreViewFocus(){},results:()=>commits,contentText:(zh,en)=>en,esc:String,icon:()=>'',versionTitle:c=>c.subject,formatDate:s=>s,revisionProject:()=> 'project'});
+  vm.runInContext(read('live-drafts.js'),context);
+  context.renderDraftHistory();
+  assert.equal((list.innerHTML.match(/data-action="draft-select"/g)||[]).length,61);
+  assert.match(list.innerHTML,/data-id="sha-1300"/);
+  assert.match(list.innerHTML,/1240 drafts skipped/);
+});
+
 test('late quick-capture acceptance tracks the job without closing a newer dialog', async () => {
   const response = delayed();
   const effects = [];

@@ -1,35 +1,38 @@
-# Reprise 0.8.0 · LOCAL CANDIDATE · 工作台任务 / Workspace tasks
+# 工作台任务 / Workbench tasks
 
-仅本地候选，未公开发布。基础任务不需要 AI Key。“保存一稿”可以同时保存文件并尝试静态网页截图；两者分别报告结果，恢复另行执行。安装前提见 [快速开始](QUICKSTART.md)。
+Reprise 0.8.0。[快速开始](QUICKSTART.md) · [功能范围](FEATURES.md)
 
-## 保存网页稿件与取回
+## 保存与继续修改
 
-1. 继续修改同一个工作文件夹，用顶部「保存一稿」命名一稿。普通非网页资料只保存文件，不要求选择截图策略；已有截图偏好继续沿用，可在项目设置更改。
-2. 文件夹项目默认显示稿件画面列表；缺图明确显示，仍可选择版本、查看文件变化与全部文件。点变化文件看逐行增删与两侧行号，可跳到上一处或下一处变化，未变上下文按需展开。过大、二进制、读取不完整或结果截断时会说明限制，不冒充完整比较；需要全文时可取回文件。文件旁「恢复文件」直接取该版；被删除的文件从 A 恢复。
-3. 在「比较版本」选择 A/B，明确需要哪一侧；「恢复 A 的文件」和「恢复 B 的文件」各自绑定其版本，完整文件不受预览截断影响。
-4. 恢复默认建议原项目同级、位于 Reprise 数据目录之外的新文件夹，完整稿件可重新加入并继续留稿。上级目录不存在或不可写时展开「更改位置」，需填写尚不存在的新目录，不回退到数据目录。结果显示版本、范围、位置与实际校验口径；可打开所在位置或复制路径。返回会保留原版本、比较选择与文件上下文。
-5. 「全部文件」可搜索未变化的文件。存储数字在「版本信息与存储」内展开；它们不是实际释放量。
+1. 复用当前明确的网页目录。首次为文件夹项目留稿时，询问一次以后是否保存画面，并在截图或配置完成前记住答案。之后沿用；可在设置更改。
+2. 用「保存一稿」或 Ctrl/⌘ + S 留稿；名称可留空按时间补齐。Ctrl/⌘ + Shift + S 打开命名保存，Ctrl/⌘ + Enter 提交。Agent 可按“本轮修改前后都留稿”的委托编排两次调用，不启动后台监控。
+3. 分别检查文件与画面结果。失败保留已保存文件、项目选择和日志；补齐配置后给同一准确版本重试画面，不创建重复稿。
+4. 按画面选稿或比较任意两版。点「取出这一稿」，默认使用源目录同级的新文件夹。整稿完成回执提供可复制的继续修改指令；让编辑 Agent 先核对副本，再继续修改。
 
-## 网页项目
+文件未变化时沿用旧稿及原名称。局部文件恢复和 ZIP 导出不声称已得到完整可运行网页。
 
-“保存一稿”默认尝试为入口明确、本地素材齐全的静态网页保存画面：先保存该版配置，再在独立副本里截图，只允许本机网络，不执行安装或构建命令。已有“无需截图”“自行提供”或“按已确认配置自动截图”偏好继续沿用。多个独立入口、远程素材、识别或截图失败等情况会提示进一步设置，文件版本仍已保存。截图只属于其绑定版本，缺图不借用别版。手工截图明确标为提供者指定归属。
+## 版本图片与 Git 路线
 
-项目设置的「版本内容的显示方式」可选自动、文件优先、预览优先。该选择只改变显示顺序，按浏览器与项目记住，不改变文件或运行授权。运行、采集和 AI 位于相关预览入口与高级设置。历史版本管理处理已保存历史；旧目录候选与成本是另一份报告。
+「画面」与「版本关系」是同一批准确版本的两种浏览方式。切换保留选中稿件和定位；缺图明确显示，不借用别版图片。图片放大、收藏、搜索、固定紧凑的关系图与中英文切换保留上下文。
 
-## 已有 Git 项目
+已有 Git 项目可由 Agent 用 `open /known/repository --lang zh --no-browser` 打开，也可在项目导入中选择只读 Git。图中的节点来自完整提交 SHA，每条父边和合并父序来自 Git。筛选仍保留关系上下文；线条交叉本身不表示合并。[图规则与边界](GIT-GRAPH.md)
 
-在「项目」的高级导入中选择「读取已有 Git 提交（只读）」。此入口继续显示真实 Git 提交与关系，不用文件夹留稿代替 Git 历史，也不把未提交修改当作历史版本。运行仍需保存该确切版本的配置；比较、预览与恢复不改写原仓库。
+Git 历史项目使用已有提交；文件夹留稿保存当前文件。截图长期偏好与 `snapshot` 只用于文件夹项目，不应用到 Git 历史项目。Reprise 不替用户执行提交、checkout 或 reset。
+
+## 文件比较与按需管理
+
+在「比较版本」选择 A/B，可交换方向；变化文件提供两侧行号、增删和恢复入口。被删除文件从 A 恢复。大文件、二进制、截断或未完整读取时说明限制，恢复仍按所选版本取完整文件。新恢复目录不得覆盖源或已有输出。
+
+设置保留任务与预览服务，以及折叠的高级管理：历史版本、独立备份迁移、旧副本导入、环境、存储和完整性。删除历史和释放环境都需具体影响预览与明确确认；不会自动删除源文件。源码运行命令先核对并保存，随后只在独立副本执行。
 
 ## English
 
-1. Keep editing one working folder. **Save a draft** records a named draft. Ordinary non-web files need no screenshot choice. Existing screenshot preferences are reused and can be changed in Project settings.
-2. Folder projects start with a visual draft list. Missing images stay visible as missing; file changes and all files remain available. Open a changed file for line additions and removals, both line numbers, and previous/next change navigation. Unchanged context expands on demand. Large, binary, or incomplete inputs and truncated results show their limits; recover a file to inspect it in full. Deleted files recover from A; recovery retrieves the complete selected file.
-3. **Compare versions** binds A and B explicitly. Choose **Recover file from A/B**. The suggested destination is a new sibling of the source project, outside Reprise data; a full recovered draft can be added and edited as a project. If the parent is missing or unwritable, **Change location** opens for a new path, without falling back to the data directory. Existing outputs and the working folder are preserved.
-4. The result states the version, scope, location and actual verification performed. Folder snapshots are read back; Git outputs report object-hash verification. **Show in folder** reveals only a completed recorded output. Return keeps the original comparison and file context.
-5. **All files** includes unchanged files. **Version details and storage** expands optional facts. Byte counts do not claim physical space reclaimed.
+Save the known folder before and after the requested edit. Ask once whether future saves should include pictures; persist the answer before capture/setup completes. Later saves reuse it. Blank names use the time; unchanged files retain their existing draft/title. Files and pictures have separate outcomes.
 
-**Save a draft** attempts static website capture by default, saving exact-version settings before capture in an independent copy. It allows local network access and runs no install or build commands. Existing no-screenshot, manual, or approved automatic preferences are respected. Ambiguous entries, remote assets, failed detection or capture require further setup while the files remain saved. Missing screenshots are never borrowed from another version. The portable macOS candidate includes the capture runtime. Source execution needs separately prepared Node, Playwright, and Chromium in addition to Python/Git.
+Use **Pictures** or **Revision relationships** to inspect exact versions. Switching keeps the selected draft in view. Images can be enlarged; search, bookmarks, the fixed compact relationship view and language changes keep context. Missing images are never borrowed.
 
-Advanced import still offers **Read existing Git commits (read-only)**. It retains the Git history view and real relationships; uncommitted edits do not become historical revisions. Running requires saved settings for the exact revision. The per-project presentation preference changes display order without granting execution permission. Language switching preserves user titles, file contents, recovery destinations and the selected comparison pair.
+Open existing Git history with `open /known/repository --lang en --no-browser`. Nodes and ordered parents come from real commits. Folder snapshots and their capture preferences remain a separate project kind. Imported source repositories stay read-only.
 
-Capacity and reuse retain the 0.7.4 contract: metadata preflight creates no full snapshots; an existing internal full recovery may be freshly checked and reused. First-time recovery copies still cost space. No automatic removal or publishing is part of these tasks.
+Compare A/B, recover complete drafts or selected files into a new folder, and inspect the actual verification result. Whole-draft recovery provides continuation instructions with the real path and full version. Partial recovery and ZIP exports do not imply a runnable webpage.
+
+Advanced management retains saved-version impact/review, backup/migration, old-copy imports, runtime environments, storage and integrity. Deletion/release uses explicit confirmation. Approved project commands execute in separate copies. General expansion remains frozen.
