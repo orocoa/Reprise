@@ -147,18 +147,16 @@ function updateSearchProgress(){
  label.textContent=contentText(`正在搜索版本与文件… ${state.searchIndex.size}/${state.commits.length}`,`Searching revisions and files… ${state.searchIndex.size}/${state.commits.length}`);
 }
 async function searchAll(){
- const n=++searchRequest;state.searching=true;renderHistory();const project=state.project.id;let cursor=0;
+ const n=++searchRequest;state.searching=true;renderHistory();const project=state.project.id,groups=new Map(),batches=[];let cursor=0;
+ for(const c of state.commits)if(!state.searchIndex.has(c.sha)){const source=revisionProject(c.sha);if(!groups.has(source))groups.set(source,[]);groups.get(source).push(c.sha);}
+ for(const [source,shas] of groups)for(let i=0;i<shas.length;i+=128)batches.push({source,shas:shas.slice(i,i+128)});
  try{
   await Promise.all(Array.from({length:4},async()=>{
-   while(cursor<state.commits.length){
-    const id=state.commits[cursor++].sha;
-    if(!state.searchIndex.has(id)){
-     const diff=await api(query(`/api/projects/${revisionProject(id)}/diff`,{target:id}));
-     if(n!==searchRequest||project!==state.project.id)return;
-     state.searchIndex.set(id,(diff.files||[]).flatMap(f=>[f.path,f.old_path||'']));
-     updateSearchProgress();
-    }
+   while(cursor<batches.length){
+    const batch=batches[cursor++],result=await api(`/api/projects/${batch.source}/search-index`,{method:'POST',body:JSON.stringify({shas:batch.shas})});
     if(n!==searchRequest||project!==state.project.id)return;
+    for(const id of batch.shas){const paths=result.paths?.[id];if(!Array.isArray(paths)||paths.some(p=>typeof p!=='string'))throw Error(contentText('文件搜索索引不完整。','The file search index is incomplete.'));state.searchIndex.set(id,paths);}
+    updateSearchProgress();
    }
   }));
   if(n!==searchRequest||project!==state.project.id)return;

@@ -1,6 +1,7 @@
 """Read-only workspace history, related archives and file comparisons."""
 import hashlib
 import json
+import re
 
 
 def repository_snapshot(service, identifier):
@@ -62,6 +63,21 @@ def snapshot(service, identifier, history_identifiers=(), history_catalog=None):
     result['snapshot'] = hashlib.sha256(json.dumps(
         [fingerprints, result['commits'], result['refs']], sort_keys=True).encode()).hexdigest()
     return result
+
+
+def search_index(service, identifier, shas):
+    """Return only changed names; never build runtime or evidence details."""
+    from .git import Repository
+    if (not isinstance(shas, list) or len(shas) > 128 or
+            any(not isinstance(s, str) or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', s) for s in shas)):
+        raise ValueError('Expected at most 128 full commit SHAs')
+    repository = service.projects.repository(identifier)
+    if type(repository) is Repository:
+        paths = repository.search_index(shas)
+    else:
+        paths = {sha: [p for f in repository.diff(sha)['files']
+                       for p in (f['path'], f.get('old_path')) if p] for sha in dict.fromkeys(shas)}
+    return {'paths': paths}
 
 
 def comparison_repository(service, identifier, history_identifiers, base, target):

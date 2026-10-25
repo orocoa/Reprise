@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 import hashlib
 import posixpath
+import re
 import shutil
 import subprocess
 import tempfile
@@ -318,6 +319,57 @@ class Repository:
             counts[keys.get(status_text[0], 'other')] += 1
         counts['total'] = len(files)
         return dict(target=target, base=base, parents=parents, files=files, counts=counts)
+
+    def search_index(self, shas):
+        """Read first-parent changed paths in a bounded batch, without full details."""
+        if (not isinstance(shas, list) or len(shas) > 128 or
+                any(not isinstance(s, str) or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', s) for s in shas)):
+            raise ValueError('Expected at most 128 full commit SHAs')
+        shas = list(dict.fromkeys(shas))
+        if not shas:
+            return {}
+        raw = self._run('cat-file', '--batch', input=('\n'.join(shas) + '\n').encode())
+        cursor, first_parents = 0, {}
+        for sha in shas:
+            end = raw.find(b'\n', cursor)
+            header = raw[cursor:end].split()
+            if len(header) != 3 or header[0].decode('ascii') != sha or header[1] != b'commit':
+                raise ValueError('Search version is not an available commit: ' + sha)
+            size = int(header[2]); start = end + 1; cursor = start + size + 1
+            if cursor > len(raw) or raw[cursor - 1:cursor] != b'\n':
+                raise ValueError('Incomplete commit batch')
+            parents = [line[7:].decode('ascii') for line in raw[start:start + size].split(b'\n\n', 1)[0].splitlines() if line.startswith(b'parent ')]
+            if any(not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', p) for p in parents):
+                raise ValueError('Invalid commit parent')
+            first_parents[sha] = parents[0] if parents else None
+        parents = list(dict.fromkeys(p for p in first_parents.values() if p))
+        if parents:
+            checked = self._run('cat-file', '--batch-check=%(objectname) %(objecttype)',
+                                input=('\n'.join(parents) + '\n').encode()).splitlines()
+            if len(checked) != len(parents) or any(line.split() != [p.encode(), b'commit'] for p, line in zip(parents, checked)):
+                raise ValueError('A first parent is unavailable; file search is incomplete at this history boundary')
+        # Explicit stdin parents select exactly the first-parent comparison for
+        # merges, while preserving the source commit objects and their full DAG.
+        lines = ''.join(sha + (' ' + first_parents[sha] if first_parents[sha] else '') + '\n' for sha in shas)
+        data = self._run('diff-tree', '--stdin', '--root', '-r', '--name-status', '-z', '-M',
+                         '--no-ext-diff', '--no-textconv', input=lines.encode())
+        fields = data.split(b'\0'); result = {sha: [] for sha in shas}; current = None; n = 0
+        if fields and fields[-1] == b'':
+            fields.pop()
+        while n < len(fields):
+            field = fields[n]; n += 1
+            value = field.decode('ascii')
+            if value in result:
+                current = value
+                continue
+            if current is None or not re.fullmatch(r'[ACDMRTUXB][0-9]*', value):
+                raise ValueError('Invalid search diff batch')
+            count = 2 if value[0] in ('R', 'C') else 1
+            if n + count > len(fields):
+                raise ValueError('Incomplete search diff batch')
+            paths = [os.fsdecode(p) for p in fields[n:n + count]]; n += count
+            result[current].extend(reversed(paths) if count == 2 else paths)
+        return result
 
     def _git_path(self, name):
         value = self._run('rev-parse', '--git-path', name)[:-1]

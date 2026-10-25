@@ -51,7 +51,8 @@ try{
  const searchStarted=Date.now();
  await page.fill('#search','no-match-large-history-441');
  await page.waitForFunction(n=>state.searching||state.searchIndex.size>=n,fixture.expected.length,{timeout:10000});
- if(await page.evaluate(()=>state.searching))assert.match(await page.locator('#search-progress').innerText(),/1301/);
+ const progress=await page.evaluate(()=>({active:state.searching,label:document.querySelector('#search-progress')?.textContent||''}));
+ if(progress.active)assert.match(progress.label,/1301/);
  await page.waitForFunction(n=>!state.searching&&document.querySelectorAll('.context-row').length===n,fixture.expected.length,{timeout:45000});
  const searchMs=Date.now()-searchStarted;
  assert.equal(await page.evaluate(()=>JSON.stringify(repriseWorkspace.graph())),baseline);

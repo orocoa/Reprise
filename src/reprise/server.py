@@ -213,6 +213,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(app.projects.get(identifier))
             if suffix == 'visual-history' and reading:
                 return self.send_json(experience.visual_history(app, identifier))
+            if suffix == 'search-index' and method == 'POST':
+                return self.send_json(workspace.search_index(app, identifier, body.get('shas')))
             if suffix == 'recovery-destination' and reading:
                 return self.send_json(suggest_destination(app.recovery, identifier, query['sha'][0]))
             if suffix == 'quick-preview' and reading:

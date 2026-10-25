@@ -13,14 +13,40 @@ test('uncached file search loads only diff paths, including old rename paths',as
   globalThis.uiLanguage='en';globalThis.revisionProject=()=> 'project';
   state.project={id:'project'};state.commits=[{sha:'a'},{sha:'b'}];
   renderHistory=()=>{};settleFilter=()=>{};updateSearchProgress=()=>{};
-  const calls=[];api=async url=>{calls.push(url);if(!url.includes('/diff?target='))throw Error('Search must not load full version details');return {files:[{path:'new.txt',old_path:'old.txt'}]};};
+  const calls=[];api=async (url,options)=>{calls.push(url);if(!url.endsWith('/search-index'))throw Error('Search must not load full version details');return {paths:Object.fromEntries(JSON.parse(options.body).shas.map(sha=>[sha,['new.txt','old.txt']]))};};
   await searchAll();
   return {calls,index:[...state.searchIndex.values()],details:state.details.size,searching:state.searching};
  })()`,context);
- assert.equal(result.calls.length,2);
+ assert.equal(result.calls.length,1);
  assert.equal(result.details,0);
  assert.equal(result.searching,false);
  assert.deepEqual(Array.from(result.index[0]),['new.txt','old.txt']);
+});
+
+test('file index batches are bounded and keep archive sources separate',async()=>{
+ const context=vm.createContext({location:{hash:''},URLSearchParams});
+ vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
+ const result=await vm.runInContext(`(async()=>{
+  state.project={id:'current'};state.commits=Array.from({length:257},(_,i)=>({sha:i.toString(16).padStart(40,'0')}));
+  globalThis.revisionProject=id=>parseInt(id,16)<200?'current':'archive';renderHistory=()=>{};settleFilter=()=>{};updateSearchProgress=()=>{};
+  const calls=[];api=async (url,options)=>{const shas=JSON.parse(options.body).shas;calls.push({url,shas});return {paths:Object.fromEntries(shas.map(sha=>[sha,['name.txt']]))};};
+  await searchAll();return {calls,size:state.searchIndex.size};
+ })()`,context);
+ assert.equal(result.size,257);assert.equal(result.calls.length,3);
+ for(const call of result.calls){
+  assert.ok(call.shas.length<=128);
+  assert.ok(Array.from(call.shas).every(sha=>call.url.includes(parseInt(sha,16)<200?'/current/':'/archive/')));
+ }
+});
+
+test('a late batch cannot populate a different project file index',async()=>{
+ let resolve;const response=new Promise(done=>{resolve=done;});
+ const context=vm.createContext({location:{hash:''},URLSearchParams,response});
+ vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
+ const pending=vm.runInContext(`state.project={id:'a'};state.commits=[{sha:'a'.repeat(40)}];globalThis.revisionProject=()=> 'a';renderHistory=()=>{};settleFilter=()=>{};updateSearchProgress=()=>{};api=()=>response;searchAll();`,context);
+ vm.runInContext(`state.project={id:'b'};state.searchIndex=new Map();state.searching=false;++searchRequest;`,context);
+ resolve({paths:{['a'.repeat(40)]:['from-a.txt']}});await pending;
+ assert.equal(vm.runInContext('state.searchIndex.size',context),0);
 });
 
 test('clearing a query cancels its pending full-history search',()=>{
