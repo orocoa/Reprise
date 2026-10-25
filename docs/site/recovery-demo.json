@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "status": "verified",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "f664b6189c93748d615ab95d1a0b05da669baf8ab961ef47870ce2b3ab0f6040"
+    "sha256": "5b0e6e8400ea276344b295cf4204324d6dd133e35c7a8d5a5e94e95815a602cc"
   },
   "verification": {
     "exact_version": true,
@@ -14,8 +14,8 @@
   "assets": [
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-gallery-zh-20261026.png",
-      "sha256": "18e019ecbf4b5c499896c4ac68f323157972168603f11c814e06a16aa2adb79e",
+      "path": "assets/reprise-0.8.1-gallery-zh.png",
+      "sha256": "93e211d6c094a2e4d397edc353c118bfddf5c3ba2e831ebf16f94360d55a6414",
       "alt": {
         "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
         "en": "Current picture history using a synthetic personal webpage."
@@ -28,8 +28,8 @@
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-relations-zh.png",
-      "sha256": "4914ecaa434a14a2e61c31f4cbaee4a738c713629ca7f0af26c7c3ffaeec32ca",
+      "path": "assets/reprise-0.8.1-relations-zh.png",
+      "sha256": "94db27c4f909b3a56be49f4d357bf9988a8e6af14be3722ff80c923190d05cea",
       "alt": {
         "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
@@ -42,8 +42,8 @@
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-gallery-en-20261026.png",
-      "sha256": "2b236e3d558a06f351fcc012034bc712b556b388921686fcdec4363e1c638504",
+      "path": "assets/reprise-0.8.1-gallery-en.png",
+      "sha256": "6868f62ad63a326729ec77bfa999fc9466d3645e6352948711ee194df798754c",
       "alt": {
         "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
         "en": "Current picture history using a synthetic personal webpage."
@@ -56,8 +56,8 @@
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8-relations-en.png",
-      "sha256": "00d48bf14bbbe8ec41fbc837a6cff884a351de9b95b00b9ee91c5d8d9911734d",
+      "path": "assets/reprise-0.8.1-relations-en.png",
+      "sha256": "167eed0357e6655c0c567e1be59b01abf85dd769936129f426b65d235bc09450",
       "alt": {
         "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."

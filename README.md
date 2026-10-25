@@ -6,7 +6,7 @@ Reprise 帮助使用 Agent 或编辑器制作网页的设计师保存关键稿�
 
 [English](README.en.md) · [下载 Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.1/Reprise-Skill.zip) · [快速开始](docs/QUICKSTART.md) · [完整功能](docs/FEATURES.md)
 
-![合成个人网页：九个真实 Git 提交、分叉与合并，以及所选版本的实采画面。](docs/site/assets/reprise-0.8-relations-zh.png)
+![合成个人网页：九个真实 Git 提交、分叉与合并，以及所选版本的实采画面。](docs/site/assets/reprise-0.8.1-relations-zh.png)
 
 *实际工作台截图，使用合成个人网页；旧版视觉档案和图片继续保留。*
 
@@ -18,7 +18,7 @@ Reprise 帮助使用 Agent 或编辑器制作网页的设计师保存关键稿�
 
 没有 Git 也能主动保存文件夹稿件；已有 Git 项目可以只读浏览提交历史。两者独立：文件夹保存顺序不冒充源仓库的分支历史。截图需要实际生成或导入，缺图明确显示。
 
-![同一合成项目的版本图片列表。](docs/site/assets/reprise-0.8-thumbnails-zh.png)
+![同一合成项目的版本图片列表。](docs/site/assets/reprise-0.8.1-gallery-zh.png)
 
 ## 交给 Agent，开始使用
 
