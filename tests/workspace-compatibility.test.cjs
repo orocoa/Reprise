@@ -13,7 +13,7 @@ function harness(language = 'zh') {
   Object.defineProperty(bootstrap, 'ai', {get() { throw Error('Legacy AI settings must not be read'); }});
   const context = vm.createContext({
     location: {hash: '', search: '?lang=' + language}, URLSearchParams,
-    uiLanguage: language, uiText: value => value,
+    uiLanguage: language, uiText: value => value, localizeDOM() {},
     contentText: (zh, en) => language === 'en' ? en : zh,
     document: {
       addEventListener() {},
