@@ -6,7 +6,7 @@ Reprise helps designers making webpages with an agent or editor keep useful draf
 
 [简体中文](README.md) · [Download Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.2/Reprise-Skill.zip) · [Quickstart](docs/QUICKSTART.md#english) · [All features](docs/FEATURES.en.md)
 
-![Nine real Git commits, branches and merges alongside the selected version’s actual image in a synthetic personal webpage.](docs/site/assets/reprise-0.8.1-relations-en.png)
+![Nine real Git commits, branches and merges alongside the selected version’s actual image in a synthetic personal webpage.](docs/site/assets/reprise-0.8.2-relations-en.png)
 
 *Actual workbench using a synthetic personal webpage. Previous visual archives and pictures remain available.*
 
@@ -18,7 +18,7 @@ Reprise helps designers making webpages with an agent or editor keep useful draf
 
 Folders can be saved without an existing Git repository. Existing Git histories are read-only. Folder save order and source-repository branch history remain distinct. Pictures must be captured or imported; missing images stay visibly missing.
 
-![The same synthetic project’s picture history.](docs/site/assets/reprise-0.8.1-gallery-en.png)
+![The same synthetic project’s picture history.](docs/site/assets/reprise-0.8.2-gallery-en.png)
 
 ## Start with your agent
 
