@@ -29,6 +29,8 @@ For the source entry, invoke the verified Python executable and absolute `script
 
 Resolve the requested tools before starting the workbench, and use the same environment for open/capture calls. A running service keeps its startup environment; a later caller's PATH does not update it. If a changed tool location requires reopening, use the normal verified shutdown/open flow for that service, retaining history and pictures. Do not hand-edit process records or kill a recorded PID directly.
 
+Resolving the Playwright module does not prove its default Chromium executable exists. Check that executable, or the explicit browser path, before starting a picture-enabled service. If the default cache is missing, a verified existing Chrome may be reused through `REPRISE_BROWSER`; do not send the designer to install another browser unnecessarily. An actual capture still verifies compatibility.
+
 The existing browser route starts an owned headless instance with a separate temporary context. It does not take over the user's open tabs, profile or login session. Compatibility still needs an actual capture. Do not set `REPRISE_BUNDLE_RESOURCES` for a source Skill.
 
 ## Missing tools / 缺少依赖
