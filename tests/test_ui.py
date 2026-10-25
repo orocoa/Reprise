@@ -18,6 +18,32 @@ from test_ai import Stub
 
 @unittest.skipUnless(os.environ.get('REPRISE_BROWSER_TESTS') == '1', 'browser tests opt in')
 class BrowserUITests(unittest.TestCase):
+    def test_project_picker_distinguishes_folder_drafts_and_git_history(self):
+        from test_graph_scale import fingerprint
+        root = fixture('project-purpose-ui')
+        source = commit_repo(root / 'source')
+        before = fingerprint(source.path)
+        app = Reprise(root / 'state')
+        git_project = app.projects.add(str(source.path), 'Same webpage')
+        folder_project = app.projects.add(str(source.path), 'Same webpage', 'folder')
+        config = root / 'fixture.json'
+        config.write_text(json.dumps({'root': str(root), 'git': git_project['id'], 'folder': folder_project['id']}))
+        server = LocalServer(('127.0.0.1', 0), app)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            result = subprocess.run([os.environ['REPRISE_NODE'], str(Path(__file__).with_name('project_picker_acceptance.mjs')),
+                                    'http://127.0.0.1:%s/' % server.server_port, str(config)],
+                                    capture_output=True, text=True, timeout=60)
+            (root / 'browser.log').write_text(result.stdout + '\n' + result.stderr)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(fingerprint(source.path), before)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(2)
+            app.close()
+
     def test_large_git_history_readable_without_density_controls(self):
         from test_graph_scale import scale_repository, fingerprint
         root = fixture('graph-scale-ui')

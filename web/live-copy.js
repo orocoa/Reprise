@@ -1,6 +1,9 @@
 'use strict';
 // One dictionary for the active workbench; feature modules do not override copy.
 Object.assign(uiCopy, {
+  "网页留稿": "Webpage drafts",
+  "Git 历史 · 只读": "Git history · read only",
+  "历史存档 · 只读": "History archive · read only",
   "画面": "Pictures",
   "版本关系": "Revision relationships",
   "保存一稿": "Save a draft",

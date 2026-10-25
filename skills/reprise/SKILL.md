@@ -3,7 +3,7 @@ name: reprise
 description: "倒带 / Reprise：保存本地网页稿、按画面找旧版、浏览已有 Git 版本关系并取出新副本。Use to open Reprise, save webpage drafts, browse their pictures or real Git relationships, and recover a chosen version."
 license: MIT
 metadata:
-  version: "0.8.1"
+  version: "0.8.2"
 ---
 
 # Reprise · 倒带
@@ -24,7 +24,7 @@ Run `python3 "$REPRISE" doctor` after installation or a runtime change; it check
 | Find saved versions / 查询旧稿 | `python3 "$REPRISE" history PROJECT` |
 | Recover a copy / 取出所选稿 | `python3 "$REPRISE" restore PROJECT --sha FULL_SHA --to /new/sibling-folder` |
 
-“打开倒带” or a bare Skill selection only opens the workbench; it does not save or import the terminal’s current directory. `projects` lists registered names/IDs when the current project is unknown. Names can be automatic; do not require another naming decision before each save.
+“打开倒带” or a bare Skill selection only opens the workbench; it does not save or import the terminal’s current directory. `projects` lists registered names/IDs when the current project is unknown. If the same folder has both records, use `kind: folder` for drafts and `kind: git` for read-only history; resolve the ID rather than asking the designer to distinguish identical names. Names can be automatic; do not require another naming decision before each save.
 
 ## Save: ask once, then reuse
 

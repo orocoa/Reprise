@@ -4,7 +4,7 @@
 
 Reprise 帮助使用 Agent 或编辑器制作网页的设计师保存关键稿件，把版本文件、对应画面和版本关系放在一个本地工作台里。选中旧稿，比较变化，再取出新副本继续改。
 
-[English](README.en.md) · [下载 Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.1/Reprise-Skill.zip) · [快速开始](docs/QUICKSTART.md) · [完整功能](docs/FEATURES.md)
+[English](README.en.md) · [下载 Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.2/Reprise-Skill.zip) · [快速开始](docs/QUICKSTART.md) · [完整功能](docs/FEATURES.md)
 
 ![合成个人网页：九个真实 Git 提交、分叉与合并，以及所选版本的实采画面。](docs/site/assets/reprise-0.8.1-relations-zh.png)
 
@@ -36,7 +36,7 @@ Reprise 帮助使用 Agent 或编辑器制作网页的设计师保存关键稿�
 
 静态 HTML 可准备直接截图；受支持的独立 npm/Vite 项目先给出安装与运行计划，批准后在独立副本执行。其他项目使用明确配置或手工图片，不保证任意历史版本都能运行。
 
-备份迁移、旧副本导入、完整性与存储管理保留在设置的按需入口。当前冻结通用功能扩展，继续修复实际使用问题。[功能范围](docs/FEATURES.md) · [Git 图规则](docs/GIT-GRAPH.md) · [验证范围](docs/VALIDATION-0.8.1.md)
+备份迁移、旧副本导入、完整性与存储管理保留在设置的按需入口。当前冻结通用功能扩展，继续修复实际使用问题。[功能范围](docs/FEATURES.md) · [Git 图规则](docs/GIT-GRAPH.md) · [验证范围](docs/VALIDATION-0.8.2.md)
 
 <details>
 <summary>开发者：源码启动与测试</summary>
