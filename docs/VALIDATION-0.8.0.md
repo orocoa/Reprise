@@ -4,9 +4,9 @@
 
 ## 当前交付与身份
 
-主附件为 `Reprise-Skill.zip`。本包从干净提交 [`b9305bf`](https://github.com/orocoa/Reprise/commit/b9305bf1d2d55535ad2e90fa7ac1c58110e37ea3) 构建；发布标签另外包含文档与校验值更新，包内功能文件与标签源码逐字节核对。清单、CRC、基础工具和实际安装入口均单独验证。
+主附件为 `Reprise-Skill.zip`。本包从干净提交 [`65d2403`](https://github.com/orocoa/Reprise/commit/65d2403a3e8e10dc455573f77e4cc5bb46dad266) 构建；发布标签另外包含文档与校验值更新，包内功能文件与标签源码逐字节核对。清单、CRC、基础工具和实际安装入口均单独验证。
 
-SHA-256：`48b7095ef1631286b7fbc5d84a2e9911d2639dba2084dad139991f7bb2e322d1`。
+SHA-256：`f664b6189c93748d615ab95d1a0b05da669baf8ab961ef47870ce2b3ab0f6040`。
 
 ## 已实际验证
 
@@ -22,7 +22,7 @@ SHA-256：`48b7095ef1631286b7fbc5d84a2e9911d2639dba2084dad139991f7bb2e322d1`。
 
 ![1301 个真实 Git 对象的合成压力仓库：固定紧凑关系图保留全部父边，并为标题保留空间。](site/assets/reprise-0.8-scale-1301.png)
 
-在本机压力演练中，首屏约 0.8 秒；首次为全部 1301 版建立文件检索约 25 秒，之后复用索引。搜索显示进度，清空或选中关系节点可取消。该数字不是其他机器的性能保证。宽分支超出可用宽度时横向滚动，不删边省空间；每来源最多 64 个 tip、每 tip 最多 2000 提交，未加载父版本保留边界。
+在本机压力演练中，首屏约 0.8 秒；首次为全部 1301 版建立批量文件检索约 0.6 秒，之后复用索引。搜索显示进度，清空或选中关系节点可取消。该数字不是其他机器的性能保证。宽分支超出可用宽度时横向滚动，不删边省空间；每来源最多 64 个 tip、每 tip 最多 2000 提交，未加载父版本保留边界。
 
 ## 重现与发布门槛
 
@@ -42,10 +42,10 @@ python3 scripts/check_distribution.py
 
 ## English
 
-The source Skill is built from clean commit `b9305bf`; the release tag adds documentation/checksum updates with byte-identical functional payload. Manifest, CRC, installed entry and four outside-source wheel/sdist installation paths are verified separately.
+The source Skill is built from clean commit `65d2403`; the release tag adds documentation/checksum updates with byte-identical functional payload. Manifest, CRC, installed entry and four outside-source wheel/sdist installation paths are verified separately.
 
 The workbench retains only picture thumbnails and the fixed compact relationship graph. A synthetic repository contains 1301 real Git objects, 1620 ordered parent edges, 16 parallel paths and 320 merge nodes. Tests check exact topology, lane avoidance, every node’s alignment, readable titles, search, mobile horizontal access and old selections beyond the first 60 thumbnails. The actual PersonalWeb read-only check has 9 reachable commits and preserves 24,240 Git files; it is distinct from the scale fixture.
 
-An earlier blue synthetic webpage was recovered by picture, read back, edited as an independent copy and saved again. The source and its Git metadata remained unchanged. On this host the scale graph became ready in about 0.8 seconds; the first complete file index took about 25 seconds and is reused. These timings are host-specific.
+An earlier blue synthetic webpage was recovered by picture, read back, edited as an independent copy and saved again. The source and its Git metadata remained unchanged. On this host the scale graph became ready in about 0.8 seconds; the first complete batched file index took about 0.6 seconds and is reused. These timings are host-specific.
 
 Use the commands above and the exact commit’s CI results. Fresh-machine dependency setup, native pickers/composers, native use in other agents, every framework, unlimited history and independent adoption are not established. AI protocol tests use stubs, and retained native-shell tests do not prove the native application experience.
