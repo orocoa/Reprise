@@ -23,7 +23,8 @@
       "caption": {
         "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
         "en": "Current picture history using a synthetic personal webpage."
-      }
+      },
+      "locale": "zh"
     },
     {
       "kind": "image",
@@ -36,7 +37,8 @@
       "caption": {
         "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
-      }
+      },
+      "locale": "zh"
     },
     {
       "kind": "image",
@@ -49,7 +51,8 @@
       "caption": {
         "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
         "en": "Current picture history using a synthetic personal webpage."
-      }
+      },
+      "locale": "en"
     },
     {
       "kind": "image",
@@ -62,7 +65,8 @@
       "caption": {
         "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
-      }
+      },
+      "locale": "en"
     },
     {
       "kind": "download",

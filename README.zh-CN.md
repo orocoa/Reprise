@@ -1,3 +1,12 @@
+# 倒带 / Reprise
+
+当前中文说明已统一到 [README](README.md)，英文说明见 [English](README.en.md)。
+
+[下载 v0.8.0](https://github.com/orocoa/Reprise/releases/tag/v0.8.0) · [快速开始](docs/QUICKSTART.md) · [完整功能](docs/FEATURES.md)
+
+<details>
+<summary>v0.4.1 历史说明（保留存档）</summary>
+
 # Reprise · 倒带
 
 **认准项目的旧版本，看懂变化，再把需要的一版取回。**
@@ -67,3 +76,5 @@ python3 run.py --data work/first-run/data shutdown
 [完整中文使用指南](docs/USER-GUIDE.zh-CN.md) · [配方与采集](docs/RECIPES.md) · [架构](docs/ARCHITECTURE.md) · [验证范围](docs/VALIDATION.md) · [发布验收](docs/RELEASE-CHECKLIST.md)
 
 由 [orocoa](https://github.com/orocoa) 维护。代码采用 [MIT](LICENSE) 许可；字体、图标和导入媒体保留各自许可，见[第三方说明](THIRD-PARTY-NOTICES.md)。
+
+</details>

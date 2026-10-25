@@ -76,6 +76,7 @@ def load_demo(source, version, production):
     require(demo.get('version') == version, 'recovery demo version differs from content')
     for asset in demo.get('assets', []):
         require(asset.get('kind') in ('image', 'video', 'download'), 'asset kind must be image, video, or download')
+        require(asset.get('locale') in (None, 'zh', 'en'), 'asset locale must be zh or en when supplied')
         path = asset_path(source, asset.get('path', ''))
         expected = asset.get('sha256')
         if expected:
@@ -239,17 +240,18 @@ class Markdown:
 
 def demo_html(demo, locale, base, download_url):
     zh = locale == 'zh'
+    assets = [a for a in demo.get('assets', []) if a.get('locale') in (None, locale)]
     links = []
     if download_url:
         links.append('<a href="' + html.escape(download_url, quote=True) + '">' + ('下载此版本 Skill 包' if zh else 'Download this version’s Skill package') + '</a>')
-    for asset in demo.get('assets', []):
+    for asset in assets:
         if asset['kind'] == 'download':
             links.append('<a href="' + html.escape(base + asset['path'], quote=True) + '" download>' + ('下载独立教程样本 ZIP' if zh else 'Download the independent tutorial sample ZIP') + '</a>')
     resources = '<aside class="resources">' + ''.join('<p>' + link + '</p>' for link in links) + '</aside>' if links else '<aside class="notice"><p>' + ('样本 ZIP 和安装包演示正在本地核验，完成后才显示可用资源。当前没有虚构下载链接。' if zh else 'The sample ZIP and package demo are awaiting local verification. Available resources will appear after verification.') + '</p></aside>'
     if demo['status'] != 'verified':
         return resources, '<section class="evidence"><h2>' + ('演示核验状态' if zh else 'Demo verification status') + '</h2><p class="notice">' + ('待最终候选安装包的真实操作、录屏与恢复读回。以上是可执行教程，不是已通过的演示回执。' if zh else 'Pending the final candidate package run, real recording, and recovery readback. The steps above are a runnable tutorial, not a successful demo receipt.') + '</p></section>'
     output = ['<section class="evidence"><h2>' + ('已核验的样本演示' if zh else 'Verified sample demonstration') + '</h2><p>' + ('本次合成样本已核对安装包版本、恢复文件读回与当前源文件未变。此结果不代表所有项目均可恢复或运行。' if zh else 'This synthetic run checked the package version, recovered file readback, and unchanged current source. It does not prove every project can be recovered or run.') + '</p>']
-    for asset in demo.get('assets', []):
+    for asset in assets:
         path = html.escape(base + asset['path'], quote=True)
         caption = html.escape(asset.get('caption', {}).get(locale, ''))
         alt = html.escape(asset.get('alt', {}).get(locale, ''), quote=True)
@@ -304,7 +306,7 @@ def main():
     require(len(pages) == 2 * len(SLUGS) and {(p['locale'], p['slug']) for p in pages} == {(l, s) for l in ('zh', 'en') for s in SLUGS}, 'expected matching focused pages in each language')
     known = {p['source']: p['locale'] + '/' + p['slug'] + '.html' for p in pages}
     require(len(known) == 2 * len(SLUGS), 'duplicate page source')
-    rendered, link_count = {}, 0
+    rendered, link_count, posters = {}, 0, {}
     for p in pages:
         locale, slug = p['locale'], p['slug']
         require(p['source'] == locale + '/' + slug + '.md', 'page source must match locale/slug')
@@ -312,8 +314,10 @@ def main():
             public_text(p[field], 'page ' + field)
         text = public_text((source / 'content' / p['source']).read_text(encoding='utf-8'), p['source'])
         resources, evidence = demo_html(demo, locale, base, download)
-        video = next((a for a in demo.get('assets', []) if a['kind'] == 'video' and a.get('poster')), None)
-        poster = video['poster'] if video else next((a['path'] for a in demo.get('assets', []) if a['kind'] == 'image' and ('gallery-' + locale) in a['path']), None)
+        locale_assets = [a for a in demo.get('assets', []) if a.get('locale') in (None, locale)]
+        video = next((a for a in locale_assets if a['kind'] == 'video' and a.get('poster')), None)
+        poster = video['poster'] if video else next((a['path'] for a in locale_assets if a['kind'] == 'image' and ('gallery-' + locale) in a['path']), None)
+        posters[locale] = poster
         teaser = ''
         if poster and demo['status'] == 'verified':
             teaser = '<figure class="teaser"><a href="' + base + locale + '/find-compare-restore.html"><img src="' + html.escape(base + poster, quote=True) + '" alt="' + ('Reprise 已安装 Skill 的真实工作台' if locale == 'zh' else 'Actual workbench from the installed Reprise Skill') + '" loading="lazy"></a><figcaption><a href="' + base + locale + '/find-compare-restore.html">' + ('看实际画面与恢复步骤' if locale == 'zh' else 'See actual pictures and recovery steps') + '</a></figcaption></figure>'
@@ -325,9 +329,9 @@ def main():
         nav += ''.join('<a class="nav-link" href="' + base + locale + '/' + s + '.html"' + (' aria-current="page"' if s == slug else '') + '>' + NAV[locale][i] + '</a>' for i, s in enumerate(SLUGS))
         nav += '<a class="language" href="' + base + other + '/' + slug + '.html" lang="' + ('en' if other == 'en' else 'zh-Hans') + '">' + ('English' if locale == 'zh' else '简体中文') + '</a>'
         banner = 'Reprise ' + version + (' · 本地候选文档' if locale == 'zh' else ' · Local candidate docs') if not production else 'Reprise ' + version
-        extra = seo_tags(origin, base, locale, slug) if production else '<meta name="robots" content="noindex, nofollow">'
+        extra = seo_tags(origin, base, locale, slug, poster) if production else '<meta name="robots" content="noindex, nofollow">'
         rendered[known[p['source']]] = document(p['title'], p['description'], meta['locale_tags'][locale], base, extra, '<a class="skip" href="#main">' + ('跳到正文' if locale == 'zh' else 'Skip to content') + '</a><header id="top"><a class="brand" href="' + base + locale + '/index.html">Reprise</a><span class="edition">' + banner + '</span></header><div class="layout"><aside class="sidebar"><nav aria-label="' + ('文档导航' if locale == 'zh' else 'Documentation') + '">' + nav + '</nav></aside><div><details class="mobile-nav"><summary>' + ('文档目录 / English' if locale == 'zh' else 'Documentation / 简体中文') + '</summary><nav aria-label="' + ('移动文档导航' if locale == 'zh' else 'Mobile documentation') + '">' + nav + '</nav></details><article id="main">' + body + '<footer>' + ('本地预览 · 不提交索引 · 不提供未发布下载' if locale == 'zh' and not production else 'Local preview · no indexing · no unpublished download' if not production else 'Reprise ' + version) + '<br><a class="back-top" href="#top">' + ('返回页首' if locale == 'zh' else 'Back to top') + '</a></footer></article></div></div>')
-    chooser_extra = seo_tags(origin, base, None, 'index') if production else '<meta name="robots" content="noindex, nofollow">'
+    chooser_extra = seo_tags(origin, base, None, 'index', posters.get('en')) if production else '<meta name="robots" content="noindex, nofollow">'
     chooser = '<header><a class="brand" href="' + base + '">Reprise</a><span class="edition">' + html.escape(version) + (' · Local preview' if not production else '') + '</span></header><main class="chooser"><h1>Save the draft.<br>Find it by its picture.</h1><p class="intro">给本地网页留一稿，以后凭画面找回来。<br>Choose a guide in your language.</p><div class="locale-options"><section class="locale-option" lang="zh-Hans"><h2><a href="' + base + 'zh/index.html">简体中文</a></h2><p>接入 Skill、保存两稿与画面、取回旧稿副本。</p></section><section class="locale-option"><h2><a href="' + base + 'en/index.html">English</a></h2><p>Connect the Skill, save two drafts with pictures, and recover a copy.</p></section></div><footer>' + ('本地预览文档 · Local preview documentation. No public download is linked.' if not production else 'Reprise ' + version) + '</footer></main>'
     rendered['index.html'] = document('Reprise documentation / 使用文档', 'Find, compare, and recover local project versions. 本地项目版本的保存、比较与恢复教程。', 'en', base, chooser_extra, chooser)
     # All validation above precedes output creation. On I/O failure, retain the partial output.
@@ -367,15 +371,17 @@ def main():
     print(json.dumps({k: v for k, v in result.items() if k != 'files'}, ensure_ascii=False, indent=2))
 
 
-def seo_tags(origin, base, locale, slug):
+def seo_tags(origin, base, locale, slug, image_path=None):
     route = base + (locale + '/' + slug + '.html' if locale else '')
     tags = ['<meta name="robots" content="index, follow">', '<link rel="canonical" href="' + html.escape(origin + route, quote=True) + '">']
     for language, tag in (('zh', 'zh-Hans'), ('en', 'en')):
         tags.append('<link rel="alternate" hreflang="' + tag + '" href="' + html.escape(origin + base + language + '/' + slug + '.html', quote=True) + '">')
     if slug == 'index':
         tags.append('<link rel="alternate" hreflang="x-default" href="' + html.escape(origin + base, quote=True) + '">')
-    image = origin + base + 'assets/reprise-0.8-gallery-' + ('zh' if locale == 'zh' else 'en') + '.png'
-    tags.extend(['<meta property="og:type" content="website">', '<meta property="og:url" content="' + html.escape(origin + route, quote=True) + '">', '<meta property="og:image" content="' + html.escape(image, quote=True) + '">', '<meta name="twitter:card" content="summary_large_image">'])
+    tags.extend(['<meta property="og:type" content="website">', '<meta property="og:url" content="' + html.escape(origin + route, quote=True) + '">'])
+    if image_path:
+        image = origin + base + image_path
+        tags.extend(['<meta property="og:image" content="' + html.escape(image, quote=True) + '">', '<meta name="twitter:card" content="summary_large_image">'])
     return '\n'.join(tags)
 
 
