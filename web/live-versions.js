@@ -170,9 +170,3 @@ document.addEventListener('change',e=>{
  if(e.target.id==='version-delete-confirm')$('#version-delete-submit').disabled=!e.target.checked;
  if(e.target.id==='environment-release-confirm')$('#environment-release-submit').disabled=!e.target.checked;
 });
-Object.assign(uiCopy,{'整理版本':'Manage versions','预览与文件':'Preview and files','虚线连接当前历史中不可读取的版本':'Dashed lines connect versions unavailable in the current history',
- '删除会永久失去这些版本的文件组合、路径和元数据，即使独占内容为零。':'Deleting these versions permanently loses their file composition, paths and metadata, even with zero exclusive content.',
- '独占内容为未压缩逻辑量；实际回收受压缩、索引和文件系统影响。':'Exclusive content is an uncompressed logical measure; compression, indexes and the filesystem affect actual reclaim.',
- '原文件夹、已有恢复副本、截图、运行目录和日志均保留，未计入回收。':'Source folders, existing restores, screenshots, runtime directories and logs remain saved and are excluded from reclaim.',
- '同一磁盘的历史不能替代异地或其他介质备份。':'History on the same disk does not replace a backup on another device or location.'
-});

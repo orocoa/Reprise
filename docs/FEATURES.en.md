@@ -1,6 +1,6 @@
 # Reprise feature scope
 
-2026-10-26 · Reprise 0.8.0 feature and maintenance scope.
+2026-10-26 · Reprise 0.8.1 feature and maintenance scope.
 
 Reprise helps people iterating on local webpages save a draft before changes, recognize it by appearance, and retrieve a new copy to keep editing.
 

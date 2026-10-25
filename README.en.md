@@ -1,10 +1,10 @@
 # Reprise / 倒带
 
-**Save local webpage drafts, find them by picture, and follow real Git branches and merges.**
+**Save webpage drafts and recover an earlier look to keep designing.**
 
-Want to try an earlier look after several edits? Reprise brings version files, matching pictures and revision relationships into one local workbench. Select an old draft, compare changes and recover a new copy to keep editing.
+Reprise helps designers making webpages with an agent or editor keep useful drafts. It brings version files, matching pictures and revision relationships into one local workbench. Select an old draft, compare changes and recover a new copy to keep editing.
 
-[简体中文](README.md) · [Download Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.0/Reprise-Skill.zip) · [Quickstart](docs/QUICKSTART.md#english) · [All features](docs/FEATURES.en.md)
+[简体中文](README.md) · [Download Skill](https://github.com/orocoa/Reprise/releases/download/v0.8.1/Reprise-Skill.zip) · [Quickstart](docs/QUICKSTART.md#english) · [All features](docs/FEATURES.en.md)
 
 ![Nine real Git commits, branches and merges alongside the selected version’s actual image in a synthetic personal webpage.](docs/site/assets/reprise-0.8-relations-en.png)
 
@@ -36,7 +36,7 @@ The main delivery is a source Skill and local workbench. No extra AI key is requ
 
 Static HTML can prepare direct captures. Supported standalone npm/Vite projects first propose install/run commands for approval in a separate copy. Other projects use explicit settings or manual images. Historical application execution is not guaranteed.
 
-Backup/migration, old-copy imports, integrity and storage tools remain under optional settings. General expansion is frozen while observed workflow problems are improved. [Feature scope](docs/FEATURES.en.md) · [Git graph contract](docs/GIT-GRAPH.md) · [Verification](docs/VALIDATION-0.8.0.md)
+Backup/migration, old-copy imports, integrity and storage tools remain under optional settings. General expansion is frozen while observed workflow problems are improved. [Feature scope](docs/FEATURES.en.md) · [Git graph contract](docs/GIT-GRAPH.md) · [Verification](docs/VALIDATION-0.8.1.md)
 
 <details>
 <summary>Developers: source and tests</summary>

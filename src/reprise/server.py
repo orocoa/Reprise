@@ -183,7 +183,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({**pair, 'text_diff': build_text_diff(pair)})
         if path == '/api/projects':
             if reading:
-                return self.send_json({'projects': app.projects.list()})
+                projects = app.projects.summaries(include_path=True) if query.get('summary') == ['1'] else app.projects.list()
+                return self.send_json({'projects': projects})
             if method == 'POST':
                 return self.send_json(app.projects.add(body.get('path'), body.get('name'), body.get('kind'), body.get('exclusions')), 201)
         if path == '/api/ai':

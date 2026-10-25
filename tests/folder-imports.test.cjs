@@ -7,6 +7,8 @@ function workspace(language){
  const c=vm.createContext({uiLanguage:language,uiCopy:{},workspaceActions:{},location:{hash:''},document:{addEventListener(){}},URLSearchParams});
  vm.runInContext("uiText=value=>uiLanguage==='en'?(uiCopy[value]||value):value",c);
  const web=path.resolve(__dirname,'../web');
+ c.compileUICopy=()=>{};
+ vm.runInContext(fs.readFileSync(path.join(web,'live-copy.js'),'utf8'),c);
  vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],c);
  for(const name of ['live-content.js','live-versions.js','live-imports.js'])vm.runInContext(fs.readFileSync(path.join(web,name),'utf8'),c);
  return c;

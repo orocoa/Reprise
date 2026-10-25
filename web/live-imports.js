@@ -1,23 +1,5 @@
 'use strict';
-Object.assign(uiCopy,{
- '保留的当前工作文件夹。':'Current working folder to keep.',
- '与受保护的运行来源或副本重叠。':'Overlaps a protected runtime source or copy.',
- '仍被其他已登记项目使用。':'Still used by another registered project.',
- '原件在校验后发生变化，旧结论失效。':'The original changed after verification; the previous assessment is stale.',
- '存在硬链接或未完整保存的文件系统标志。':'Hard links or unarchived filesystem flags are present.',
- '平台未提供文件分配块信息，空间收益未知。':'File allocation data is unavailable; space savings are unknown.',
- '含未保存的 .git 或受 Git 管理的内容，不能删整个原目录。':'Contains unsaved .git data or Git-managed content; keep the whole original directory.',
- '检测到使用中路径或无法完整检查进程占用。':'Paths are in use, or process use could not be fully checked.',
- '从备份恢复的报告需要重新核对原件。':'A restored report needs a fresh check of its originals.',
- '原 ZIP 字节与封装元数据；内部文件可按版本恢复。':'Original ZIP bytes and envelope metadata; internal files remain recoverable by version.',
- '原目录位置及未完整覆盖的所有者等元数据；已核验的文件内容与目录可恢复。':'Original location and unarchived metadata such as ownership; verified file content and directories remain recoverable.',
- '只验证已存范围可恢复；不证明应用可运行或没有外部路径依赖。':'Checks saved-content recovery, not application execution or the absence of external path dependencies.',
- '分配块是文件元数据模型；APFS 克隆、快照、其他进程及目录块影响实际卷空闲，保持未知。':'Allocation is a file-metadata model. Actual free space remains unknown due to APFS clones, snapshots, directory blocks and other processes.',
- 'ZIP 内容模式不能恢复原 ZIP 字节、封装顺序、注释、签名或未保存的封装元数据。':'ZIP content mode cannot recreate original archive bytes, order, comments, signatures or unsaved envelope metadata.',
- 'ZIP 只流式拆解明确输入的最外层；嵌套压缩包仍按文件保存，时间按 ZIP 声明解释为 UTC，原文件系统元数据未知。':'Only the explicitly supplied outer ZIP is streamed. Nested archives remain files; declared timestamps use UTC and original filesystem metadata is unknown.',
- '新增占用是本数据目录在任务期间的观测差，可能含并发任务；不是保证可回收的独占物理空间。':'Added usage is the observed data-directory change during this job and may include concurrent work; it is not guaranteed exclusive reclaim.',
- '本库和校验副本在同一数据目录，不是独立介质备份；删除候选不是删除授权。':'The library and readback copies share a data directory, not independent backup media. A candidate is not deletion consent.'
-});
+
 function importReturnNotice(){return state.importReturnReport?.project_id===state.project?.id?`<div class="version-return"><span>${contentText('正在查看已保存版本，原件报告仍保留。','Inspecting a saved version; the originals report is retained.')}</span><button class="secondary-button" data-action="import-return-report">${contentText('返回原件与空间报告','Back to originals and space report')}</button></div>`:'';}
 // Original paths are retained. This surface has no deletion action.
 function readImportDraft(){return {projectId:$('#folder-import-name').dataset.project||null,name:$('#folder-import-name').value,zipContents:$('#folder-import-zip').checked,versions:$$('[data-import-source]').map(row=>({path:row.querySelector('[data-import-path]').value,title:row.querySelector('[data-import-title]').value}))};}

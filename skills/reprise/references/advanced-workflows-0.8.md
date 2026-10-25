@@ -1,28 +1,6 @@
----
-name: reprise
-description: 使用 Reprise 保存、预览、运行和恢复本地版本，解释所选版本删除损失与联合空间回收，校验保留内容；管理可重建旧环境，兼容只读 Git 与旧归档。不用于内存优化或全盘自动清理。
-license: MIT
-metadata:
-  version: "0.8.0"
----
+# 按需维护与历史兼容
 
-# Reprise · 倒带
-
-> 按需兼容参考。当前默认任务为网页留稿、凭图认稿和取出新副本；通用功能扩展已冻结。本文件保留既有高级操作与校验边界，不作为首次使用流程。
-
-一个本地版本管理器：有 Git 时读取真实历史，没有 Git 也可保存文件夹版本。Skill 与本体使用同一个 Python 核心；核心只需 Python 3.9+ 和 Git；核心操作不联网安装依赖。用户无需给文件夹初始化 Git。运行本目录的 `scripts/reprise.py`；先用 `doctor` 检查包完整性。
-
-## Language / 沟通语言
-
-Accept both Chinese and English requests. Follow the user's explicit language choice first; otherwise use the language of their current request, keeping the previous choice for ambiguous or mixed requests. A bare `$reprise` does not imply Chinese. Switch immediately when asked, without changing file names, version titles, paths, or command syntax. Communicate save results, screenshot questions, deletion consequences, estimates, and transfer exclusions in the same chosen language; translate diagnostic meaning while retaining original logs. Do not claim CLI JSON/error strings are fully localized.
-
-中文和英文调用使用同一功能，不要求用户写命令。打开网页时传入 `open ... --lang zh` 或 `--lang en`，保持与沟通语言一致。网页可手动切换并记住选择；无明确参数和已存偏好时跟随浏览器语言。网页切换不会自动改变聊天语言，用户在聊天中要求切换时立即遵循。
-
-网页截图选择遵循当前 SKILL.md 的“首次问清，之后沿用”和 [截图选择说明](capture-preferences.md)。首次只问一次并按项目持久化是/否；配置未完成和截图失败均不重置答案。既有 manual/remind 偏好保留兼容，不要求新用户先理解四种模式。
-
-截图选择仅用于文件夹留稿，当前规则见 [首次选择与配置](capture-preferences.md)：首次询问后先持久化是/否；auto + pending_recipe 只保存意图，不批准命令。第一份显式保存的可采集配置成为后续模板；已有配置可用 `preview-preferences PROJECT --mode auto --recipe-sha FULL_SHA` 明确选择。失败或取消不撤销文件与选择；重试同一准确 SHA，不重复留稿。恢复到新库后的执行配置需要目标宿主重新确认，不能因此说用户从未选择过画面。
-
-Example: “Save this folder as Before redesign” and “保存这个文件夹，命名为改版前” both route to `save`; use the respective request language for the receipt and optional screenshot question. Never infer permission to run commands merely from saving.
+仅在用户要求旧资料导入、备份迁移、存储维护或历史兼容时读取。本文件不改变 [SKILL.md](../SKILL.md) 的网页留稿主线、截图选择和语言规则。
 
 ## 按用户目标选最短流程
 
@@ -45,7 +23,7 @@ Example: “Save this folder as Before redesign” and “保存这个文件夹�
 
 网页主流程：普通资料先看文件变化，网页按真实入口与此版本素材显示预览；用户可以在项目设置切换显示方式。比较文件时明确 A/B 的完整 SHA，再选择该侧恢复。结果交代版本、路径、范围及读回/对象校验口径，保留当前稿；不要让用户从任务 ID 推断是否成功。见[双语工作台任务](workspace-tasks.md)。
 
-## 默认流程
+## 按需命令与范围
 
 - 旧目录归并：写入清单 `{"name":"项目名","versions":[{"path":"/old/draft","title":"旧稿"},{"path":"/current/folder","title":"当前稿"}]}`，先 `import-folders --manifest FILE --check` 只读元数据与 ZIP 目录。只问成本就停在预检，不保存或展开；预检不能证明可恢复或可删除。已有导入授权时展示成本并继续 `import-folders --manifest FILE --preflight FINGERPRINT`，不重复索要许可；输入变化或容量不足则重新预检，不先清理原件。输入按用户确认的旧→新顺序，最后目录保留；不能用目录名、mtime 或导入时间伪造原始 Git 历史。既有文件夹项目须明确 `project_id`，只追加记录，不改写已有 SHA/父边；Git 项目保持只读，另建文件夹快照合集。
 - ZIP 默认不能悄悄按内容替换。只有用户接受无法重现原 ZIP 字节、封装元数据及签名时，才给该项加 `"zip_mode":"contents"`。最外层逐文件流式去重，嵌套压缩包仍按普通文件保存；需要原包字节一致时保留原包。全部输入须由用户给出；普通归并入口不运行项目或自动截图。

@@ -1,18 +1,5 @@
 'use strict';
-Object.assign(uiCopy,{
- '恢复 / 导出':'Recover / Export','恢复 / 导出版本':'Recover / export revision','恢复 / 导出完成':'Recovery / export complete',
- '恢复 / 导出未完成':'Recovery / export incomplete','新的恢复目录':'New recovery folder',
- '填写尚不存在的目录完整路径':'Enter the full path to a new folder','恢复到新目录':'Recover into a new folder',
- '下载 ZIP':'Download ZIP','返回版本':'Back to revision','查看结果':'View result','恢复版本':'Recover revision','导出 ZIP':'Export ZIP',
- '高级配置 JSON':'Advanced recipe JSON','嵌入预览':'Embed preview',
- '恢复到新目录，或下载此提交的文件 ZIP。文件从 Git 对象读取并校验，原工作区及未提交改动保持不变。':'Recover into a new folder or download this commit as ZIP. Files are read and verified from Git objects; the source worktree and uncommitted changes are preserved.',
- '结果是此提交的文件快照，不含 Git 历史。子模块和 LFS 指针会在结果中说明。':'The result is a file snapshot without Git history. Submodules and LFS pointers are reported.',
- '文件对象已校验。':'File objects verified.','文件已保存到新目录。':'Files saved in the new folder.',
- 'ZIP 已生成，可以下载。':'ZIP is ready to download.','正在从 Git 对象生成文件…':'Reading files from Git objects…',
- '可以返回版本，稍后在项目设置查看任务结果。':'You can return to the revision and review the job in project settings.',
- '已有输出和诊断记录保留，可选择另一个新目录重试。':'Existing output and diagnostics are retained. Retry with another new folder.',
- '请填写新的恢复目录。':'Enter a new recovery folder.','恢复 / 导出已完成，可在设置中查看结果。':'Recovery / export complete. View the result in Settings.'
-});
+
 // Recovery and previews share the same local API as the portable CLI.
 function recoveryLocationLabel(value){return String(value||'').replace(/[\\/]+$/,'').split(/[\\/]/).pop()||String(value||'');}
 function syncRecoveryDestination(target){

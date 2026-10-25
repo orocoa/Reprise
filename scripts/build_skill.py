@@ -8,11 +8,9 @@ import zipfile
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def source_skill_instructions(body):
-    """Ship the canonical source Skill instructions."""
-    return body
+# Retained source for the old workbench/visual archive, not dependencies of
+# the current index.html. Do not ship a second UI in the everyday Skill.
+LEGACY_WEB_ASSETS = {'app.js', 'styles.css', 'paper-grid.css', 'browse-motion.js'}
 
 
 def build(destination, profile='standard', local_candidate=False):
@@ -24,12 +22,13 @@ def build(destination, profile='standard', local_candidate=False):
     for path in sorted(skill.rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.pyc':
             files[path.relative_to(skill).as_posix()] = path.read_bytes()
-    files['SKILL.md'] = source_skill_instructions(files['SKILL.md'].decode('utf-8')).encode('utf-8')
     for path in sorted((ROOT / 'src' / 'reprise').iterdir()):
         if path.is_file() and path.suffix in ('.py', '.mjs'):
             files['assets/runtime/reprise/' + path.name] = path.read_bytes()
     for path in sorted((ROOT / 'web').rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.name != '.DS_Store' and path.suffix != '.pyc':
+            if path.relative_to(ROOT / 'web').as_posix() in LEGACY_WEB_ASSETS:
+                continue
             files['assets/runtime/reprise/web/' + path.relative_to(ROOT / 'web').as_posix()] = path.read_bytes()
     for name in ('LICENSE', 'THIRD-PARTY-NOTICES.md'):
         files[name] = (ROOT / name).read_bytes()

@@ -36,13 +36,24 @@ def install(destination, output, local_candidate=False):
         shutil.copytree(destination, output / 'previous-skill', symlinks=True)
     else:
         destination.mkdir(parents=True)
-    tree = report['source_tree_sha256']
+    manifest = json.loads((candidate / 'package-manifest.json').read_text())
+    runtime_files = {name.removeprefix('assets/runtime/'): value
+                     for name, value in manifest['files'].items() if name.startswith('assets/runtime/')}
+    # Include provenance in the identity: documentation-only commits may carry
+    # the same functional tree but different source records. Never overwrite a
+    # runtime that a service may still be reading.
+    tree = hashlib.sha256(json.dumps(runtime_files, sort_keys=True).encode()).hexdigest()
     relative = 'assets/runtimes/' + tree[:20]
     runtime = destination / relative
-    if runtime.exists():
-        raise ValueError('This runtime is already installed; retained candidate can be reviewed')
-    runtime.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(candidate / 'assets/runtime', runtime)
+    reused = runtime.exists()
+    if reused:
+        actual = {p.relative_to(runtime).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                  for p in runtime.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix != '.pyc'}
+        if actual != runtime_files:
+            raise ValueError('Existing runtime differs from its identity; retained candidate can be reviewed')
+    else:
+        runtime.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(candidate / 'assets/runtime', runtime)
     # Do not overwrite assets/runtime: live services may still read those files.
     for path in candidate.rglob('*'):
         name = path.relative_to(candidate).as_posix()
@@ -55,7 +66,6 @@ def install(destination, output, local_candidate=False):
         shutil.copy2(path, target)
     pointer = destination / 'runtime-location.json'
     pointer.write_text(json.dumps({'path': relative}, indent=2)+'\n')
-    manifest = json.loads((candidate / 'package-manifest.json').read_text())
     manifest['files'] = {(name.replace('assets/runtime/', relative+'/', 1) if name.startswith('assets/runtime/') else name): value
                          for name, value in manifest['files'].items()}
     manifest['files']['runtime-location.json'] = hashlib.sha256(pointer.read_bytes()).hexdigest()
@@ -64,6 +74,7 @@ def install(destination, output, local_candidate=False):
                                capture_output=True, text=True, check=True)
     result = {'destination': str(destination), 'backup': str(output / 'previous-skill'),
               'runtime': str(runtime), 'verification': json.loads(installed.stdout),
+              'runtime_reused': reused,
               'existing_runtimes_retained': True, 'user_data_modified': False}
     (output / 'installation.json').write_text(json.dumps(result, indent=2)+'\n')
     return result

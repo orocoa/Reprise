@@ -20,6 +20,40 @@ spec.loader.exec_module(builder)
 
 
 class PortableSkillTests(unittest.TestCase):
+    def test_skill_ships_current_workbench_resources_without_retired_interfaces(self):
+        root = fixture('skill-current-resources')
+        package = root / 'reprise.zip'
+        builder.build(package)
+        prefix = 'reprise/assets/runtime/reprise/web/'
+        with zipfile.ZipFile(package) as archive:
+            html = archive.read(prefix + 'index.html').decode()
+            resources = re.findall(r'(?:src|href)="([^"#]+)"', html)
+            self.assertGreater(len(resources), 10)
+            for name in resources:
+                self.assertIn(prefix + name, archive.namelist(), 'Current workbench dependency is missing')
+            for name in ('app.js', 'styles.css', 'paper-grid.css', 'browse-motion.js'):
+                self.assertNotIn(prefix + name, archive.namelist())
+                self.assertTrue((ROOT / 'web' / name).is_file(), 'Historical source stays in place')
+
+    def test_reinstall_identical_skill_reuses_verified_runtime(self):
+        root = fixture('skill-repeat-install')
+        import_spec = importlib.util.spec_from_file_location('repeat_skill_installer', ROOT / 'scripts/install_skill.py')
+        installer = importlib.util.module_from_spec(import_spec)
+        from unittest.mock import patch
+        with patch.dict(sys.modules, {'build_skill': builder}):
+            import_spec.loader.exec_module(installer)
+        destination = root / 'installed reprise'
+        first = installer.install(destination, root / 'first')
+        before = {p.relative_to(first['runtime']).as_posix(): p.read_bytes()
+                  for p in Path(first['runtime']).rglob('*') if p.is_file()}
+        second = installer.install(destination, root / 'second')
+        self.assertFalse(first['runtime_reused'])
+        self.assertTrue(second['runtime_reused'])
+        self.assertEqual(first['runtime'], second['runtime'])
+        self.assertTrue(second['verification']['package_integrity_verified'])
+        self.assertEqual(before, {p.relative_to(second['runtime']).as_posix(): p.read_bytes()
+                                 for p in Path(second['runtime']).rglob('*') if p.is_file()})
+
     def documented_open(self, skill, data, cwd, language):
         body = (skill / 'SKILL.md').read_text()
         row = next(line for line in body.splitlines() if line.startswith('| Open visual history /'))

@@ -267,6 +267,20 @@ class APITests(unittest.TestCase):
         self.assertEqual(bootstrap['token'], self.token)
         self.assertEqual(self.request('GET', '/api/projects/' + project['id'])[0], 400)
 
+    def test_project_picker_lists_saved_metadata_without_inspecting_sources(self):
+        from unittest.mock import patch
+        from reprise.storage import write_json
+        project = self.import_project()
+        records = self.app.projects.records()
+        records[0]['path'] = str(self.root / 'offline-source')
+        write_json(self.app.projects.file, {'schema': 1, 'projects': records})
+        with patch.object(self.app.projects, 'get', side_effect=AssertionError('Picker must not inspect a source')):
+            status, _, result = self.request('GET', '/api/projects?summary=1')
+        self.assertEqual(status, 200)
+        self.assertEqual(result['projects'][0]['id'], project['id'])
+        self.assertEqual(result['projects'][0]['path'], records[0]['path'])
+        self.assertNotIn('recipe', result['projects'][0])
+
     def test_import_refresh_unknown_and_empty_history(self):
         empty = self.import_project()
         status, _, history = self.request('GET', '/api/projects/' + empty['id'] + '/history')

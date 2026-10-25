@@ -36,8 +36,9 @@ class ProjectStore:
             raise ValueError('项目名称不明确，请从 projects 返回的名称或标识中选择。')
         return matches[0]['id']
 
-    def summaries(self):
-        return [{k: p[k] for k in ('id', 'name', 'kind', 'aliases') if k in p}
+    def summaries(self, *, include_path=False):
+        fields = ('id', 'name', 'kind', 'aliases') + (('path',) if include_path else ())
+        return [{k: p[k] for k in fields if k in p}
                 for p in self.records()]
 
     def record(self, identifier):

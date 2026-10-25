@@ -72,4 +72,3 @@ Object.assign(workspaceActions,{
   if(firstRun&&!state.project)renderFirstRun();
  }
 });
-Object.assign(uiCopy,{'停止 Reprise':'Stop Reprise','正在打开网页稿件…':'Opening website drafts…'});
