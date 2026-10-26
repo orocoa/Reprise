@@ -16,7 +16,7 @@ function restoreViewFocus(saved,root){
   [...root.querySelectorAll('[id],[data-action]')].find(element=>saved.identity.every(([name,value])=>element.getAttribute(name)===value));
  replacement?.focus({preventScroll:true});
 }
-function openDisclosures(root){return new Set([...root.querySelectorAll('details[open][data-keep-open]')].map(element=>element.dataset.keepOpen));}
+function openDisclosures(root){return new Set([...root.querySelectorAll('details[open][data-keep-open]')].filter(element=>element.dataset.motionExpanded!=='false').map(element=>element.dataset.keepOpen));}
 function restoreDisclosures(root,opened){for(const element of root.querySelectorAll('details[data-keep-open]'))element.open=opened.has(element.dataset.keepOpen);}
 function captureDialogContext(any=false){
  const dialog=$('#dialog');
@@ -83,7 +83,47 @@ function refreshSettingsManagement(){
  const opened=openDisclosures(container),focus=captureViewFocus(container),top=$('#dialog').scrollTop;
  container.innerHTML=managementContent();restoreDisclosures(container,opened);restoreViewFocus(focus,container);$('#dialog').scrollTop=top;
 }
-function settingsContent(){return `<section class="settings-section"><h3 data-user-content>${esc(state.project.name)}</h3><p class="project-path"><code>${esc(state.project.path)}</code></p><p class="snapshot-message">${contentText('继续在这个文件夹修改，想留下当前效果时保存一稿。','Keep editing this folder. Save a draft when you want to keep its current appearance.')}</p></section>${state.project.kind==='folder'?`<section class="settings-section save-image-settings"><div class="settings-line"><div><h3>${contentText('保存时的画面','Images when saving')}</h3><p>${contentText(['auto','none','manual'].includes(state.project.preview_preferences?.mode)?state.project.preview_preferences?.mode==='auto'?'已记住画面设置；后续留稿会一起保存画面。':'已记住仅存文件的选择；后续直接留稿，按时间命名。':'首次留稿会询问是否保存画面，选择后持续沿用；可随时更改。',['auto','none','manual'].includes(state.project.preview_preferences?.mode)?state.project.preview_preferences?.mode==='auto'?'Image settings remembered. Future saves include an image.':'Files-only preference remembered. Future saves use a time-based name.':'The first save asks whether to include images. Your choice is remembered and can be changed anytime.')}</p></div><button class="secondary-button" data-action="preview-preferences">${contentText('保存与画面设置','Save and image settings')}</button></div></section>`:''}<section class="settings-section settings-language"><div class="settings-line"><h3>界面语言</h3><div class="segmented language-switch" role="group" aria-label="界面语言"><button data-user-content data-action="language" data-language="zh" aria-pressed="${uiLanguage==='zh'}">中文</button><button data-user-content data-action="language" data-language="en" aria-pressed="${uiLanguage==='en'}">English</button></div></div></section>${state.selected?`<details class="settings-section preview-settings" data-keep-open="preview-help"><summary>${contentText('画面没有保存成功？','Image not saved?')}</summary><p>${contentText('文件已经保存。可以检查这一稿的网页入口，或提供自己的截图。','The files are saved. Check this draft’s website entry or attach your own screenshot.')}</p><div class="preview-tools"><button class="secondary-button" data-action="saved-preview-capture" data-sha="${esc(state.selected)}">${contentText('检查网页并截图','Check website and capture')}</button><button class="text-button" data-action="manual">${contentText('提供截图','Attach screenshot')}</button></div><details><summary>${contentText('需要构建的网页','Websites requiring a build')}</summary><button class="text-button" data-action="recipe">${contentText('检查当前稿的运行配置','Review this draft’s run settings')}</button></details></details>`:''}<details class="settings-section" data-keep-open="project-activity"><summary>${contentText('任务与预览服务','Tasks and preview services')}</summary><div id="settings-management">${managementContent()}</div></details><details class="settings-section" data-keep-open="saved-drafts"><summary>${contentText('高级管理','Advanced management')}</summary><div class="advanced-actions"><button class="secondary-button" data-action="versions-manage">${contentText('管理历史版本','Manage saved versions')}</button><button class="secondary-button" data-action="content-transfer">${contentText('备份与迁移','Backup and migration')}</button><button class="secondary-button" data-action="import-folders">${contentText('加入已有旧副本','Import existing old copies')}</button><button class="secondary-button" data-action="version-environments">${contentText('运行环境','Runtime environments')}</button><button class="secondary-button" data-action="content-storage">${contentText('查看存储占用','Inspect storage')}</button>${state.selected?`<button class="secondary-button" data-action="content-verify">${contentText('检查此稿完整性','Check this draft’s integrity')}</button>`:''}</div>${presentationFields()}</details><section class="settings-section"><button class="text-button" data-action="confirm-stop-workbench">${contentText('停止 Reprise','Stop Reprise')}</button></section>`;}
+function settingsContent(){
+ const language=`<section class="settings-section settings-language"><div class="settings-line"><h3>界面语言</h3>${previewLanguageControls()}</div></section>`;
+ const stop=`<section class="settings-section"><button class="text-button" data-action="confirm-stop-workbench">${contentText('停止 Reprise','Stop Reprise')}</button></section>`;
+ if(!state.project)return language+stop;
+ return `<section class="settings-section"><h3 data-user-content>${esc(state.project.name)}</h3><p class="project-path"><code>${esc(state.project.path)}</code></p><p class="snapshot-message">${contentText('继续在这个文件夹修改，想留下当前效果时保存一稿。','Keep editing this folder. Save a draft when you want to keep its current appearance.')}</p></section>${state.project.kind==='folder'?`<section class="settings-section save-image-settings"><div class="settings-line"><div><h3>${contentText('保存时的画面','Images when saving')}</h3><p>${contentText(['auto','none','manual'].includes(state.project.preview_preferences?.mode)?state.project.preview_preferences?.mode==='auto'?'已记住画面设置；后续留稿会一起保存画面。':'已记住仅存文件的选择；后续直接留稿，按时间命名。':'首次留稿会询问是否保存画面，选择后持续沿用；可随时更改。',['auto','none','manual'].includes(state.project.preview_preferences?.mode)?state.project.preview_preferences?.mode==='auto'?'Image settings remembered. Future saves include an image.':'Files-only preference remembered. Future saves use a time-based name.':'The first save asks whether to include images. Your choice is remembered and can be changed anytime.')}</p></div><button class="secondary-button" data-action="preview-preferences">${contentText('保存与画面设置','Save and image settings')}</button></div></section>`:''}${language}<details class="settings-section settings-advanced" data-keep-open="saved-drafts"><summary aria-controls="settings-advanced-panel">${contentText('高级管理','Advanced management')}<span class="settings-disclosure-icon" aria-hidden="true"></span></summary><div class="settings-advanced-panel" id="settings-advanced-panel"><div class="advanced-actions"><button class="secondary-button" data-action="versions-manage">${contentText('管理历史版本','Manage saved versions')}</button><button class="secondary-button" data-action="content-transfer">${contentText('备份与迁移','Backup and migration')}</button><button class="secondary-button" data-action="import-folders">${contentText('加入已有旧副本','Import existing old copies')}</button><button class="secondary-button" data-action="version-environments">${contentText('运行环境','Runtime environments')}</button><button class="secondary-button" data-action="content-storage">${contentText('查看存储占用','Inspect storage')}</button>${state.selected?`<button class="secondary-button" data-action="content-verify">${contentText('检查此稿完整性','Check this draft’s integrity')}</button>`:''}</div>${presentationFields()}</div></details>${stop}`;
+}
+
+// Native details keeps keyboard behavior. Animate its measured content instead
+// of switching display at the start of a close; retarget from the visible frame.
+const settingsDisclosureMotion=new WeakMap();
+function toggleSettingsDisclosure(details){
+ const panel=details.querySelector('.settings-advanced-panel'),summary=details.querySelector('summary');
+ const previous=settingsDisclosureMotion.get(details),expanded=!(previous?previous.expanded:details.open);
+ const wasOpen=details.open,style=getComputedStyle(panel);
+ const height=wasOpen?parseFloat(style.height)||0:0;
+ const opacity=wasOpen?style.opacity:'0',transform=wasOpen?style.transform:'translateY(-7px) scale(.985)';
+ const items=[...panel.querySelectorAll('.advanced-actions>button,.settings-section')];
+ const frames=items.map(item=>{const css=getComputedStyle(item);return {opacity:wasOpen?css.opacity:'0',transform:wasOpen?css.transform:'translateY(-4px)'};});
+ previous?.animations.forEach(animation=>animation.cancel());
+ details.open=true;details.dataset.motionExpanded=String(expanded);
+ summary.setAttribute('aria-expanded',String(expanded));
+ panel.inert=!expanded;panel.setAttribute('aria-hidden',String(!expanded));
+ const motion={expanded,animations:[]};settingsDisclosureMotion.set(details,motion);
+ const finish=()=>{
+  if(settingsDisclosureMotion.get(details)!==motion)return;
+  details.open=expanded;delete details.dataset.motionExpanded;
+  panel.inert=!expanded;panel.removeAttribute('aria-hidden');
+  panel.style.removeProperty('overflow');
+  motion.animations.forEach(animation=>animation.cancel());settingsDisclosureMotion.delete(details);
+ };
+ if(settingsReducedMotion?.matches||typeof panel.animate!=='function'){finish();return;}
+ panel.style.overflow='hidden';
+ const timing={duration:400,easing:'cubic-bezier(0.25, 0.1, 0.25, 1)',fill:'both'};
+ const animation=panel.animate([{height:height+'px',opacity,transform},{height:(expanded?panel.scrollHeight:0)+'px',opacity:expanded?1:0,transform:expanded?'translateY(0) scale(1)':'translateY(-7px) scale(.985)'}],timing);
+ motion.animations.push(animation);
+ items.forEach((item,index)=>{
+  const delay=34.4*(expanded?index:items.length-1-index)/Math.max(1,items.length-1);
+  motion.animations.push(item.animate([frames[index],{opacity:expanded?1:0,transform:expanded?'translateY(0)':'translateY(-4px)'}],{...timing,duration:312,delay}));
+ });
+ animation.finished.then(finish,()=>{});
+}
 
 function keepSelectedHistoryVisible(){requestAnimationFrame(()=>{const row=$(`.version-row[data-id="${state.selected}"]`),scroller=$('#history-scroll');if(!row)return;const top=row.offsetTop,bottom=top+row.offsetHeight;if(top<scroller.scrollTop)scroller.scrollTop=top;else if(bottom>scroller.scrollTop+scroller.clientHeight)scroller.scrollTop=bottom-scroller.clientHeight;});}
 

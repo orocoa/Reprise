@@ -205,10 +205,8 @@ function closeDialog({returnToParent=true}={}){
  else if(returnFocus?.dataset.action)$(`[data-action="${returnFocus.dataset.action}"]`)?.focus({preventScroll:true});
 }
 function conditions(){recipeDialog();}
-async function settings({preview=false}={}){
- if(!state.project){notify(state.loading?contentText('正在读取项目…','Reading the project…'):contentText('请先加入一个项目。','Add a project first.'));return;}
+async function settings(){
  await refreshWorkspace();dialogShell('项目设置',settingsContent(),'<button class="primary-button" data-action="save-settings">完成</button>');$('#dialog').classList.add('settings-dialog');
- if(preview){const section=$('#dialog .preview-settings');if(section){for(let node=section;node;node=node.parentElement)if(node.tagName==='DETAILS')node.open=true;section.scrollIntoView({block:'nearest'});section.querySelector('button')?.focus({preventScroll:true});}}
 }
 function working(){const files=state.status?.changes||[];dialogShell('当前工作区',`<p class="project-path"><code>${esc(state.project?.path)}</code></p><div class="current-git-summary"><p>当前版本 · <span data-user-content>${esc(versionTitle(commit(state.project?.head)||{sha:state.project?.head,subject:uiText('历史版本')}))}</span></p><p>以下改动尚未保存到版本中。</p></div><div class="changed-files">${files.length?files.map(f=>`<div class="file-row"><span class="file-status">${esc(f.status||'?')}</span><code>${esc(f.path)}</code></div>`).join(''):`<div class="empty-content">${state.status?.available===false?'此仓库没有工作区。':'工作区干净。'}</div>`}</div>`,`<button class="secondary-button" data-action="close">返回</button>${state.project?.head?'<button class="primary-button" data-action="working-head">查看当前版本</button>':''}`);}
 async function openFile(path){
@@ -251,7 +249,7 @@ const coreActions={
  star:()=>toggleBookmark(),
  conditions:()=>conditions(),
  settings:()=>settings(),
- 'preview-settings':()=>settings({preview:true}),
+ 'preview-settings':()=>manualDialog(),
  working:()=>working(),
  file:b=>openFile(b.dataset.path),
  close:()=>closeDialog(),
@@ -260,7 +258,7 @@ const coreActions={
   try{await navigator.clipboard.writeText(state.selected);$('#dialog-status').textContent='已复制';}
   catch{$('#dialog-status').textContent='无法自动复制，可选择上方完整 SHA。';}
  },
- 'save-settings':()=>{state.prefs.presentation=$('#project-presentation')?.value||state.prefs.presentation;savePrefs();closeDialog();renderDetail();},
+ 'save-settings':()=>{if(state.project){state.prefs.presentation=$('#project-presentation')?.value||state.prefs.presentation;savePrefs();}closeDialog();if(state.project)renderDetail();else renderFirstRun();},
  import:async b=>{
   const path=$('#import-path').value.trim();if(!path){$('#dialog-status').textContent='请填写本地 Git 仓库路径。';return;}
   b.disabled=true;
@@ -273,7 +271,11 @@ async function action(button){
  const handler=[workspaceActions,coreActions,featureActions,parityActions].find(handlers=>Object.hasOwn(handlers,name))?.[name];
  if(handler)await handler(button);
 }
-document.addEventListener('click',e=>{const diffButton=e.target.closest('[data-text-diff-action]');if(diffButton&&RepriseTextDiff.handleAction(diffButton,$('#dialog'))){e.preventDefault();return;}const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const saving=b.dataset.action.startsWith('save-');if(saving)b.disabled=true;action(b).catch(e=>{if($('#dialog').open&&$('#dialog-status'))$('#dialog-status').textContent=e.message;else notify(e.message);}).finally(()=>{if(saving&&b.isConnected)b.disabled=false;});});
+document.addEventListener('click',e=>{const summary=e.target.closest('.settings-advanced>summary');if(summary){e.preventDefault();toggleSettingsDisclosure(summary.parentElement);return;}const diffButton=e.target.closest('[data-text-diff-action]');if(diffButton&&RepriseTextDiff.handleAction(diffButton,$('#dialog'))){e.preventDefault();return;}const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const saving=b.dataset.action.startsWith('save-');if(saving)b.disabled=true;action(b).catch(e=>{if($('#dialog').open&&$('#dialog-status'))$('#dialog-status').textContent=e.message;else notify(e.message);}).finally(()=>{if(saving&&b.isConnected)b.disabled=false;});});
+const settingsReducedMotion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null;
+settingsReducedMotion?.addEventListener('change',event=>{
+ if(event.matches)for(const details of document.querySelectorAll('.settings-advanced'))settingsDisclosureMotion.get(details)?.animations.forEach(animation=>animation.finish());
+});
 $('#search').addEventListener('input',()=>{clearTimeout(searchTimer);state.query=$('#search').value.trim();if(!state.query){++searchRequest;state.searching=false;settleFilter();return;}renderHistory();searchTimer=setTimeout(searchAll,180);});
 $('#dialog').addEventListener('cancel',e=>{e.preventDefault();closeDialog();});
 document.addEventListener('keydown',e=>{if(e.key==='/'&&!$('#dialog').open&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();$('#search').focus();}if(e.target.closest('[role="tablist"]')&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const tabs=['updates','preview','compare'],i=tabs.indexOf(state.tab);const tab=e.key==='Home'?tabs[0]:e.key==='End'?tabs[2]:tabs[(i+(e.key==='ArrowRight'?1:2))%3];setDetailTab(tab);}});
