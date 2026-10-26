@@ -8,9 +8,11 @@ Reprise helps designers making webpages with an agent or editor keep useful draf
 
 ![Nine real Git commits, branches and merges alongside the selected version’s actual image in a synthetic personal webpage.](docs/site/assets/reprise-0.8.2-relations-en.png)
 
-*Actual workbench using a synthetic personal webpage. Previous visual archives and pictures remain available.*
+*The graph and picture-history images are retained 0.8.2 examples. The updated settings appear below.*
 
 **New in 0.8.4:** language controls live in Settings, the capsule is compact, two redundant sections are removed, and Advanced management expands and closes smoothly. [Release notes](https://github.com/orocoa/Reprise/releases/tag/v0.8.4)
+
+![Actual 0.8.4 settings using a synthetic website.](docs/site/assets/reprise-0.8.4-settings-en.png)
 
 ## Find the version by picture or relationship
 
