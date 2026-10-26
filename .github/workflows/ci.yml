@@ -1,12 +1,25 @@
 name: Reprise checks
 
 on:
+  # Feature branches run through their PR; release tags reuse the tested commit.
   push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README*.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# A new commit supersedes an older run on the same PR/branch.
+concurrency:
+  group: reprise-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   regression:

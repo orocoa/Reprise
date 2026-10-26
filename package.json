@@ -1,7 +1,7 @@
 {
   "name": "reprise-browser-worker",
   "private": true,
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Optional browser capture dependency; the Git/API core needs only Python and Git",
   "scripts": {
     "test:graph": "node --test tests/graph-layout.test.cjs",

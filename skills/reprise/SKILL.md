@@ -3,7 +3,7 @@ name: reprise
 description: "倒带 / Reprise：保存本地网页稿、按画面找旧版、浏览已有 Git 版本关系并取出新副本。Use to open Reprise, save webpage drafts, browse their pictures or real Git relationships, and recover a chosen version."
 license: MIT
 metadata:
-  version: "0.8.2"
+  version: "0.8.3"
 ---
 
 # Reprise · 倒带

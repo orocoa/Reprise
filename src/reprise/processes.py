@@ -25,6 +25,32 @@ _OWNER_CACHE = {}
 _OWNER_LOCK = threading.Lock()
 
 
+def _darwin_procargs(pid):
+    """Read across exec/exit map changes; a live unreadable PID still fails closed."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    mib = (ctypes.c_int * 3)(1, 49, int(pid))  # CTL_KERN, KERN_PROCARGS2
+    data = ctypes.create_string_buffer(1024 * 1024)
+    deadline = time.monotonic() + .5
+    while True:
+        size = ctypes.c_size_t(len(data))
+        if not libc.sysctl(mib, 3, data, ctypes.byref(size), None, 0):
+            return ctypes.string_at(data, size.value)
+        code = ctypes.get_errno()
+        if code in (errno.ESRCH, errno.EPERM, errno.EACCES, errno.EINVAL):
+            return None  # unrelated/protected processes are never signalled
+        if code == errno.EIO:
+            # XNU copies argv/environment from the target's VM map. An exec or
+            # exit between the process-table and stack reads can invalidate it.
+            current = _inspect_or_confirm_exit(pid)
+            if current is None or current['zombie']:
+                return None
+            if time.monotonic() < deadline:
+                time.sleep(.01)
+                continue
+        raise ProcessObservationError('KERN_PROCARGS2 failed for PID %s: %s' %
+                                      (pid, OSError(code, os.strerror(code))))
+
+
 def _owner_marker(pid):
     """Read only our inherited marker; never retain other process environment.
 
@@ -36,16 +62,9 @@ def _owner_marker(pid):
             raw = (Path('/proc') / str(pid) / 'environ').read_bytes()
             environment = raw.split(b'\0')
         elif sys.platform == 'darwin':
-            libc = ctypes.CDLL(None, use_errno=True)
-            mib = (ctypes.c_int * 3)(1, 49, int(pid))  # CTL_KERN, KERN_PROCARGS2
-            size = ctypes.c_size_t(1024 * 1024)
-            data = ctypes.create_string_buffer(size.value)
-            if libc.sysctl(mib, 3, data, ctypes.byref(size), None, 0):
-                code = ctypes.get_errno()
-                if code in (errno.ESRCH, errno.EPERM, errno.EACCES, errno.EINVAL):
-                    return None  # unrelated/protected processes are never signalled
-                raise OSError(code, os.strerror(code))
-            raw = ctypes.string_at(data, size.value)
+            raw = _darwin_procargs(pid)
+            if raw is None:
+                return None
             argc = int.from_bytes(raw[:4], sys.byteorder)
             offset = raw.find(b'\0', 4) + 1  # executable pathname
             while offset < len(raw) and raw[offset] == 0:

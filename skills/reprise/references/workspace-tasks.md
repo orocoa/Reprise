@@ -1,6 +1,6 @@
 # Reprise 工作台任务 / Workspace tasks
 
-本文件对应 Reprise 0.8.2 的源码 Skill；直接/快捷键留稿、继续修改指令与已有 Git 图谱均保留。
+本文件对应 Reprise 0.8.3 的源码 Skill；直接/快捷键留稿、继续修改指令与已有 Git 图谱均保留。
 
 ## 主流程
 
