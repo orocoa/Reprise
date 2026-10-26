@@ -16,7 +16,7 @@ Reprise is an open-source Skill for people repeatedly editing local webpages wit
 
 ## Current scope
 
-Reprise 0.8.2 keeps folder drafts, version pictures and real Git relationships. Installation, discovery, two pictures, browser recovery, language switching and reopening passed in this Mac’s Codex. Fresh-machine dependency setup and native use in other clients remain unverified.
+Reprise 0.8.3 keeps folder drafts, version pictures and real Git relationships. Installation, discovery, two pictures, browser recovery, language switching and reopening passed in this Mac’s Codex. Fresh-machine dependency setup and native use in other clients remain unverified.
 
 Static HTML with a clear entry and local assets can attempt capture directly. Supported npm/Vite projects present an approved-run plan first. Files and pictures have separate outcomes.
 

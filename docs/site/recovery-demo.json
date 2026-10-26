@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "status": "verified",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "e37d22f016d58917fbf3e2e5d30aad43f5949a9e001369f77b5da930129f3638"
+    "sha256": "f7530411b112c962273aa9f0da4af9523cc50c2eebe5242a74affec47e120e98"
   },
   "verification": {
     "exact_version": true,
@@ -21,8 +21,8 @@
         "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
-        "en": "Current picture history using a synthetic personal webpage."
+        "zh": "0.8.2 实采工作台截图；0.8.3 页面代码未变。当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Workbench captured in 0.8.2; the UI code is unchanged in 0.8.3. Current picture history using a synthetic personal webpage."
       },
       "locale": "zh"
     },
@@ -35,8 +35,8 @@
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
-        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
+        "zh": "0.8.2 实采工作台截图；0.8.3 页面代码未变。当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Workbench captured in 0.8.2; the UI code is unchanged in 0.8.3. Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "locale": "zh"
     },
@@ -49,8 +49,8 @@
         "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "当前工作台的版本缩略图列表，使用合成个人网页。",
-        "en": "Current picture history using a synthetic personal webpage."
+        "zh": "0.8.2 实采工作台截图；0.8.3 页面代码未变。当前工作台的版本缩略图列表，使用合成个人网页。",
+        "en": "Workbench captured in 0.8.2; the UI code is unchanged in 0.8.3. Current picture history using a synthetic personal webpage."
       },
       "locale": "en"
     },
@@ -63,8 +63,8 @@
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
-        "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
+        "zh": "0.8.2 实采工作台截图；0.8.3 页面代码未变。当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
+        "en": "Workbench captured in 0.8.2; the UI code is unchanged in 0.8.3. Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "locale": "en"
     },
@@ -88,6 +88,6 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "Synthetic local webpage and real Git-object fixtures; final package functional bytes match tested source and the installed entry. Original historical images remain retained."
+    "note": "Synthetic exact-SHA webpage fixtures. UI screenshots retained from 0.8.2 with identical web assets; recovery and byte readback verified through the installed 0.8.3 entry. Original images and diagnostics retained."
   }
 }
