@@ -118,9 +118,21 @@ body,button,input,select{font-family:var(--ui)}
 .brand{gap:12px}
 .language-switch button{font-size:11px;min-width:22px;min-height:32px;color:#92929d}
 .language-switch button[aria-pressed=true]{color:#34343e}
-.settings-language .language-switch{margin:0;min-width:180px;flex:none}
-.settings-language .language-switch button{min-height:34px;padding:6px 16px}
+.settings-language .language-switch{display:grid;grid-template-columns:1fr 1fr;margin:0;width:112px;min-width:0;flex:none;gap:2px;padding:3px}
+.settings-language .language-switch button{min-width:0;min-height:32px;padding:6px 4px;font-size:11px}
 .settings-language .language-switch button[aria-pressed=true]{background:#fff;box-shadow:0 1px 3px #1b1b270c}
+.settings-advanced>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;list-style:none;min-height:28px;outline-offset:5px}
+.settings-advanced>summary::-webkit-details-marker{display:none}
+.settings-disclosure-icon{position:relative;width:16px;height:16px;flex:none;transition:transform 400ms cubic-bezier(.25,.1,.25,1)}
+.settings-disclosure-icon:before,.settings-disclosure-icon:after{content:'';position:absolute;left:3px;top:7px;width:10px;height:1.5px;border-radius:1px;background:currentColor}
+.settings-disclosure-icon:after{transform:rotate(90deg);transition:transform 400ms cubic-bezier(.25,.1,.25,1),opacity 400ms cubic-bezier(.25,.1,.25,1)}
+.settings-advanced[open] .settings-disclosure-icon{transform:rotate(180deg)}
+.settings-advanced[open] .settings-disclosure-icon:after{transform:rotate(0);opacity:0}
+.settings-advanced[data-motion-expanded=false] .settings-disclosure-icon{transform:rotate(0)}
+.settings-advanced[data-motion-expanded=false] .settings-disclosure-icon:after{transform:rotate(90deg);opacity:1}
+.settings-advanced-panel{display:flow-root;transform-origin:top center}
+.settings-advanced-panel>.settings-section:last-child{padding-bottom:0}
+@media(prefers-reduced-motion:reduce){.settings-disclosure-icon,.settings-disclosure-icon:after{transition:none}}
 .history-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%}
 .history-tools .graph-legend{flex:1 1 150px;width:auto;margin:0}
 .bookmark-filter{display:inline-flex;align-items:center;gap:5px;flex:none;min-height:32px;padding:0;border:0;background:transparent;color:#75757f;font-size:11px;white-space:nowrap}

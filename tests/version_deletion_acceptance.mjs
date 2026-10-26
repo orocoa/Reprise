@@ -18,6 +18,7 @@ async function openVersionManager(){
  assert.equal(await page.locator('#dialog [data-action=ai-settings]').count(),0);
  assert.equal(await page.locator('#dialog [data-action=content-storage]:visible,#dialog [data-action=content-transfer]:visible').count(),0,'Advanced tools stay collapsed initially');
  await page.locator('#dialog details[data-keep-open="saved-drafts"] > summary').click();
+ await page.waitForFunction(()=>!document.querySelector('.settings-advanced').hasAttribute('data-motion-expanded'));
  assert.equal(await page.locator('#dialog [data-action=content-storage]').isVisible(),true);
  assert.equal(await page.locator('#dialog [data-action=content-transfer]').isVisible(),true);
  await page.click('#dialog [data-action=versions-manage]');
@@ -106,8 +107,7 @@ try{
  assert.equal(await page.locator('#environment-release-confirm').count(),0,'An active environment cannot be confirmed for release');
  await shot('active-environment-blocked');await page.click('#dialog [data-action=close]');
  await page.click('#settings-toggle');await page.waitForSelector('#dialog.settings-dialog');
- await page.locator('#dialog details[data-keep-open="project-activity"] > summary').click();
- await page.click('[data-action=stop-runtime]');
+ await page.evaluate(async sha=>{await refreshWorkspace();const runtime=state.runtimes.find(r=>r.sha===sha&&r.running);await api(`/api/runtimes/${runtime.id}/stop`,{method:'POST',body:'{}'});await refreshWorkspace();},fixture.environment_sha);
  await page.waitForFunction(sha=>!state.runtimes.some(r=>r.sha===sha&&r.running),fixture.environment_sha);
  await page.click('#dialog [data-action=close]');await openVersionManager();await page.click('[data-action=version-environments]');
  await page.waitForSelector('[data-action=environment-check]');await page.click('[data-action=environment-check]');

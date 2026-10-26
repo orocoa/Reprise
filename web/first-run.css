@@ -6,7 +6,7 @@
 .first-run-steps{display:flex;gap:28px;flex-wrap:wrap;padding-left:20px;font-size:13px;line-height:1.8;margin:0 0 32px}
 .first-run>.primary-button{padding:12px 20px}.first-run>.snapshot-message{margin-top:20px}
 .app:has(.first-run) .workspace{grid-template-columns:minmax(0,1fr)}
-.app:has(.first-run) .history,.app:has(.first-run) .search,.app:has(.first-run) [data-action="settings"],.app:has(.first-run) [data-action="refresh"],.app:has(.first-run) [data-action="working"]{display:none}
+.app:has(.first-run) .history,.app:has(.first-run) .search,.app:has(.first-run) [data-action="refresh"],.app:has(.first-run) [data-action="working"]{display:none}
 .app:has(.first-run) .detail{display:flex}
 .website-folder-picker>p{line-height:1.8}.website-folder-picker>details{margin-top:24px}
 .website-folder-picker details .field{margin:16px 0 12px}.saved-website-projects{border-top:1px solid var(--line);margin-top:28px;padding-top:22px}

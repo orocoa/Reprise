@@ -62,7 +62,7 @@ function changeLanguage(language){
  const origin=$('#history-origin'),archive=state.historySources.filter(s=>s.kind==='archive').reduce((n,s)=>n+s.unique_commits,0),current=state.historySources.find(s=>s.kind==='current')?.count||state.commits.length;
  origin.textContent=uiLanguage==='en'?`${current} repository commits · ${archive} archived records`:`当前仓库 ${current} 条 · 历史存档 ${archive} 条`;
  renderHistory();keepSelectedHistoryVisible();renderDetail();
- if(settingsOpen){const dialog=$('#dialog'),top=dialog.scrollTop;$('#dialog .dialog-body').innerHTML=settingsContent();dialog.scrollTop=top;if(presentationDraft)$('#project-presentation').value=presentationDraft;}
+ if(settingsOpen){const dialog=$('#dialog'),top=dialog.scrollTop,opened=openDisclosures(dialog);$('#dialog .dialog-body').innerHTML=settingsContent();restoreDisclosures(dialog,opened);dialog.scrollTop=top;if(presentationDraft)$('#project-presentation').value=presentationDraft;}
  if(recoveryDraft)recoveryDialog(recoveryDraft.paths,recoveryDraft,{parent:returnContext});
  else if(recoveryResultJob)recoveryResult(recoveryResultJob,{parent:returnContext});
  else if(fileComparison){renderFileComparison();}

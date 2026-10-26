@@ -15,19 +15,26 @@ await page.addInitScript(source=>{
  window.RepriseDesktop={chooseFolder:async()=>++choices===1?{status:'cancelled'}:{status:'selected',path:source,backend:'test-bridge'}};
 },fixture.source);
 const noMainExtras=async scope=>{for(const action of ['ai-settings','ai-suggest','content-storage','content-transfer'])assert.equal(await page.locator(`${scope} [data-action=${action}]:visible`).count(),0);};
+async function setLanguage(language){
+ await page.click('#settings-toggle');
+ await page.waitForSelector('#dialog.settings-dialog');
+ await page.click(`#dialog [data-language=${language}]`);
+ await page.click('#dialog [data-action=save-settings]');
+}
 try{
  await page.goto(`${url}?lang=en`);
  await page.waitForSelector('.first-run');
  await noMainExtras('body');
+ assert.equal(await page.locator('.chrome .language-switch').count(),0,'Language changes live in Settings');
  assert.equal(await page.locator('.first-run [data-action=start-website-folder]').count(),1);
  assert.equal(await page.locator('.history').isVisible(),false);
  assert.doesNotMatch(await page.locator('.first-run').innerText(),/\p{Script=Han}/u,'English first task has no untranslated Chinese copy');
- await page.click('.chrome [data-language=zh]');
+ await setLanguage('zh');
  assert.match(await page.locator('.first-run h1').innerText(),/改下一轮之前，留一稿/);
  assert.doesNotMatch((await page.locator('.first-run').innerText()).replace(/Reprise|AI/g,''),/[A-Za-z]/,'Chinese first task has no untranslated English copy');
  assert.equal(await page.evaluate(()=>state.project),null,'Language changes keep the empty workspace empty');
  await page.screenshot({path:fixture.root+'/first-run-zh.png'});
- await page.click('.chrome [data-language=en]');
+ await setLanguage('en');
  assert.match(await page.locator('.first-run h1').innerText(),/Save a draft before the next edit/);
  await page.screenshot({path:fixture.root+'/first-run-en.png'});
  await page.click('.first-run [data-action=start-website-folder]');
@@ -43,11 +50,11 @@ try{
  await page.click('#dialog .dialog-footer [data-action=close]');
  const project=await page.evaluate(()=>state.project.id);
  assert.doesNotMatch(await page.locator('#detail').innerText(),/\p{Script=Han}/u,'English empty project is usable before its first save');
- await page.click('.chrome [data-language=zh]');
+ await setLanguage('zh');
  assert.match(await page.locator('#detail').innerText(),/保存第一稿/);
  assert.equal(await page.evaluate(()=>state.project.id),project);
  assert.equal(await page.evaluate(()=>state.commits.length),0);
- await page.click('.chrome [data-language=en]');
+ await setLanguage('en');
  await page.click('#detail [data-action=content-snapshot]');
  await page.fill('#content-version-title','Before changing the spacing');
  await page.selectOption('#initial-preview-choice','auto');
@@ -76,12 +83,12 @@ try{
  assert.equal(await page.locator('.version-name h2').innerText(),'Before changing the spacing');
  assert.doesNotMatch(await page.locator('#detail').innerText(),/\p{Script=Han}/u,'English saved draft has no untranslated Chinese copy');
  const selectedContext=await page.evaluate(()=>({project:state.project.id,sha:state.selected,tab:state.tab}));
- await page.click('.chrome [data-language=zh]');
+ await setLanguage('zh');
  assert.deepEqual(await page.evaluate(()=>({project:state.project.id,sha:state.selected,tab:state.tab})),selectedContext,'Language change preserves the selected project, draft and tab');
  assert.equal(await page.locator('.version-name h2').innerText(),'Before changing the spacing','User-entered draft name is preserved');
  assert.match(await page.locator('#detail').innerText(),/取出这一稿/);
  await page.screenshot({path:fixture.root+'/first-draft-zh.png'});
- await page.click('.chrome [data-language=en]');
+ await setLanguage('en');
  assert.deepEqual(await page.evaluate(()=>({project:state.project.id,sha:state.selected,tab:state.tab})),selectedContext);
  await page.screenshot({path:fixture.root+'/first-draft-en.png'});
  assert.equal(await page.evaluate(()=>state.project.preview_preferences.mode),'auto');
@@ -136,7 +143,11 @@ try{
  await page.click('#settings-toggle');
  await page.waitForSelector('#dialog.settings-dialog');
  await noMainExtras('#dialog');
+ assert.equal(await page.locator('#dialog [data-keep-open=preview-help],#dialog [data-keep-open=project-activity]').count(),0);
+ const languageSize=await page.locator('.settings-language .language-switch').evaluate(e=>({width:e.getBoundingClientRect().width,buttons:[...e.querySelectorAll('button')].map(b=>b.getBoundingClientRect().width)}));
+ assert.ok(languageSize.width<=113&&Math.abs(languageSize.buttons[0]-languageSize.buttons[1])<1,'Language capsule has two compact equal segments');
  await page.click('#dialog [data-keep-open=saved-drafts] > summary');
+ await page.waitForFunction(()=>!document.querySelector('.settings-advanced').hasAttribute('data-motion-expanded'));
  assert.equal(await page.locator('#dialog [data-action=content-transfer]').isVisible(),true);
  assert.equal(await page.locator('#dialog [data-action=content-storage]').isVisible(),true);
  await page.click('#dialog [data-action=content-transfer]');

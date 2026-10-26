@@ -26,7 +26,10 @@ try{
  await page.waitForFunction(id=>state.project?.id===id&&!state.loading,fixture.git);
  assert.equal(await page.locator('#content-save').isVisible(),false,'Git source stays read-only');
  assert.equal(await page.evaluate(()=>state.commits.length),1);
- await page.click('.chrome [data-language=zh]');
+ await page.click('#settings-toggle');
+ await page.waitForSelector('#dialog.settings-dialog');
+ await page.click('#dialog [data-language=zh]');
+ await page.click('#dialog [data-action=save-settings]');
  await page.click('.chrome [data-action=content-projects]');
  assert.match(await entry(fixture.git).innerText(),/Git 历史 · 只读/);
  assert.match(await entry(fixture.folder).innerText(),/网页留稿/);
