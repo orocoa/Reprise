@@ -96,3 +96,48 @@ def choose_folder(*, timeout=120):
         return {**result, 'status': 'selected', 'path': selected, 'reason': None}
     finally:
         _PICKER_LOCK.release()
+
+
+def choose_backup(*, save=False, timeout=120):
+    """Choose exactly one backup filename; fixed native code, never a shell."""
+    backend, executable, reason = _backend()
+    result = {'status': 'unavailable', 'path': None, 'backend': backend, 'reason': reason}
+    if not executable:
+        return result
+    if not _PICKER_LOCK.acquire(blocking=False):
+        return {**result, 'status': 'error', 'reason': 'picker-busy'}
+    try:
+        if backend == 'osascript':
+            choice = ('choose file name with prompt "保存 Reprise 备份" default name "Reprise.reprise-backup.zip"'
+                      if save else 'choose file with prompt "选择 Reprise 导出的备份文件"')
+            script = ('try\nreturn POSIX path of (' + choice + ')\non error number -128\nreturn ""\nend try')
+            command = [executable, '-e', script]
+        elif backend == 'zenity':
+            command = [executable, '--file-selection', '--title=Reprise backup']
+            if save:
+                command += ['--save', '--confirm-overwrite', '--filename=Reprise.reprise-backup.zip']
+        else:
+            command = [executable, '--getsavefilename' if save else '--getopenfilename',
+                       os.path.expanduser('~'), '*.zip', '--title', 'Reprise backup']
+        try:
+            done = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE, timeout=timeout, check=False)
+        except subprocess.TimeoutExpired:
+            return {**result, 'status': 'timeout', 'reason': 'picker-timed-out'}
+        except OSError:
+            return {**result, 'status': 'error', 'reason': 'picker-start-failed'}
+        if done.returncode == 1 and (backend != 'osascript' or b'(-128)' in done.stderr):
+            return {**result, 'status': 'cancelled', 'reason': 'user-cancelled'}
+        if done.returncode:
+            return {**result, 'status': 'error', 'reason': 'picker-failed'}
+        output = done.stdout[:-1] if done.stdout.endswith(b'\n') else done.stdout
+        if not output:
+            return {**result, 'status': 'cancelled', 'reason': 'user-cancelled'}
+        path = Path(os.fsdecode(output))
+        if not path.is_absolute() or '\x00' in str(path) or (not save and not path.is_file()):
+            return {**result, 'status': 'error', 'reason': 'selected-file-unavailable'}
+        if save and path.suffix.lower() != '.zip':
+            path = path.with_name(path.name + '.reprise-backup.zip')
+        return {**result, 'status': 'selected', 'path': str(path), 'reason': None}
+    finally:
+        _PICKER_LOCK.release()

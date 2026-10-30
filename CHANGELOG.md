@@ -1,5 +1,19 @@
 # 更新记录
 
+## 0.8.5 · 2026-10-31 · 统一版本操作与可靠预览恢复
+
+- 后端统一给出运行、核对配置、查看保存画面和取出资料等动作。前端不再重复判断归档类型与运行能力；画面继续绑定确切项目和完整 SHA。
+- 重写预览控制器：合并重复提交，等待画面绑定版本、配置散列、任务和弹窗代次；关闭、切换或重新配置后，迟到结果不覆盖当前页面。后端拒绝配置已经改变的运行请求。
+- 统一弹窗打开、替换、返回与关闭，清理旧样式和归属状态，保留键盘焦点；关闭运行预览后完全隐藏。
+- 重写恢复位置策略：普通项目取同级新目录，内部归档按明确关联项目、文稿目录、用户主目录选择外部位置；执行时再次复核，不覆盖现有内容。
+- 删除选择与计划共用动作含义；只读 Git/归档可从 Reprise 移除本机资料，原始历史保留；没有受管环境时明确禁用环境清理。修正空归档提示和归档保留提示的英文翻译。
+- 静态预览就绪后停止持续进程表观察，按需读取与停止仍核验身份；命令网页保留子进程跟踪。预览弹窗新增直接停止入口，Skill 与中英说明区分内存、依赖磁盘与版本删除。
+- 纳入已验证的原生窗口入口、本地备份与版本移除修复。原生缓存包含发布版本身份，保留旧运行时与诊断。
+
+English: centralizes version capabilities and rewrites preview, dialog and recovery-location policies. Exact version/recipe ownership prevents duplicate launches and stale UI updates. Local removal retains original Git/archive history, and empty/archive states are explicit. No source Git writes, automatic command approval or user-data migration is introduced.
+
+验证范围见 [0.8.5 验证说明](docs/VALIDATION-0.8.5.md)；设计见 [版本操作模型](docs/VERSION-ACTIONS.md)。
+
 ## 0.8.4 · 2026-10-26 · 更简洁的设置与平滑展开
 
 - 移除顶部中英切换。Agent 继续按对话语言打开，设置中保留可记住的手动选择；空工作台也能进入语言设置。

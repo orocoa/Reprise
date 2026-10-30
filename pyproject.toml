@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "reprise-local"
-version = "0.8.4"
+version = "0.8.5"
 description = "Local content versions, optional Git history and verified recovery"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -23,5 +23,5 @@ license-files = ["LICENSE", "THIRD-PARTY-NOTICES.md"]
 "reprise.web" = "web"
 
 [tool.setuptools.package-data]
-reprise = ["*.mjs"]
+reprise = ["*.mjs", "*.swift", "*.icns", "*.png"]
 "reprise.web" = ["*.html", "*.js", "*.css", "*.svg", "*.ico", "fonts/*", "icons/*"]

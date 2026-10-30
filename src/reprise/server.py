@@ -78,7 +78,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def dispatch(self):
         try:
-            self._dispatch()
+            # Maintenance promotes the data lease only after existing requests
+            # finish. It never races an API mutation or an artifact read.
+            with self.server.service.request_gate:
+                self._dispatch()
         except KeyError as error:
             self.send_json({'error': str(error).strip("'")}, 404)
         except (BrokenPipeError, ConnectionResetError):
@@ -121,6 +124,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(desktop.capabilities())
         if path == '/api/desktop/choose-folder' and method == 'POST':
             return self.send_json(desktop.choose_folder())
+        if path in ('/api/desktop/save-backup', '/api/desktop/open-backup') and method == 'POST':
+            return self.send_json(desktop.choose_backup(save=path.endswith('save-backup')))
+        if path == '/api/backup-file' and method == 'POST':
+            from .backup_file import export_file
+            return self.send_json(export_file(app, body.get('to')))
+        if path == '/api/backup-import' and method == 'POST':
+            from .backup_file import import_file
+            return self.send_json(import_file(app, body.get('path')))
+        if path == '/api/backup-open' and method == 'POST':
+            from .backup_file import open_import
+            return self.send_json(open_import(app, body.get('id'), window=body.get('window') is True))
         if path == '/api/privacy' and reading:
             return self.send_json(app.privacy())
         if path == '/api/storage' and method == 'POST':
@@ -153,12 +167,16 @@ class Handler(BaseHTTPRequestHandler):
             # replaced process or reused port cannot acquire shutdown authority.
             if 'instance_id' in body and body['instance_id'] != self.server.instance_id:
                 return self.send_json({'stopped': False, 'reason': 'different-instance'})
-            app.close()
-            for runtime in app.runtimes.list():
-                if runtime['running']:
-                    app.runtimes.stop(runtime['id'])
             self.send_json({'stopped': True})
-            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            def stop():
+                # Joining jobs outside the request gate lets an already queued
+                # maintenance job finish or cancel without deadlocking shutdown.
+                app.close()
+                for runtime in app.runtimes.list():
+                    if runtime['running']:
+                        app.runtimes.stop(runtime['id'])
+                self.server.shutdown()
+            threading.Thread(target=stop, daemon=True).start()
             return
         if path == '/api/bootstrap' and reading:
             if query.get('include_projects', ['1'])[0] == '0':
@@ -228,6 +246,19 @@ class Handler(BaseHTTPRequestHandler):
                                                                             pending_recipe=body.get('pending_recipe', False)))
             if suffix == 'version-delete-plan' and method == 'POST':
                 return self.send_json(app.version_delete_plan(identifier, body.get('shas')))
+            if suffix == 'version-cleanup-options' and reading:
+                from .version_cleanup import options
+                return self.send_json(options(app, identifier, query.get('sha', ['HEAD'])[0]))
+            if suffix == 'version-cleanup-plan' and method == 'POST':
+                from .version_cleanup import plan
+                return self.send_json(plan(app, identifier, body.get('sha'), body.get('mode')))
+            if suffix == 'version-cleanup' and method == 'POST':
+                from .version_cleanup import execute
+                if body.get('confirm') is not True:
+                    raise ValueError('请核对范围并确认删除。')
+                return self.send_json(app.jobs.submit(identifier, 'version-cleanup',
+                    lambda: execute(app, identifier, body.get('plan_id'), True),
+                    request={'plan_id': body.get('plan_id')}), 202)
             if suffix in ('version-delete', 'version-estimate') and method == 'POST':
                 return self.send_json(app.execute(identifier, suffix, body), 202)
             if suffix == 'environments' and reading:
@@ -281,7 +312,7 @@ class Handler(BaseHTTPRequestHandler):
             if suffix == 'recipe' and method == 'PUT':
                 return self.send_json(app.projects.save_recipe(identifier, body.get('recipe'), body.get('sha', 'HEAD')))
             if suffix == 'notes' and method == 'PUT':
-                return self.send_json(app.projects.save_notes(identifier, body.get('localizations'), body.get('sha', 'HEAD')))
+                return self.send_json(app.projects.save_notes(identifier, body.get('localizations'), body.get('sha', 'HEAD'), author=body.get('author')))
             if suffix == 'histories' and method == 'PUT':
                 return self.send_json(app.projects.save_histories(identifier,
                     body.get('history_project_ids'), body.get('catalog')))

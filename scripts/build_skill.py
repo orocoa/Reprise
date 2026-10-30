@@ -25,6 +25,9 @@ def build(destination, profile='standard', local_candidate=False):
     for path in sorted((ROOT / 'src' / 'reprise').iterdir()):
         if path.is_file() and path.suffix in ('.py', '.mjs'):
             files['assets/runtime/reprise/' + path.name] = path.read_bytes()
+    files['assets/runtime/reprise/SourceWindow.swift'] = (ROOT / 'desktop/macos/SourceWindow.swift').read_bytes()
+    for name in ('Reprise.icns', 'reprise-icon-1024.png'):
+        files['assets/runtime/reprise/' + name] = (skill / 'assets' / name).read_bytes()
     for path in sorted((ROOT / 'web').rglob('*')):
         if path.is_file() and '__pycache__' not in path.parts and path.name != '.DS_Store' and path.suffix != '.pyc':
             if path.relative_to(ROOT / 'web').as_posix() in LEGACY_WEB_ASSETS:

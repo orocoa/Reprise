@@ -87,6 +87,24 @@ def open_repository(directory, path='.', port=0, browser=True, language=None,
         return _open_registered(directory, canonical, port, browser, language, history_repositories, history_catalog, kind, identifier)
 
 
+def open_current_project(directory, path=None, port=0, browser=True, language=None):
+    """Resolve the invoking folder, reusing its closest registered project."""
+    from .projects import ProjectStore
+    source = Path(path if path is not None else Path.cwd()).expanduser().resolve()
+    if not source.is_dir():
+        raise ValueError('文件夹不存在：' + str(source))
+    matches = [p for p in ProjectStore(directory).records()
+               if p.get('kind', 'git') in ('folder', 'git')
+               and (Path(p['path']).resolve() == source or Path(p['path']).resolve() in source.parents)]
+    if matches:
+        # The nearest project wins; drafts take precedence over Git history
+        # for the same folder. Explicit paths/kinds still use open_repository.
+        project = max(matches, key=lambda p: (len(Path(p['path']).resolve().parts), p.get('kind') == 'folder'))
+        return open_repository(directory, project['id'] if project.get('kind') == 'folder' else project['path'],
+                               port, browser, language)
+    return open_repository(directory, str(source), port, browser, language, kind='folder')
+
+
 def _ensure_server(directory, port):
     """Start or reuse our verified service without importing any source path."""
     try:

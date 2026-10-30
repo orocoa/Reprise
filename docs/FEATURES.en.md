@@ -1,6 +1,6 @@
 # Reprise feature scope
 
-2026-10-26 · Reprise 0.8.2 feature and maintenance scope.
+2026-10-31 · Reprise 0.8.5 feature and maintenance scope.
 
 Reprise helps people iterating on local webpages save a draft before changes, recognize it by appearance, and retrieve a new copy to keep editing.
 
@@ -16,7 +16,7 @@ Unrecorded files cannot be recovered afterward. An image is not a backup of exte
 
 | Level | Capability | Entry and boundary |
 | --- | --- | --- |
-| Main workflow | Install, open, stop | Skill and [setup](AGENT-SKILL.md#english). Opening does not import or save the working directory. |
+| Main workflow | Install, open, stop | Skill and [setup](AGENT-SKILL.md#english). Opening resolves or registers the current folder without saving a draft. |
 | Main workflow | Save, name/time, visual history, favorites and search | Workbench. Names are optional; unchanged files reuse the existing draft/title. |
 | Main workflow | Compare images/files, retrieve complete drafts or selected files, verify readback | Selected revisions. Images belong to their exact version; recovery uses a new folder. |
 | Fewer repeat steps | Remember capture preference, time-based names, keyboard saving, continuation instructions | Explicit project preferences can be reused. The first save explains its scope. |

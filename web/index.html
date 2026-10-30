@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Reprise · 网页稿件</title>
+  <link rel="icon" type="image/svg+xml" href="icons/reprise-logo.svg">
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="live.css">
   <link rel="stylesheet" href="content.css">
@@ -13,9 +14,11 @@
   <script src="graph-layout.js" defer></script>
   <script src="locale.js" defer></script>
   <script src="live-copy.js" defer></script>
+  <script src="dialog-controller.js" defer></script>
   <script src="live-focus.js" defer></script>
   <script src="live-parity.js" defer></script>
   <script src="live-evidence.js" defer></script>
+  <script src="live-run-preview.js" defer></script>
   <script src="live-features.js" defer></script>
   <script src="live-updates.js" defer></script>
   <script src="live-workspace.js" defer></script>
@@ -31,9 +34,9 @@
 <body>
 <div class="app" id="app">
   <header class="chrome">
-    <div class="brand"><strong id="project-name" data-user-content>读取项目…</strong></div>
+    <div class="brand"><img class="reprise-logo" src="icons/reprise-logo.svg" alt="Reprise" width="28" height="28"><strong id="project-name" data-user-content>读取项目…</strong></div>
     <label class="search"><span id="search-icon"></span><input id="search" type="search" placeholder="搜索版本名称或文件…" aria-label="搜索版本名称或文件"><kbd>/</kbd></label>
-    <div class="chrome-actions"><button class="secondary-button content-label" data-action="content-projects">项目</button><button class="primary-button content-label" id="content-save" data-action="content-snapshot" hidden>保存一稿</button><button class="icon-button" data-action="refresh" aria-label="刷新项目" title="刷新项目">↻</button><button class="icon-button" id="settings-toggle" data-action="settings" aria-label="项目设置" title="项目设置">⚙</button></div>
+    <div class="chrome-actions"><button class="primary-button content-label" id="content-save" data-action="content-snapshot" hidden>保存一稿</button><button class="icon-button" data-action="refresh" aria-label="刷新项目" title="刷新项目">↻</button><button class="icon-button" id="settings-toggle" data-action="settings" aria-label="项目设置" title="项目设置">⚙</button></div>
   </header>
   <div class="workspace">
     <aside class="history" aria-label="版本历史">

@@ -4,6 +4,8 @@ Object.assign(uiCopy, {
   "网页留稿": "Webpage drafts",
   "Git 历史 · 只读": "Git history · read only",
   "历史存档 · 只读": "History archive · read only",
+  "原始归档已保留": "Original archive preserved",
+  "运行配置已经变化，请刷新此版本并重新核对。": "Runtime settings changed. Refresh this version and review them again.",
   "画面": "Pictures",
   "版本关系": "Revision relationships",
   "保存一稿": "Save a draft",

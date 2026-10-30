@@ -136,6 +136,77 @@ class RecoveryDestinationTests(unittest.TestCase):
             suggest_destination(self.recoveries, project, sha)
         self.assertFalse(self.recoveries.directory.exists())
 
+    def archive_destination_records(self, related=True):
+        archive = {'id': 'archive-view', 'name': 'Saved archive', 'kind': 'archive',
+                   'path': str(self.projects.directory / 'named-archives/views/example.git')}
+        owner = dict(self.projects.record(self.project))
+        if related:
+            owner['history_project_ids'] = [archive['id']]
+        return archive, owner
+
+    def test_internal_archive_uses_related_project_sibling_outside_data(self):
+        archive, owner = self.archive_destination_records()
+        with patch.object(self.projects, 'record', return_value=archive), \
+                patch.object(self.projects, 'records', return_value=[owner, archive]), \
+                patch.object(self.projects, 'repository', return_value=self.repository):
+            result = suggest_destination(self.recoveries, archive['id'], self.sha)
+        target = Path(result['to'])
+        self.assertEqual(target.parent, self.repository.path.parent)
+        self.assertEqual(result['location'], 'related-project-sibling')
+        self.assertFalse(target.exists())
+        self.assertNotIn(self.projects.directory, target.parents)
+
+    def test_unlinked_internal_archive_uses_documents_without_creating_files(self):
+        archive, owner = self.archive_destination_records(related=False)
+        home = self.root / 'user-home'
+        documents = home / 'Documents'
+        documents.mkdir(parents=True)
+        with patch.object(self.projects, 'record', return_value=archive), \
+                patch.object(self.projects, 'records', return_value=[owner, archive]), \
+                patch.object(self.projects, 'repository', return_value=self.repository), \
+                patch('reprise.recovery_destination.Path.home', return_value=home):
+            result = suggest_destination(self.recoveries, archive['id'], self.sha)
+        self.assertEqual(Path(result['to']).parent, documents)
+        self.assertEqual(result['location'], 'documents')
+        self.assertEqual(list(documents.iterdir()), [])
+
+    def test_archive_skips_unwritable_related_root_and_documents_then_uses_home(self):
+        archive, owner = self.archive_destination_records()
+        home = self.root / 'available-home'
+        home.mkdir()
+        real_access = os.access
+        with patch.object(self.projects, 'record', return_value=archive), \
+                patch.object(self.projects, 'records', return_value=[owner, archive]), \
+                patch.object(self.projects, 'repository', return_value=self.repository), \
+                patch('reprise.recovery_destination.Path.home', return_value=home), \
+                patch('reprise.recovery_destination.os.access',
+                      side_effect=lambda path, mode: path == home and real_access(path, mode)):
+            result = suggest_destination(self.recoveries, archive['id'], self.sha)
+        self.assertEqual(Path(result['to']).parent, home)
+        self.assertEqual(result['location'], 'home')
+        self.assertEqual(list(home.iterdir()), [])
+
+    def test_archive_skips_related_root_inside_registered_source(self):
+        archive, owner = self.archive_destination_records()
+        home = self.root / 'user-home'
+        documents = home / 'Documents'
+        documents.mkdir(parents=True)
+        # The owner's sibling would still be inside this registered container.
+        container = {'id': 'container', 'kind': 'folder', 'path': str(self.root)}
+        # Put fallback outside that registered container using another fixture.
+        outside = fixture('archive-recovery-outside')
+        documents = outside / 'Documents'
+        documents.mkdir()
+        with patch.object(self.projects, 'record', return_value=archive), \
+                patch.object(self.projects, 'records', return_value=[owner, archive, container]), \
+                patch.object(self.projects, 'repository', return_value=self.repository), \
+                patch('reprise.recovery_destination.Path.home', return_value=outside):
+            # Use the actual registered-source validation with the supplied records.
+            result = suggest_destination(self.recoveries, archive['id'], self.sha)
+        self.assertEqual(Path(result['to']).parent, documents)
+        self.assertEqual(result['location'], 'documents')
+        self.assertEqual(list(documents.iterdir()), [])
+
     def test_sibling_inside_another_registered_folder_is_refused(self):
         container = self.root / 'registered-container'
         source = container / 'nested-project'

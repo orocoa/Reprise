@@ -5,6 +5,8 @@ import threading
 from .capture import CaptureService
 from .evidence import EvidenceStore
 from .jobs import Jobs
+from .recipes import recipe_hash
+from .version_actions import version_actions
 from .projects import ProjectStore
 from .runtime import RuntimeManager, STARTING
 from .recovery import RecoveryStore
@@ -15,6 +17,7 @@ class Reprise:
     def __init__(self, directory):
         self.directory = Path(directory).expanduser().resolve()
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.request_gate = threading.RLock()
         from .maintenance import DataLease
         self._data_lease = DataLease(self.directory)
         self._data_lease.__enter__()
@@ -107,7 +110,16 @@ class Reprise:
             manifest = repository.manifest(sha)
             content = {'stats': manifest['stats'], 'excluded': manifest['excluded'],
                        'source': manifest['source'], 'created_at': manifest['created_at'], 'origin': manifest.get('origin')}
-        return {'commit': commit, 'diff': difference, 'detection': project['detected'], 'recipe': project['recipe'], 'recipe_source': project['recipe_source'], 'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'), 'legacy_recipe': project.get('legacy_recipe'), 'notes': project.get('version_notes', {}).get(sha), 'evidence': self.evidence.list(identifier, sha), 'content': content}
+        evidence = self.evidence.list(identifier, sha)
+        return {
+            'commit': commit, 'diff': difference, 'detection': project['detected'],
+            'recipe': project['recipe'], 'recipe_source': project['recipe_source'],
+            'recipe_hash': recipe_hash(project['recipe']) if project['recipe'] and project['recipe_approved'] else None,
+            'recipe_approved': project['recipe_approved'], 'recipe_error': project.get('recipe_error'),
+            'legacy_recipe': project.get('legacy_recipe'),
+            'notes': project.get('version_notes', {}).get(sha), 'evidence': evidence,
+            'content': content, 'actions': version_actions(project, evidence),
+        }
 
     def version_delete_plan(self, identifier, shas):
         return self.version_deletions.plan(identifier, shas)
@@ -218,6 +230,8 @@ class Reprise:
             raise ValueError(project.get('recipe_error') or '这个项目需要运行配方；也可以先添加人工截图或录屏。')
         if operation in ('run', 'capture') and recipe['adapter'] == 'command-web' and not approved:
             raise ValueError('这个配方将执行项目命令，请先打开配方编辑器、核对并保存。')
+        if operation in ('run', 'capture') and 'recipe_hash' in body and body['recipe_hash'] != recipe_hash(recipe):
+            raise ValueError('运行配置已经变化，请刷新此版本并重新核对。')
         if operation == 'run':
             callback = lambda cancel: self.runtimes.start(repository, sha, recipe, approved=approved, cancel=cancel, project_id=identifier)
         elif operation == 'capture':
@@ -248,7 +262,10 @@ class Reprise:
             callback = lambda: self.ai.suggest(context)
         else:
             raise ValueError('不支持的任务操作。')
-        return self.jobs.submit(identifier, operation, callback, request={key: value for key, value in {'sha': sha, 'base': base}.items() if value is not None}, cancellable=operation in ('run', 'capture'))
+        request = {key: value for key, value in {'sha': sha, 'base': base}.items() if value is not None}
+        if operation in ('run', 'capture') and 'recipe_hash' in body:
+            request['recipe_hash'] = recipe_hash(recipe)
+        return self.jobs.submit(identifier, operation, callback, request=request, cancellable=operation in ('run', 'capture'))
 
     def save_with_preview(self, identifier, title, preference, cancel):
         from .experience import save_draft

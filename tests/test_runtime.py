@@ -28,6 +28,10 @@ def commit_repo(path):
     subprocess.run(['git', 'init', '-q', str(path)], check=True)
     subprocess.run(['git', '-C', str(path), 'config', 'user.name', 'Reprise test'], check=True)
     subprocess.run(['git', '-C', str(path), 'config', 'user.email', 'test@example.invalid'], check=True)
+    # Fixture writes must finish before read-only byte fingerprints begin.
+    # A detached Git maintenance task can otherwise add/remove its own lock.
+    subprocess.run(['git', '-C', str(path), 'config', 'maintenance.auto', 'false'], check=True)
+    subprocess.run(['git', '-C', str(path), 'config', 'gc.auto', '0'], check=True)
     (path / 'index.html').write_text('<!doctype html><title>first</title><h1>first</h1>')
     (path / 'clip.bin').write_bytes(b'0123456789')
     subprocess.run(['git', '-C', str(path), 'add', '.'], check=True)
@@ -84,6 +88,9 @@ class RuntimeTests(unittest.TestCase):
         self.assertIn('dirty working tree', (self.root / 'repo' / 'index.html').read_text())
         snapshot = Path(runtime['path'])
         self.assertTrue(snapshot.is_dir())
+        trees = [tree for (rid, _), tree in self.manager._trees.items() if rid == runtime['id']]
+        self.assertTrue(trees)
+        self.assertTrue(all(not tree._observer.is_alive() for tree in trees))
         self.assertTrue(self.manager.list()[0]['running'])
         stopped = RuntimeManager(self.root / 'state').stop(runtime['id'])
         self.assertFalse(stopped['running'])
@@ -100,6 +107,13 @@ class RuntimeTests(unittest.TestCase):
         with urllib.request.urlopen(runtime['url']) as response:
             self.assertEqual(response.status, 200)
         self.assertEqual(runtime['adapter'], 'command-web')
+        trees = [tree for (rid, _), tree in self.manager._trees.items() if rid == runtime['id']]
+        self.assertTrue(any(tree._observer.is_alive() for tree in trees))
+        self.manager.stop(runtime['id'])
+        self.assertNotIn(runtime['id'], self.manager._processes)
+        self.assertFalse(any(rid == runtime['id'] for rid, _ in self.manager._trees))
+        self.assertTrue(all(not tree._observer.is_alive() for tree in trees))
+        self.assertFalse(self.manager.stop(runtime['id'])['running'])
 
     def test_failure_retains_snapshot_and_logs(self):
         recipe = {'adapter': 'command-web', 'commands': {'build': [[sys.executable, '-c', 'import sys; print("meaningful build failure"); sys.exit(7)']],

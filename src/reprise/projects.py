@@ -53,7 +53,7 @@ class ProjectStore:
             return self.folders.repository(record)
         if record.get('kind') == 'archive':
             group = next(g for g in archives.groups(self.directory) if g['id'] == record['archive_group'])
-            return archives.ArchiveRepository(group)
+            return archives.ArchiveRepository(group, git_history=record.get('archive_git_history', False))
         return Repository(record['path'], status_directory=self.directory / 'git-status')
 
     @staticmethod
@@ -245,9 +245,12 @@ class ProjectStore:
                 write_json(self.file, {'schema': 1, 'projects': records}, private=True)
             return self.get(identifier, revision)
 
-    def save_notes(self, identifier, value, sha='HEAD'):
+    def save_notes(self, identifier, value, sha='HEAD', *, author=None):
         with DataLease(self.directory):
             notes = validate_notes(value)
+            if author is not None and (not isinstance(author, str) or len(author) > 120 or
+                                       any(ord(c) < 32 for c in author)):
+                raise ValueError('显示作者须为 120 字以内的单行文字。')
             revision = self.repository(identifier).resolve(sha)
             with self.lock, locked(self.lockfile):
                 records = self.records()
@@ -255,6 +258,11 @@ class ProjectStore:
                 if record is None:
                     raise KeyError('Unknown project')
                 entry = {'localizations': notes, 'saved_at': now()}
+                previous = record.get('version_notes', {}).get(revision, {})
+                if author is not None:
+                    entry['author'] = author.strip()
+                elif 'author' in previous:
+                    entry['author'] = previous['author']
                 record.setdefault('version_notes', {})[revision] = entry
                 record.setdefault('notes_history', []).append({'sha': revision, **entry})
                 write_json(self.file, {'schema': 1, 'projects': records}, private=True)

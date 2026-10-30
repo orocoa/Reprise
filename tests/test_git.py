@@ -14,7 +14,8 @@ from reprise.git import Repository
 def git(path, *args):
     env = os.environ.copy()
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', GIT_TERMINAL_PROMPT='0')
-    return subprocess.check_output(['git', '-C', str(path), *args], env=env, stderr=subprocess.PIPE).decode().strip()
+    return subprocess.check_output(['git', '-c', 'maintenance.auto=false', '-c', 'gc.auto=0',
+                                    '-C', str(path), *args], env=env, stderr=subprocess.PIPE).decode().strip()
 
 
 class GitTests(unittest.TestCase):

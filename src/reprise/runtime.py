@@ -245,6 +245,11 @@ class RuntimeManager:
         process = self._processes.get(state['id'])
         if process is not None:
             process.poll()  # Reap our child even when a reloaded manager stopped it.
+        # Stopped ownership stays on disk for readback/retries. Keeping closed
+        # observers and Popen objects in this service grows memory per preview.
+        self._processes.pop(state['id'], None)
+        for name in state.get('process_trees', []):
+            self._trees.pop((state['id'], name), None)
         return terminated
 
     def environment_check(self, environment_id, cancel=None):
@@ -383,6 +388,12 @@ class RuntimeManager:
             check(cancel)
             if prepared:
                 self.environments.ready(prepared, cancel)
+            if recipe['adapter'] == 'static-web':
+                # Our isolated stdlib file server never spawns children. Once
+                # ready, it needs no continuous whole-process-table observer.
+                # running()/stop() still refresh and verify retained ownership;
+                # project commands retain their full child-process observers.
+                tree.close()
             state.update({'status': 'running', 'running': True, 'started_at': utcnow()})
             self._save(state)
             return dict(state)

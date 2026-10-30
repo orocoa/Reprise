@@ -11,8 +11,9 @@ function versionChoices(){
 function versionSelectionNotice(){
  return state.project?.kind==='folder'&&state.versionReviewReturn?`<div class="version-return"><span>${contentText('正在核对版本，整理选择已保留。','Reviewing a version; your selection is retained.')}</span><button class="secondary-button" data-action="versions-manage">${contentText('返回版本选择','Back to version selection')} · ${versionChoices().size}</button></div>`:'';
 }
-function versionDialog(title,body,footer=''){
- dialogShell(title,body,footer,true);$('#dialog').classList.add('content-dialog','version-dialog');
+function versionDialog(title,body,footer='',parentContext=undefined){
+ const parent=parentContext===undefined?captureDialogContext():parentContext;
+ dialogShell(title,body,footer,true,parent||($('#dialog').open?dialogParent:null));$('#dialog').classList.add('content-dialog','version-dialog');
 }
 function updateVersionChoices(){
  const count=versionChoices().size,button=$('#version-impact-button');
@@ -31,12 +32,13 @@ function versionRecognitionCard(d){
 }
 async function manageVersions(){
  if(!state.project)return;
+ const parent=captureDialogContext()||(!$('#dialog').open&&state.versionReviewReturn?state.versionManagerParent:undefined);
  if(state.project.kind!=='folder'){
-  versionDialog(contentText('版本与运行环境','Versions and environments'),`<h3>${state.project.kind==='archive'?contentText('已登记归档保持只读','Registered archives are read-only'):contentText('原始 Git 历史只读','Original Git history is read-only')}</h3><p>${contentText('这里不会删除原仓库的提交或改写分支。可单独查看本机运行环境；要整理独立保存的版本，请在「项目」中以普通文件夹方式加入一份需要记录的资料，再保存受管版本。','Reprise does not delete commits or rewrite branches in the original repository. You can inspect local runtime environments separately. To manage independently saved versions, add the desired folder as an ordinary folder in Projects, then save managed versions.')}</p>`,`<button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" data-action="version-environments">${contentText('查看运行环境','Inspect environments')}</button>`);
+  versionDialog(contentText('版本与运行环境','Versions and environments'),`<h3>${state.project.kind==='archive'?contentText('已登记归档保持只读','Registered archives are read-only'):contentText('原始 Git 历史只读','Original Git history is read-only')}</h3><p>${contentText('这里不会删除原仓库的提交或改写分支。可单独查看本机运行环境；要整理独立保存的版本，请在「项目」中以普通文件夹方式加入一份需要记录的资料，再保存受管版本。','Reprise does not delete commits or rewrite branches in the original repository. You can inspect local runtime environments separately. To manage independently saved versions, add the desired folder as an ordinary folder in Projects, then save managed versions.')}</p>`,`<button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" data-action="version-environments">${contentText('查看运行环境','Inspect environments')}</button>`,parent);
   return;
  }
  const selected=versionChoices(),rows=managedVersions();state.versionDeletePlan=null;state.versionReviewReturn=false;
- versionDialog(contentText('选择要整理的版本','Choose versions to remove'),`<p>${contentText('先认准版本，再勾选查看删除影响。勾选和预检都不会删除内容。','Identify a version, then select it to review deletion impact. Selection and impact checks do not delete content.')}</p><div class="version-choice-list">${rows.map(c=>`<article class="version-choice-row"><div data-version-thumbnail="${esc(c.sha)}">${versionThumbnail(c,[],{pending:true})}</div><label><input type="checkbox" data-user-label data-version-choice="${esc(c.sha)}" aria-label="${contentText('选择版本','Select version')} ${esc(versionTitle(c))}" ${selected.has(c.sha)?'checked':''}><span><strong data-user-content>${esc(versionTitle(c))}</strong><small><time>${esc(formatDate(c.committed_at,true))}</time> · <code>${short(c.sha)}</code>${c.sha===state.project.head?' · '+contentText('最新保存','Latest saved'):''}</small>${versionNotes(c)?.summary?`<small data-user-content>${esc(versionNotes(c).summary)}</small>`:''}</span></label><button class="text-button" data-action="version-inspect" data-sha="${esc(c.sha)}">${contentText('查看此版','Inspect version')}</button></article>`).join('')||`<p>${contentText('尚无受管版本。先记录一个版本。','No managed versions yet. Save a version first.')}</p>`}</div><p class="snapshot-message" id="version-preview-status" role="status">${contentText('正在读取已保存的截图，不会自动运行项目。','Reading saved screenshots; projects will not run automatically.')}</p><p class="snapshot-message">${contentText('此操作整理 Reprise 保存的版本，原文件夹不会被删除。运行环境的依赖与构建产物可单独释放。','This manages versions saved by Reprise and does not delete the source folder. Runtime dependencies and build outputs can be released separately.')}</p><button class="text-button" data-action="version-environments">${contentText('单独管理运行环境','Manage environments separately')}</button>`,`<span id="version-choice-count" aria-live="polite"></span><button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" id="version-impact-button" data-action="save-version-impact" ${selected.size?'':'disabled'}>${contentText('查看删除影响','Review deletion impact')}</button>`);
+ versionDialog(contentText('选择要整理的版本','Choose versions to remove'),`<p>${contentText('先认准版本，再勾选查看删除影响。勾选和预检都不会删除内容。','Identify a version, then select it to review deletion impact. Selection and impact checks do not delete content.')}</p><div class="version-choice-list">${rows.map(c=>`<article class="version-choice-row"><div data-version-thumbnail="${esc(c.sha)}">${versionThumbnail(c,[],{pending:true})}</div><label><input type="checkbox" data-user-label data-version-choice="${esc(c.sha)}" aria-label="${contentText('选择版本','Select version')} ${esc(versionTitle(c))}" ${selected.has(c.sha)?'checked':''}><span><strong data-user-content>${esc(versionTitle(c))}</strong><small><time>${esc(formatDate(c.committed_at,true))}</time> · <code>${short(c.sha)}</code>${c.sha===state.project.head?' · '+contentText('最新保存','Latest saved'):''}</small>${versionNotes(c)?.summary?`<small data-user-content>${esc(versionNotes(c).summary)}</small>`:''}</span></label><button class="text-button" data-action="version-inspect" data-sha="${esc(c.sha)}">${contentText('查看此版','Inspect version')}</button></article>`).join('')||`<p>${contentText('尚无受管版本。先记录一个版本。','No managed versions yet. Save a version first.')}</p>`}</div><p class="snapshot-message" id="version-preview-status" role="status">${contentText('正在读取已保存的截图，不会自动运行项目。','Reading saved screenshots; projects will not run automatically.')}</p><p class="snapshot-message">${contentText('此操作整理 Reprise 保存的版本，原文件夹不会被删除。运行环境的依赖与构建产物可单独释放。','This manages versions saved by Reprise and does not delete the source folder. Runtime dependencies and build outputs can be released separately.')}</p><button class="text-button" data-action="version-environments">${contentText('单独管理运行环境','Manage environments separately')}</button>`,`<span id="version-choice-count" aria-live="polite"></span><button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" id="version-impact-button" data-action="save-version-impact" ${selected.size?'':'disabled'}>${contentText('查看删除影响','Review deletion impact')}</button>`,parent);
  updateVersionChoices();
  const request=state.dialogRequest,project=state.project.id;
  try{
@@ -159,14 +161,101 @@ Object.assign(workspaceActions,{
  'version-impact-return':()=>state.versionDeletePlan?renderVersionImpact(state.versionDeletePlan,state.versionEstimate):manageVersions(),
  'version-estimate-result':b=>{const job=state.jobs.find(j=>j.id===b.dataset.job);if(job)versionEstimateResult(job);},
  'versions-manage':manageVersions,
- 'version-inspect':async b=>{state.versionReviewReturn=true;closeDialog();await choose(b.dataset.sha);setDetailTab('preview');},
+ 'version-inspect':async b=>{state.versionReviewReturn=true;state.versionManagerParent=dialogParent;closeDialog({returnToParent:false});await choose(b.dataset.sha);setDetailTab('preview');},
  'save-version-impact':reviewVersionImpact,'save-version-delete':deleteSelectedVersions,
  'version-delete-result':b=>{const job=state.jobs.find(j=>j.id===b.dataset.job);if(job)versionDeletionResult(job);},
  'version-environments':environmentDialog,'environment-check':b=>environmentCheck(b.dataset.environment),'save-environment-release':releaseEnvironment,
- 'environment-run':async b=>{closeDialog();await choose(b.dataset.sha);setDetailTab('preview');await startWorkspaceAction('run');}
+ 'environment-run':async b=>{state.versionManagerParent=dialogParent;state.versionReviewReturn=true;closeDialog({returnToParent:false});await choose(b.dataset.sha);setDetailTab('preview');await startWorkspaceAction('run');}
 });
 document.addEventListener('change',e=>{
  if(e.target.matches('[data-version-choice]')){const choices=versionChoices();if(e.target.checked)choices.add(e.target.dataset.versionChoice);else choices.delete(e.target.dataset.versionChoice);updateVersionChoices();}
  if(e.target.id==='version-delete-confirm')$('#version-delete-submit').disabled=!e.target.checked;
  if(e.target.id==='environment-release-confirm')$('#environment-release-submit').disabled=!e.target.checked;
 });
+Object.assign(uiCopy,{'整理版本':'Manage versions','预览与文件':'Preview and files','虚线连接当前历史中不可读取的版本':'Dashed lines connect versions unavailable in the current history',
+ '删除会永久失去这些版本的文件组合、路径和元数据，即使独占内容为零。':'Deleting these versions permanently loses their file composition, paths and metadata, even with zero exclusive content.',
+ '独占内容为未压缩逻辑量；实际回收受压缩、索引和文件系统影响。':'Exclusive content is an uncompressed logical measure; compression, indexes and the filesystem affect actual reclaim.',
+ '原文件夹、已有恢复副本、截图、运行目录和日志均保留，未计入回收。':'Source folders, existing restores, screenshots, runtime directories and logs remain saved and are excluded from reclaim.',
+ '同一磁盘的历史不能替代异地或其他介质备份。':'History on the same disk does not replace a backup on another device or location.'
+});
+
+function cleanupCopy(effect,enabled=true){
+ const copy={
+  'remove-local':{
+   title:contentText('从 Reprise 移除此版本 [源历史保留]','Remove version from Reprise [source history retained]'),
+   summary:contentText('从 Reprise 的版本列表移除，并删除此版本的受管截图和专属运行副本。源 Git 提交、原归档、项目文件夹与外部备份继续保留。','Remove this version from Reprise’s list and delete its managed screenshots and owned runtime copies. Source Git commits, original archives, project folders and external backups remain.'),
+   confirm:contentText('确认移除并删除本机资料','Remove and delete local data')},
+  'delete-saved':{
+   title:contentText('删除全部内容 [无法恢复]','Delete all content [cannot be recovered]'),
+   summary:contentText('删除 Reprise 保存的这一版文件、截图和专属运行副本。原项目文件夹、独立导出和备份继续保留。','Remove this saved version, screenshots and owned runtime copies from Reprise. Original project folders, independent exports and backups remain.'),
+   confirm:contentText('确认永久删除','Permanently delete')},
+  'clear-environment':{
+   title:contentText('保留信息，清理运行环境 [后续可重建]','Keep version; clear environment [rebuild later]'),
+   summary:contentText(enabled?'保留版本源码、说明、截图与已确认配置，只清理已验证可重建的依赖和构建产物。下次运行时重新准备。':'此版本没有可清理的受管环境，无需执行环境清理。',enabled?'Keep saved source, notes, pictures and approved settings. Only verified rebuildable dependencies and build outputs are cleared; a future run prepares them again.':'This version has no managed environment to clear. No environment cleanup is needed.'),
+   confirm:contentText('确认清理环境','Clear environment')}
+ };
+ if(!copy[effect])throw Error(contentText('版本操作信息不完整，请刷新后重试。','Version actions are incomplete. Refresh and retry.'));
+ return copy[effect];
+}
+async function deleteVersionDialog(){
+ const c=commit(state.selected),project=revisionProject();if(!c)return;
+ state.cleanupTarget={project,sha:c.sha};state.cleanupPlan=null;
+ versionDialog(contentText('删除版本','Delete version'),`<p role="status">${contentText('正在检查可操作的范围…','Checking available actions…')}</p>`);
+ const request=state.dialogRequest,target=state.cleanupTarget;
+ const options=await api(query(`/api/projects/${project}/version-cleanup-options`,{sha:c.sha}));
+ if(request!==state.dialogRequest||state.cleanupTarget!==target||!$('#dialog').open)return;
+ if(options.sha!==target.sha||!options.actions?.choices)throw Error(contentText('版本操作信息不完整，请刷新后重试。','Version actions are incomplete. Refresh and retry.'));
+ const choices=options.actions.choices.map(choice=>{
+  const copy=cleanupCopy(choice.effect,choice.enabled);
+  return `<label class="version-delete-option"><input type="radio" name="version-delete-mode" value="${esc(choice.id)}" ${!choice.enabled?'disabled':choice.id===options.actions.default?'checked':''}><span><strong>${copy.title}</strong><small>${copy.summary}</small></span></label>`;
+ }).join('');
+ $('#dialog .dialog-body').innerHTML=`<p data-user-content><strong>${esc(versionTitle(c))}</strong></p><div class="version-delete-options">${choices}</div>`;
+ $('#dialog .dialog-footer').innerHTML=`<button class="secondary-button" data-action="close">${uiText('返回')}</button><button class="primary-button" data-action="version-cleanup-review">${contentText('继续','Continue')}</button>`;
+}
+async function reviewVersionCleanup(){
+ const target=state.cleanupTarget,mode=$('#dialog input[name="version-delete-mode"]:checked')?.value||state.cleanupPlan?.mode;
+ if(!target||!mode)return;
+ versionDialog(contentText('核对删除范围','Review deletion scope'),`<p role="status">${contentText('正在核对文件、运行状态与保留内容…','Checking files, runtime activity and retained content…')}</p>`);
+ const request=state.dialogRequest;
+ const plan=await api(`/api/projects/${target.project}/version-cleanup-plan`,{method:'POST',body:JSON.stringify({sha:target.sha,mode})});
+ if(request!==state.dialogRequest)return;state.cleanupPlan=plan;
+ const blockerCopy={
+  'Environment has active or uncertain runtime processes':contentText('此版本仍有运行中或停止待确认的预览。','This version has active previews or previews whose stop is unconfirmed.'),
+  'Environment has not completed a clean rebuild and successful start':contentText('此环境尚未通过完整重建与启动验证，暂不能清理。','This environment has not passed a clean rebuild and successful start; it cannot be cleared yet.'),
+  'Workspace is open in a process; stop it before release':contentText('有进程正在使用此运行副本，请先停止后再清理。','A process is using this runtime copy; stop it before clearing.')
+ };
+ const blockers=plan.blockers.map(b=>blockerCopy[b]||b);
+ const copy=cleanupCopy(plan.effect),all=plan.effect!=='clear-environment',local=plan.effect==='remove-local',empty=!all&&!plan.environment_ids.length;
+ const label=copy.title;
+ $('#dialog .dialog-body').innerHTML=`<p data-user-content><strong>${esc(versionTitle(commit(target.sha)))}</strong></p><h3>${label}</h3><p>${local?contentText('确认后，此版本将从 Reprise 列表移除，受管截图与专属运行副本会被删除。源 Git 提交、原归档、项目文件夹和外部备份继续保留；不会释放源仓库的空间。','This version will be removed from Reprise’s list and its managed screenshots and owned runtime copies will be deleted. Source Git commits, original archives, project folders and external backups remain; source-repository storage is not reclaimed.'):contentText(all?'删除此版本在 Reprise 中的保存内容；原文件夹与外部备份保留。':'版本文件、截图和已确认的运行配置继续保留，后续可重新准备环境。',all?'Remove this version’s saved content from Reprise. Original folders and external backups remain.':'Saved files, pictures and approved runtime settings remain. The environment can be prepared again.')}</p><p>${contentText('环境与附件逻辑大小','Logical size of environments and attachments')}：${contentBytes(plan.bytes)}</p>${all&&!local?`<p>${contentText('此版本独占文件内容','Exclusive saved file content')}：${contentBytes(plan.version_content_bytes||0)}</p>`:''}${empty?`<p role="status">${contentText('这一版没有可清理的受管环境，版本信息继续保留。','This version has no managed environment to clear. Its saved information remains.')}</p>`:''}${blockers.length?`<div role="alert">${blockers.map(b=>`<p data-user-content>${esc(b)}</p>`).join('')}</div>`:''}`;
+ $('#dialog .dialog-footer').innerHTML=`<button class="secondary-button" data-action="delete-version">${contentText('返回选择','Back to choices')}</button>${plan.active_runtime_ids?.length&&plan.blockers.length?`<button class="primary-button" data-action="version-cleanup-stop">${contentText('停止本版预览并重新核对','Stop this version’s previews and review again')}</button>`:!empty&&!plan.blockers.length?`<button class="danger-button" data-action="version-cleanup-confirm">${copy.confirm}</button>`:`<button class="primary-button" data-action="close">${uiText('返回')}</button>`}`;
+}
+async function stopVersionCleanupPreviews(button){
+ const plan=state.cleanupPlan,target=state.cleanupTarget;if(!plan||!plan.active_runtime_ids?.length||state.cleanupStopping)return;
+ state.cleanupStopping=true;if(button)button.disabled=true;
+ try{
+  const errors=[];
+  for(const id of plan.active_runtime_ids){try{await api(`/api/runtimes/${id}/stop`,{method:'POST',body:'{}'});}catch(error){errors.push(error.message);}}
+  await refreshWorkspace();
+  if(state.cleanupTarget===target&&state.cleanupPlan===plan&&$('#dialog').open)await reviewVersionCleanup();
+  if(errors.length)notify(errors.join('\n'));
+ }finally{state.cleanupStopping=false;if(button)button.disabled=false;}
+}
+async function confirmVersionCleanup(){
+ const plan=state.cleanupPlan;if(!plan||plan.blockers.length)return;
+ state.cleanupPlan=null;
+ const job=await api(`/api/projects/${plan.project_id}/version-cleanup`,{method:'POST',body:JSON.stringify({plan_id:plan.id,confirm:true})}).catch(error=>{state.cleanupPlan=plan;throw error;});
+ mergeWorkspaceJobs([job]);
+ versionDialog(contentText('正在处理版本','Updating version'),`<p role="status" data-version-cleanup-job="${esc(job.id)}">${contentText('正在执行并验证结果…','Applying and verifying…')}</p>`);
+ pollWorkspaceJob(job.id);
+}
+async function versionCleanupFinished(job){
+ const owns=$('#dialog [data-version-cleanup-job]')?.dataset.versionCleanupJob===job.id;
+ await refreshWorkspace();
+ if(workspaceProjectIds().has(job.project_id))await loadProject(state.project.id,{preserve:true});
+ if(!owns||$('#dialog [data-version-cleanup-job]')?.dataset.versionCleanupJob!==job.id){notify(job.error||contentText('版本操作已完成。','Version operation complete.'));return;}
+ const ok=job.status==='complete';
+ const message=job.result?.removed_from_reprise?contentText('已从 Reprise 移除此版本，并删除所选本机资料。源 Git 提交或原归档继续保留。','Version removed from Reprise and selected local data deleted. Source Git commits or original archives remain.'):contentText(job.result?.version_retained?'环境已清理，版本信息继续保留。':'版本已删除，保留版本已通过校验。',job.result?.version_retained?'Environment cleared; saved version retained.':'Version deleted; retained versions verified.');
+ versionDialog(contentText(ok?'处理完成':'处理未完成',ok?'Complete':'Incomplete'),`<p role="${ok?'status':'alert'}" data-user-content>${esc(ok?message:job.error||job.status)}</p>`,`<button class="primary-button" data-action="close">${uiText('返回')}</button>`);
+}
+Object.assign(workspaceActions,{'delete-version':deleteVersionDialog,'version-cleanup-review':reviewVersionCleanup,'version-cleanup-confirm':confirmVersionCleanup,'version-cleanup-stop':stopVersionCleanupPreviews});

@@ -65,7 +65,7 @@
 
 ## 独立备份与目录变更
 
-跨电脑带走已保存版本：在源电脑创建并读回校验 `backup`，复制完整备份目录（`payload/`、`manifest.jsonl`、`receipt.json`）到目标电脑，用目标电脑的 Reprise `backup-check` → `data-restore --to NEW_DATA` → `--data NEW_DATA open --project NAME --lang zh|en`。无需逐版导出；不自动合并目标已有库。该流程是目录格式，尚无单文件拖入导入。普通文件夹已保存版本可不依赖源路径恢复；外部 Git 原仓库、未保存的修改和外部归档仍须另带，不把 Reprise 管理数据说成整个电脑环境。
+跨电脑带走已保存版本：在源电脑创建并读回校验 `backup`，复制完整备份目录（`payload/`、`manifest.jsonl`、`receipt.json`）到目标电脑，用目标电脑的 Reprise `backup-check` → `data-restore --to NEW_DATA` → `--data NEW_DATA open --project NAME --lang zh|en`。无需逐版导出；不自动合并目标已有库。这些 CLI 命令使用目录格式；设置中的备份与导入也支持经过清单校验的单文件备份，不自动合并已有数据。普通文件夹已保存版本可不依赖源路径恢复；外部 Git 原仓库、未保存的修改和外部归档仍须另带，不把 Reprise 管理数据说成整个电脑环境。
 
 - `backup --to /new/backup` 备份当前 `--data` 的 Reprise 已管理数据。先显式 `shutdown` 同一数据目录，确认服务/任务和预览退出；活动租约会阻止备份，不自行结束其他应用。备份读回通过才算完成，原库与失败副本保留。
 - `backup-check /path/to/backup` 重新读回检查；`data-restore /path/to/backup --to /new/data` 还原到新数据目录并重定位已知内部路径。再用 `--data /new/data` 打开，不改默认数据位置；复制的进程身份不能用于停止原进程。

@@ -56,7 +56,7 @@ class PortableSkillTests(unittest.TestCase):
 
     def documented_open(self, skill, data, cwd, language):
         body = (skill / 'SKILL.md').read_text()
-        row = next(line for line in body.splitlines() if line.startswith('| Open visual history /'))
+        row = next(line for line in body.splitlines() if line.startswith('| Open workbench in a browser /'))
         command = shlex.split(re.search(r'`([^`]+)`', row).group(1))
         # Execute the archive's documented entry instead of assuming a bridge.
         self.assertEqual(command[:2], ['python3', '$REPRISE'])

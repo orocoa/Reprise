@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),vm=requir
 function load(language='zh'){
  const c=vm.createContext({uiLanguage:language,uiCopy:{},uiText:s=>s,workspaceActions:{},document:{addEventListener(){}},location:{hash:''},URLSearchParams});
  vm.runInContext(fs.readFileSync(path.resolve('web/live.js'),'utf8').split("document.addEventListener('click'")[0],c);
- for(const name of ['text-diff','live-evidence','live-features','live-content','live-versions'])vm.runInContext(fs.readFileSync(path.resolve('web/'+name+'.js'),'utf8'),c);
+ for(const name of ['dialog-controller','text-diff','live-evidence','live-features','live-content','live-versions'])vm.runInContext(fs.readFileSync(path.resolve('web/'+name+'.js'),'utf8'),c);
  vm.runInContext("state.project={id:'p',kind:'folder'};function revisionProject(){return 'p'};versionTitle=c=>c.subject||c.sha;versionNotes=()=>null;",c);return c;
 }
 const revision=(sha='b')=>({commit:{sha,subject:'User draft',parents:['a']},evidence:[],recipe:{adapter:'manual'},diff:{files:[{path:'draft.txt',status:'M'}],counts:{total:1}},content:{stats:{files:1,logical_bytes:5,unique_bytes:5,new_bytes:5},excluded:[]}});
@@ -37,4 +37,20 @@ test('closing any main-task dialog clears modes before later language changes',(
  assert.equal(vm.runInContext('state.recoveryParents.size',c),0);assert.equal(c.dialog.open,false);assert.deepEqual(Object.keys(c.dialog.dataset),[]);
  // A late render from a previously closed comparison must also be harmless.
  vm.runInContext('renderFileComparison()',c);
+});
+
+test('empty archive retains a project return path and never claims Git commits are missing',()=>{
+ for(const language of ['zh','en']){
+  const c=load(language);vm.runInContext("state.project={id:'archive',kind:'archive'};state.commits=[];state.filter='all'",c);
+  const html=vm.runInContext('emptyVersionContent()',c);
+  assert.match(html,/data-action="content-projects"/);assert.doesNotMatch(html,/首次提交|first commit/);
+  assert.match(html,language==='zh'?/原始归档继续保留/:/original archive remains saved/);
+ }
+});
+test('empty folders and filtered histories keep the appropriate next action',()=>{
+ const c=load();vm.runInContext("state.commits=[];state.filter='all'",c);
+ assert.match(vm.runInContext('emptyVersionContent()',c),/data-action="content-snapshot"/);
+ vm.runInContext("state.filter='starred'",c);
+ const html=vm.runInContext('emptyVersionContent()',c);
+ assert.match(html,/data-action="clear-search"/);assert.doesNotMatch(html,/data-action="content-snapshot"/);
 });

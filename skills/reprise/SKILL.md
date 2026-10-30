@@ -1,9 +1,9 @@
 ---
 name: reprise
-description: "倒带 / Reprise：保存本地网页稿、按画面找旧版、浏览已有 Git 版本关系并取出新副本。Use to open Reprise, save webpage drafts, browse their pictures or real Git relationships, and recover a chosen version."
+description: "倒带 / Reprise：保存本地网页稿、按画面找回旧版、管理版本历史，以及明确选择后的版本删除与环境释放。Use to save, find and recover webpage versions, inspect Git history, or explicitly remove managed versions and release preview resources."
 license: MIT
 metadata:
-  version: "0.8.4"
+  version: "0.8.5"
 ---
 
 # Reprise · 倒带
@@ -14,17 +14,23 @@ Help a webpage designer **save a draft → recognize an earlier version by its p
 
 Use this Skill’s absolute `scripts/reprise.py` path as `REPRISE`. The source package includes its local core and web assets. Core: Python 3.9+ and Git on macOS/Linux or WSL. Pictures also need Node, Node Playwright and a browser. For installation or missing tools, read [environment.md](references/environment.md); reuse verified host tools before installing official dependencies outside the webpage source. No extra AI key or model setup is needed.
 
-Run `python3 "$REPRISE" doctor` after installation or a runtime change; it checks core/package integrity, not picture readiness. Open the actual returned URL in the user’s selected or available browser. Pass the conversation’s language explicitly with `--lang zh` or `--lang en`.
+Run `python3 "$REPRISE" doctor` after installation or a runtime change; it checks core/package integrity, not picture readiness. In browser mode, open the actual returned URL in the user’s selected or available browser. Pass the conversation’s language explicitly with `--lang zh` or `--lang en`.
+
+“打开倒带”, a bare Skill selection, or a `@Reprise` macOS app mention opens the current webpage project already established in the conversation. Pass that verified folder with `--cwd "$PROJECT"`; do not substitute Reprise's installation/maintenance directory. The core reuses the closest registered project, preferring webpage drafts over Git history for the same folder. Opening never creates a checkpoint. If no project folder is known, open `--workbench` to choose one.
+
+On macOS use `--window` and confirm `window.status: ready`; run the Skill entry before interacting with the app so it sets up the current project and service. On other platforms use `--no-browser` and open the returned local URL. If native startup fails, retain its diagnostics, open that local URL in a browser, and report the fallback.
 
 | Intent / 用户目标 | Command / 行动 |
 |---|---|
-| Open visual history / 打开工作台、按画面找过去 | `python3 "$REPRISE" open --workbench --lang zh --no-browser` (use `en` for English). |
+| Open current project / 打开当前项目的倒带窗口 | `python3 "$REPRISE" open --cwd "$PROJECT" --window --lang zh` (macOS; use `en` for English). |
+| Open project chooser / 尚未明确项目时打开工作台 | `python3 "$REPRISE" open --workbench --window --lang zh` (macOS). |
+| Open workbench in a browser / 在浏览器打开工作台 | `python3 "$REPRISE" open --workbench --lang zh --no-browser` (use `en` for English). |
 | Save the current webpage / 保存网页这一稿 | `python3 "$REPRISE" save /known/webpage` (optional `--title "Short name"`). |
 | Save a registered folder again / 再留一稿 | `python3 "$REPRISE" snapshot PROJECT` (optional `--title "Short name"`). |
 | Find saved versions / 查询旧稿 | `python3 "$REPRISE" history PROJECT` |
 | Recover a copy / 取出所选稿 | `python3 "$REPRISE" restore PROJECT --sha FULL_SHA --to /new/sibling-folder` |
 
-“打开倒带” or a bare Skill selection only opens the workbench; it does not save or import the terminal’s current directory. `projects` lists registered names/IDs when the current project is unknown. If the same folder has both records, use `kind: folder` for drafts and `kind: git` for read-only history; resolve the ID rather than asking the designer to distinguish identical names. Names can be automatic; do not require another naming decision before each save.
+`projects` lists registered names/IDs when the current project is unknown. If the same folder has both records, use `kind: folder` for drafts and `kind: git` for read-only history; resolve the ID rather than asking the designer to distinguish identical names. Names can be automatic; do not require another naming decision before each save.
 
 ## Save: ask once, then reuse
 
@@ -46,4 +52,8 @@ Keep the agreed **画面 / 版本关系** interface: picture thumbnails and one 
 
 For existing Git branches/merges, use `python3 "$REPRISE" open /known/repository --lang zh --no-browser`. This is a read-only Git project, separate from folder checkpoints. Folder save order never impersonates source branches. Images belong to exact versions; never fill a missing picture from another revision. Do not checkout, reset, commit or install into an imported source.
 
-For detailed comparison/recovery, read [workbench tasks](references/workspace-tasks.md). Only for requested legacy import, backup, migration, deletion or environment maintenance, read [advanced workflows](references/advanced-workflows-0.8.md) or [folder imports](references/folder-imports.md). Preserve existing files, media, runtimes and failed diagnostics. General feature expansion is frozen; do not turn a draft task into cleanup or another AI setup.
+## Delete or release resources
+
+For requested deletion, disk usage or memory relief, read [version management](references/version-management.md). Distinguish stopping a preview process (memory), releasing verified generated dependencies (disk), deleting a managed saved draft, and removing read-only Git/archive entries from Reprise. Inspect the exact scope and use existing authorization; never infer deletion permission from saving or browsing.
+
+For detailed comparison/recovery, read [workbench tasks](references/workspace-tasks.md). For requested legacy import, backup, migration or advanced maintenance, read [advanced workflows](references/advanced-workflows-0.8.md) or [folder imports](references/folder-imports.md). Preserve existing data and diagnostics outside an explicitly authorized deletion scope. General feature expansion is frozen; do not turn a draft task into cleanup or another AI setup.

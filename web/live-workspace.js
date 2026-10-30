@@ -80,9 +80,6 @@ const workspaceActions={
  'recovery-result':b=>recoveryResult(state.jobs.find(j=>j.id===b.dataset.job)),
  'inline-preview':b=>{
   const runtime=state.runtimes.find(r=>r.id===b.dataset.runtime&&r.project_id===revisionProject()&&r.sha===state.selected&&runtimeInfo(r).running);
-  if(!runtime)return;
-  const url=new URL(runtime.url);if(url.protocol!=='http:'||!['127.0.0.1','localhost'].includes(url.hostname))return;
-  const frame=document.createElement('iframe');frame.className='live-preview-frame';frame.title=uiText('版本预览');frame.sandbox='allow-scripts allow-forms allow-same-origin allow-downloads';frame.src=url.href;
-  b.closest('.runtime-row').after(frame);b.disabled=true;
+  if(runtime)openRuntimePreview(runtime);
  }
 };

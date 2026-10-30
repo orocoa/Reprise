@@ -106,7 +106,7 @@ def main(argv=None):
             break  # argparse reports the missing value, without indexing past argv
         position += 1 if '=' in argv[position] else 2
     if position == len(argv):
-        argv[position:] = ['open', '--workbench']
+        argv[position:] = ['open']
     elif argv[position] not in known and not argv[position].startswith('-'):
         argv.insert(position, 'open')
     parser = argparse.ArgumentParser(prog='reprise', description='Local content versions, Git history and verified recovery')
@@ -114,9 +114,13 @@ def main(argv=None):
     commands = parser.add_subparsers(dest='command', required=True)
     server = commands.add_parser('serve'); server.add_argument('--port', type=port_number, default=51582)
     server.add_argument('--fallback-port', action='store_true', help=argparse.SUPPRESS)
-    opening = commands.add_parser('open'); opening.add_argument('path', nargs='?', help='Explicit folder or Git repository path; omit to open the workspace without importing a directory')
+    opening = commands.add_parser('open'); opening.add_argument('path', nargs='?', help='Explicit folder or Git repository path; omit to use the invoking project folder')
     opening.add_argument('--workbench', action='store_true', help='Open the workspace without importing the current directory')
-    opening.add_argument('--port', type=port_number, default=0); opening.add_argument('--no-browser', action='store_true')
+    opening.add_argument('--port', type=port_number, default=0)
+    presentation = opening.add_mutually_exclusive_group()
+    presentation.add_argument('--no-browser', action='store_true', help='Return the local URL without opening a window')
+    presentation.add_argument('--window', action='store_true', help='Open a standalone macOS Reprise window')
+    opening.add_argument('--cwd', help='Invoking project folder when the agent runs the command elsewhere')
     opening.add_argument('--lang', choices=('zh', 'en'))
     opening.add_argument('--folder', action='store_true', help='Manage this folder as content, including folders inside a Git project')
     opening.add_argument('--history', action='append', default=[], help='Explicit related read-only Git archive')
@@ -200,8 +204,10 @@ def main(argv=None):
     if getattr(args, 'pending_recipe', False) and (args.mode != 'auto' or args.recipe_sha):
         parser.error('--pending-recipe requires --mode auto without --recipe-sha')
     if args.command == 'open' and args.workbench and (
-            args.path is not None or args.folder or args.history or args.history_catalog is not None):
-        parser.error('--workbench cannot be combined with a path, --folder, --history or --history-catalog')
+            args.path is not None or args.cwd is not None or args.folder or args.history or args.history_catalog is not None):
+        parser.error('--workbench cannot be combined with a path, --cwd, --folder, --history or --history-catalog')
+    if args.command == 'open' and args.path is not None and args.cwd is not None:
+        parser.error('--cwd cannot be combined with a project path')
     if args.command == 'open' and args.path is None and (
             args.folder or args.history or args.history_catalog is not None):
         parser.error('--folder, --history and --history-catalog require an explicit project path')
@@ -231,15 +237,22 @@ def main(argv=None):
             serve(args.data, args.port, fallback_port=args.fallback_port)
             return 0
         if args.command in ('open', 'shutdown'):
-            from .launcher import open_repository, open_workbench, shutdown
+            from .launcher import open_repository, open_workbench, open_current_project, shutdown
+            if args.command == 'open' and args.window and sys.platform != 'darwin':
+                raise ValueError('Standalone Reprise windows require macOS; omit --window to use a browser')
             if args.command == 'shutdown':
                 result = shutdown(args.data)
-            elif args.workbench or args.path is None:
-                result = open_workbench(args.data, args.port, not args.no_browser, args.lang)
+            elif args.workbench:
+                result = open_workbench(args.data, args.port, not (args.no_browser or args.window), args.lang)
+            elif args.path is None:
+                result = open_current_project(args.data, args.cwd, args.port, not (args.no_browser or args.window), args.lang)
             else:
                 result = open_repository(args.data, args.path,
-                                         args.port, not args.no_browser, args.lang,
+                                         args.port, not (args.no_browser or args.window), args.lang,
                                          args.history, args.history_catalog, 'folder' if args.folder else None)
+            if args.command == 'open' and args.window:
+                from .window import open_window
+                result['window'] = open_window(args.data, result['url'])
         elif args.command in ('history', 'detect'):
             from .git import Repository
             from .projects import ProjectStore

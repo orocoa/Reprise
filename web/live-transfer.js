@@ -3,16 +3,16 @@
 function transferReturn(){return state.project?settings():projectPicker();}
 async function transferDialog(project=state.project?.id){
  const parent=captureDialogContext(true);
- dialogShell(contentText('备份与目录迁移','Backups and directory relocation'),`<p role="status">${contentText('读取登记…','Reading registration…')}</p>`,'',false,parent);
+ dialogShell(contentText('项目目录','Project location'),`<p role="status">${contentText('读取登记…','Reading registration…')}</p>`,'',false,parent);
  $('#dialog').classList.add('content-dialog');
  const request=state.dialogRequest,data=await api('/api/transfer');
  if(request!==state.dialogRequest||!$('#dialog').open)return;
  state.transferProject=project;
  state.transferPrefix=data.backup_command_prefix;
  const available=data.projects.filter(p=>p.kind!=='archive');
- $('#dialog .dialog-body').innerHTML=`<section class="transfer-section"><h3>${contentText('带到另一台电脑','Take your library to another computer')}</h3><ol><li>${contentText('在这台电脑停止 Reprise 后，创建并校验下方的独立备份。','Stop Reprise on this computer, then create and verify the independent backup below.')}</li><li>${contentText('把整个备份目录复制到另一台电脑，保留 payload、manifest.jsonl 和 receipt.json 的结构。无需逐版导出。','Copy the entire backup folder to the other computer, keeping payload, manifest.jsonl and receipt.json together. No per-version export is needed.')}</li><li>${contentText('用另一台电脑的 Reprise 检查备份，恢复到一个新数据目录，再打开该库。不会合并或覆盖已有库。','Use Reprise on the other computer to check the backup, restore into a new data directory, then open that library. Existing libraries are not merged or overwritten.')}</li></ol><p class="snapshot-message">${contentText('已保存文件夹版本不依赖原电脑路径。外部 Git 原仓库、未保存的修改及外部归档不自动装入；回执会列明。自动截图恢复为提醒，需要在新电脑重新确认配置。当前是目录格式，不是单文件安装包。','Saved folder versions do not require the original computer path. External Git sources, unsaved changes and external archives are not automatically included; check the receipt. Automatic screenshots revert to reminders and need confirmation on the new computer. This is a folder format, not a single-file installer.')}</p></section><section class="transfer-section"><h3>${contentText('项目目录','Project location')}</h3>${available.length?`<label class="field">${contentText('选择项目','Project')}<select id="transfer-project">${available.map(p=>`<option value="${esc(p.id)}" ${p.id===project?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label class="field">${contentText('新的项目目录','New project location')}<input id="transfer-project-path" autocomplete="off" placeholder="/new/project/path"></label><p>${contentText('关联已有目录会先核对真实内容或 Git 历史。复制迁移要求新路径，并保留原目录、项目标识和版本。旧归档继续按原名称恢复。','Relinking an existing folder checks its contents or Git history. Copying requires a new path and retains the original folder, project ID and versions. Legacy archives keep their original recovery workflow.')}</p><div class="transfer-actions"><button class="secondary-button" data-action="transfer-inspect">${contentText('检查已有位置','Inspect existing location')}</button><button class="secondary-button" data-action="transfer-migrate">${contentText('复制到新位置并关联','Copy to new location and link')}</button></div>`:`<p>${contentText('尚无可以迁移的普通文件夹或 Git 项目。','No folder or Git project is available for relocation.')}</p>`}</section><section class="transfer-section"><h3>${contentText('独立备份','Independent backup')}</h3><p data-user-content class="project-path">${esc(data.data_directory)}</p><p>${contentText('先停止此数据目录的 Reprise 服务和任务，再执行下方本机命令。备份包含 Reprise 已管理数据，外部源 Git、未保存的文件和外部旧归档单独列为未纳入。备份未加密，可能包含保存的密钥。','Stop the Reprise service and tasks for this data directory before running these local commands. The backup includes Reprise-managed data; external Git sources, unsaved files and external legacy archives are reported separately as excluded. It is unencrypted and may include saved keys.')}</p><label class="field">${contentText('新的备份目录','New backup directory')}<input id="transfer-backup-to" autocomplete="off" placeholder="/new/backup/path"></label><pre id="transfer-backup-command" class="content-text transfer-command" data-user-content></pre><p>${contentText('同一磁盘的副本不能防护该磁盘故障。原库和失败产物均保留，不会自动切换默认数据目录。','A copy on the same disk does not protect against failure of that disk. The original library and partial outputs are retained; the default data location is not changed automatically.')}</p></section><section class="transfer-section"><h3>${contentText('检查备份与恢复到新库','Verify a backup or restore a new library')}</h3><label class="field">${contentText('已完成的备份目录','Completed backup directory')}<input id="transfer-backup-path" autocomplete="off" placeholder="/path/to/backup"></label><label class="field">${contentText('新的数据目录（恢复时填写）','New data directory (for restore)')}<input id="transfer-data-to" autocomplete="off" placeholder="/new/reprise-data"></label><div class="transfer-actions"><button class="secondary-button" data-action="transfer-backup-check">${contentText('读回检查备份','Read back backup')}</button><button class="secondary-button" data-action="transfer-data-restore">${contentText('恢复到新数据目录','Restore a new data directory')}</button></div></section>`;
+ $('#dialog .dialog-body').innerHTML=`<section class="transfer-section"><h3>${contentText('项目目录','Project location')}</h3>${available.length?`<label class="field">${contentText('选择项目','Project')}<select id="transfer-project">${available.map(p=>`<option value="${esc(p.id)}" ${p.id===project?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><label class="field">${contentText('新的项目目录','New project location')}<input id="transfer-project-path" autocomplete="off" placeholder="/new/project/path"></label><p>${contentText('关联已有目录会先核对真实内容或 Git 历史。复制迁移要求新路径，并保留原目录、项目标识和版本。旧归档继续按原名称恢复。','Relinking an existing folder checks its contents or Git history. Copying requires a new path and retains the original folder, project ID and versions. Legacy archives keep their original recovery workflow.')}</p><div class="transfer-actions"><button class="secondary-button" data-action="transfer-inspect">${contentText('检查已有位置','Inspect existing location')}</button><button class="secondary-button" data-action="transfer-migrate">${contentText('复制到新位置并关联','Copy to new location and link')}</button></div>`:`<p>${contentText('尚无可以迁移的普通文件夹或 Git 项目。','No folder or Git project is available for relocation.')}</p>`}</section>`;
  $('#dialog .dialog-footer').innerHTML=`<span id="dialog-status" role="status"></span><button class="secondary-button" data-action="close">${contentText('返回','Back')}</button>`;
- updateBackupCommand();
+
 }
 function updateBackupCommand(){
  const target=$('#transfer-backup-command');if(!target)return;
@@ -68,3 +68,32 @@ Object.assign(workspaceActions,{
  'transfer-result':b=>{const job=state.jobs.find(j=>j.id===b.dataset.job);if(job)transferResult(job);}
 });
 document.addEventListener('input',event=>{if(event.target.id==='transfer-backup-to')updateBackupCommand();});
+
+async function backupFileAction(importing=false){
+ const parent=captureDialogContext(true);
+ const title=contentText(importing?'导入备份':'备份',importing?'Import backup':'Backup');
+ dialogShell(title,`<p role="status">${contentText(importing?'请选择 Reprise 导出的备份文件。':'请选择备份文件的保存位置。',importing?'Choose the backup file exported by Reprise.':'Choose where to save your backup file.')}</p>`,'',false,parent);
+ const request=state.dialogRequest;
+ try{
+  const choice=typeof window.RepriseDesktop?.chooseBackup==='function'?await window.RepriseDesktop.chooseBackup(!importing):await api('/api/desktop/'+(importing?'open-backup':'save-backup'),{method:'POST',body:'{}'});
+  if(choice.status==='cancelled'){if(request===state.dialogRequest)closeDialog();return;}
+  if(choice.status!=='selected')throw Error(contentText('无法打开系统文件选择器，请在本机桌面重试。','The system file picker is unavailable. Retry on the local desktop.'));
+  if(request!==state.dialogRequest)return;
+  $('#dialog .dialog-body').innerHTML=`<p role="status">${contentText(importing?'正在校验并导入备份…':'正在导出并校验备份文件…',importing?'Verifying and importing backup…':'Exporting and verifying backup…')}</p><p class="snapshot-message">${contentText('请等待完成，当前资料保留。','Wait for completion. Your current library is retained.')}</p>`;
+  const result=await api(importing?'/api/backup-import':'/api/backup-file',{method:'POST',body:JSON.stringify(importing?{path:choice.path}:{to:choice.path})});
+  if(request!==state.dialogRequest){notify(contentText('备份操作已完成。','Backup operation complete.'));return;}
+  if(importing)state.importedBackup=result;
+  $('#dialog .dialog-body').innerHTML=`<p role="status">${contentText(importing?'备份已导入，校验通过。':'备份文件已导出，校验通过。',importing?'Backup imported and verified.':'Backup file exported and verified.')}</p><p class="project-path" data-user-content>${esc(importing?choice.path:result.path)}</p><p class="snapshot-message">${contentText(importing?'导入为一个新库，当前库继续保留。':'包含 Reprise 管理的数据；原项目文件夹和外部 Git 另行保管。',importing?'Imported as a new library. Your current library remains available.':'Contains Reprise-managed data. Keep original project folders and external Git repositories separately.')}</p>`;
+  $('#dialog .dialog-footer').innerHTML=`<span id="dialog-status" role="status"></span><button class="secondary-button" data-action="close">${uiText('返回')}</button>${importing?`<button class="primary-button" data-action="backup-open">${contentText('打开导入的备份','Open imported backup')}</button>`:''}`;
+ }catch(error){if(request===state.dialogRequest){$('#dialog .dialog-body').innerHTML=`<p role="alert" data-user-content>${esc(error.message)}</p>`;$('#dialog .dialog-footer').innerHTML=`<button class="secondary-button" data-action="close">${uiText('返回')}</button>`;}else notify(error.message);}
+}
+Object.assign(workspaceActions,{
+ 'backup-export':()=>backupFileAction(false),
+ 'backup-import':()=>backupFileAction(true),
+ 'backup-open':async()=>{
+  const native=!!window.RepriseDesktop;
+  const result=await api('/api/backup-open',{method:'POST',body:JSON.stringify({id:state.importedBackup?.id,window:native})});
+  if(!native)location.href=result.url;
+  else closeDialog();
+ }
+});

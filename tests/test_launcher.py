@@ -59,11 +59,32 @@ class LauncherTests(unittest.TestCase):
         self.assertNotEqual(two['pid'], one['pid'])
         self.assertTrue(self.cli('shutdown')['stopped'])
 
-    def test_open_without_path_does_not_import_current_repository(self):
+    def test_open_without_path_opens_current_project_without_saving(self):
         result = self.cli('open', '--no-browser')
-        self.assertIsNone(result['path'])
-        self.assertIsNone(result['project_id'])
-        self.assertEqual(self.cli('projects'), [])
+        self.assertEqual(result['path'], str(self.repo.work_tree))
+        self.assertIsNotNone(result['project_id'])
+        self.assertEqual(self.cli('projects')[0]['kind'], 'folder')
+        self.assertEqual(self.cli('history', result['project_id'])['commits'], [])
+
+    def test_current_project_reuses_folder_choice_from_a_nested_directory(self):
+        from reprise.launcher import open_current_project
+        from reprise.projects import ProjectStore
+        store = ProjectStore(self.data)
+        git = store.add(str(self.repo.work_tree))
+        folder = store.add(str(self.repo.work_tree), kind='folder')
+        store.save_preview_preferences(folder['id'], 'none')
+        nested = self.repo.work_tree / 'nested'; nested.mkdir()
+        result = open_current_project(self.data, nested, browser=False)
+        self.assertEqual(result['project_id'], folder['id'])
+        self.assertNotEqual(result['project_id'], git['id'])
+        self.assertEqual(store.record(folder['id'])['preview_preferences']['mode'], 'none')
+
+    def test_explicit_invoking_folder_wins_over_agent_process_directory(self):
+        source = self.root / 'another website'; source.mkdir()
+        (source / 'index.html').write_text('<h1>Current task</h1>')
+        result = self.cli('open', '--cwd', str(source), '--no-browser')
+        self.assertEqual(result['path'], str(source))
+        self.assertEqual(self.cli('history', result['project_id'])['commits'], [])
 
     def test_explicit_related_history_is_saved_with_put(self):
         root = self.root / 'history.git'

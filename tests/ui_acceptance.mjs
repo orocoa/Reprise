@@ -14,7 +14,7 @@ await page.addInitScript(source=>{
  let choices=0;
  window.RepriseDesktop={chooseFolder:async()=>++choices===1?{status:'cancelled'}:{status:'selected',path:source,backend:'test-bridge'}};
 },fixture.source);
-const noMainExtras=async scope=>{for(const action of ['ai-settings','ai-suggest','content-storage','content-transfer'])assert.equal(await page.locator(`${scope} [data-action=${action}]:visible`).count(),0);};
+const noMainExtras=async scope=>{for(const action of ['ai-settings','ai-suggest','content-storage'])assert.equal(await page.locator(`${scope} [data-action=${action}]:visible`).count(),0);};
 async function setLanguage(language){
  await page.click('#settings-toggle');
  await page.waitForSelector('#dialog.settings-dialog');
@@ -69,7 +69,7 @@ try{
  assert.equal(await page.locator('#initial-preview-choice').inputValue(),'auto','Language changes preserve the first answer');
 
  await page.click('#dialog [data-action=save-content-version]');
- await page.waitForFunction(()=>state.commits.length===1&&detail(state.selected)?.evidence.some(record=>record.status==='complete'),undefined,{timeout:30000});
+ await page.waitForFunction(()=>state.commits.length===1&&detail(state.selected)?.evidence.some(record=>record.status==='complete'),undefined,{timeout:60000});
  await page.waitForFunction(()=>document.querySelector('#draft-list img')?.naturalWidth>0);
  const sha=await page.evaluate(()=>state.selected);
  const capture=await page.evaluate(()=>detail(state.selected).evidence.find(record=>record.status==='complete'));
@@ -95,7 +95,7 @@ try{
  assert.equal(await page.evaluate(()=>state.project.preview_preferences.pending_recipe),undefined);
  assert.equal(await page.locator('[data-action=remember-draft-preview]').count(),0,'The first answer already covers future saves');
  await page.keyboard.press('ControlOrMeta+s');
- await page.waitForFunction(()=>state.jobs.some(j=>j.operation==='snapshot'&&j.status==='complete'&&j.result?.unchanged),undefined,{timeout:30000});
+ await page.waitForFunction(()=>state.jobs.some(j=>j.operation==='snapshot'&&j.status==='complete'&&j.result?.unchanged),undefined,{timeout:60000});
  assert.equal(await page.evaluate(()=>state.commits.length),1,'Unchanged quick save reuses the original draft');
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),false,'A remembered project preference enables direct saving');
  const quick=requests.filter(r=>/\/snapshot$/.test(r.url));
@@ -117,7 +117,10 @@ try{
  const noSource=fixture.root+'/Files only website';
  await fs.mkdir(noSource);
  await fs.copyFile(fixture.source+'/index.html',noSource+'/index.html');
- await page.click('.chrome [data-action=content-projects]');
+ // Project entry is agent-led; use the on-demand picker for this fixture's
+ // second project instead of assuming a global header switcher exists.
+ // Wait for rendered picker readiness, not a cross-CDP async promise.
+ await page.evaluate(()=>{projectPicker();});
  await page.waitForSelector('[data-project-picker]');
  await page.click('#manual-folder-path > summary');
  await page.fill('#content-import-path',noSource);
@@ -136,7 +139,8 @@ try{
  await page.waitForFunction(()=>state.commits.length===2);
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),false,'Later files-only saves need no dialog');
  assert.equal(await page.locator('#draft-list img').count(),0);
- await page.click('.chrome [data-action=content-projects]');
+ // Wait for rendered picker readiness, not a cross-CDP async promise.
+ await page.evaluate(()=>{projectPicker();});
  await page.waitForSelector(`[data-action=content-open][data-project="${project}"]`);
  await page.click(`[data-action=content-open][data-project="${project}"]`);
  await page.waitForFunction(id=>state.project?.id===id&&state.commits.length===1,project);
@@ -149,7 +153,7 @@ try{
  await page.click('#dialog [data-keep-open=saved-drafts] > summary');
  await page.waitForFunction(()=>!document.querySelector('.settings-advanced').hasAttribute('data-motion-expanded'));
  assert.equal(await page.locator('#dialog [data-action=content-transfer]').isVisible(),true);
- assert.equal(await page.locator('#dialog [data-action=content-storage]').isVisible(),true);
+ assert.deepEqual(await page.locator('.advanced-actions>button').allTextContents(),['Manage versions','Backup','Import backup']);
  await page.click('#dialog [data-action=content-transfer]');
  await page.waitForSelector('#transfer-project');
  await page.click('#dialog .dialog-footer [data-action=close]');

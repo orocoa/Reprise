@@ -57,6 +57,17 @@ def snapshot(service, identifier, history_identifiers=(), history_catalog=None):
         result['warnings'].extend(archive['warnings'])
         fingerprints.append(archive['snapshot'])
     result['commits'] = sorted(commits.values(), key=lambda c: (c['committed_at'], c['sha']), reverse=True)
+    # Explicitly removed read-only versions must not reappear through another
+    # linked archive. Keep every retained commit's original ordered parent SHAs;
+    # omitted parents remain graph boundaries rather than invented connections.
+    from .version_cleanup import removed_versions
+    removed = set().union(*(removed_versions(service, source['id']) for source in sources))
+    result['commits'] = [c for c in result['commits'] if c['sha'] not in removed]
+    for source in sources:
+        visible = [c for c in result['commits'] if c['source_project_id'] == source['id']]
+        source['unique_commits'] = len(visible)
+        if source['kind'] == 'current':
+            source['count'] = len(visible)
     result['refs'] = list(refs.values())
     result['history_sources'] = sources
     # Catalog membership and provenance can change without moving a Git tip.

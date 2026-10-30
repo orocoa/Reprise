@@ -5,6 +5,8 @@
 :root{--standard:InterVariable;--mono:ui-monospace,SFMono-Regular,Consolas,monospace;--ui:InterVariable,'PingFang SC','Microsoft YaHei',sans-serif;font-family:var(--ui);font-optical-sizing:auto;font-feature-settings:'cv11' 1,'calt' 1}
 body,button,input,select{font-family:var(--ui)}
 .brand{min-width:0}.brand strong{font-family:var(--ui);font-size:22px;line-height:32px;font-weight:400;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.reprise-logo{display:block;flex:none;width:28px;height:28px;object-fit:contain}
+@media(max-width:680px){.reprise-logo{width:24px;height:24px}}
 .chrome-actions{flex:0;gap:8px}.search{max-width:420px}.chrome .brand{flex:1}.chrome .search{flex:1}
 .history h1{font-size:15px;font-weight:550}.segmented button,.detail-tabs button{font-size:13px;font-weight:500;white-space:nowrap}
 .detail-title h2{font-family:var(--ui);font-size:29px;font-weight:560;line-height:1.45;letter-spacing:-.6px;text-wrap:pretty;overflow-wrap:anywhere}
@@ -233,3 +235,24 @@ button[data-action="more"]:focus-visible{outline:2px solid #767681;outline-offse
 .recipe-advanced summary{cursor:pointer;margin:12px 0}
 .live-preview-frame{display:block;width:100%;height:440px;border:1px solid var(--line,#ddd);border-radius:8px;margin:12px 0;background:white}
 .runtime-row,.detail-actions{flex-wrap:wrap;gap:8px}
+
+/* Dialog close stays quiet; keyboard users retain a visible circular focus. */
+.dialog-header>.icon-button,.dialog-header>.icon-button:hover{border:0;background:transparent;box-shadow:none}
+.dialog-header>.icon-button:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:50%}
+.field select{display:block;width:100%;max-width:100%;height:44px;min-height:44px;padding:10px 44px 10px 16px;appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23757581' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 6 5 5 5-5'/%3E%3C/svg%3E") right 16px center/14px no-repeat;border:1px solid #d8d8e1;border-radius:999px;box-sizing:border-box}
+.version-author{display:inline-flex;align-items:center;gap:6px}.version-author .edit-entry{opacity:1;width:24px;height:24px;padding:3px}.version-author .icon{width:14px;height:14px}
+.version-delete-options{display:grid;gap:12px;margin:20px 0}.version-delete-option{display:flex;align-items:flex-start;gap:12px;padding:18px;border:1px solid var(--line);border-radius:16px;cursor:pointer}.version-delete-option:has(input:checked){border-color:var(--ink);background:#f7f7f8}.version-delete-option input{margin-top:4px;flex:none}.version-delete-option strong,.version-delete-option small{display:block}.version-delete-option small{margin-top:6px;color:var(--muted);line-height:1.7}.version-delete-option:has(input:disabled){opacity:.55;cursor:default}
+.detail-subline .detail-recover{margin-left:auto;color:var(--ink);white-space:nowrap}
+
+/* Interactive runs stay visible and retain a return path to their exact version. */
+#dialog.runtime-preview-dialog[open]{width:min(1440px,calc(100vw - 48px));height:min(850px,calc(100dvh - 64px));max-height:calc(100dvh - 64px);display:flex;flex-direction:column}
+.runtime-preview-dialog .dialog-header,.runtime-preview-dialog .dialog-footer{flex:none}
+.runtime-preview-dialog .dialog-body{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;padding:16px 24px}
+.running-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:none;font-size:12px}.running-preview-heading p{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.running-preview-heading a{flex:none}
+.runtime-preview-dialog .live-preview-frame{flex:1;min-height:0;height:auto;margin-bottom:0}
+
+/* Pointer focus must not inherit WebKit's keyboard rings on close buttons or
+   scrollable panels. Keep existing :focus-visible styles for keyboard input,
+   and keep text-field focus styling for either input method. */
+:root[data-input-modality="pointer"] :is(button,a,summary,[tabindex]):not(input,textarea,select):focus{outline:none}
+#dialog-title:focus{outline:none}
