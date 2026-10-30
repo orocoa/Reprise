@@ -1,16 +1,45 @@
 {
   "schema": 1,
-  "status": "pending",
+  "status": "verified",
   "version": "0.8.5",
   "package": {
-    "filename": "Reprise-Skill.zip"
+    "filename": "Reprise-Skill.zip",
+    "sha256": "7beabe1c2042dbe256e87b024cb363726e762960f2705d6564f8567ca2e96dfa"
   },
   "verification": {
-    "exact_version": false,
-    "source_unchanged": false,
-    "recovery_readback": false
+    "exact_version": true,
+    "source_unchanged": true,
+    "recovery_readback": true
   },
   "assets": [
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8.5-draft-before.png",
+      "sha256": "44119e0ca58cd52197deb04441b2cde0c3100588d0efc7fe3789968f738ecb4d",
+      "version_sha": "00dc255884bc797f787dd7d346f33faca9e15bb6",
+      "alt": {
+        "zh": "0.8.5 预发布安装包（8e99f2b）保存的第一稿合成网页画面。",
+        "en": "Synthetic webpage first draft captured by the installed 0.8.5 candidate (8e99f2b) package."
+      },
+      "caption": {
+        "zh": "由0.8.5 预发布安装入口（8e99f2b）保存并采集，绑定完整版本 00dc255884bc797f787dd7d346f33faca9e15bb6。旧稿另经交互运行与恢复读回，当前稿件保持原样。",
+        "en": "Saved and captured through the installed 0.8.5 candidate (8e99f2b) entry, bound to version 00dc255884bc797f787dd7d346f33faca9e15bb6. The old draft also passed interactive preview and recovery readback; the current draft stayed unchanged."
+      }
+    },
+    {
+      "kind": "image",
+      "path": "assets/reprise-0.8.5-draft-after.png",
+      "sha256": "660f7650a7e8e446b081e1547da6f5cd7599a0d6defe7d7704443a43e751d2a1",
+      "version_sha": "973651d128cf340a0b108d1b682b4ee0bbc779fc",
+      "alt": {
+        "zh": "0.8.5 预发布安装包（8e99f2b）保存的第二稿合成网页画面。",
+        "en": "Synthetic webpage second draft captured by the installed 0.8.5 candidate (8e99f2b) package."
+      },
+      "caption": {
+        "zh": "由0.8.5 预发布安装入口（8e99f2b）保存并采集，绑定完整版本 973651d128cf340a0b108d1b682b4ee0bbc779fc。旧稿另经交互运行与恢复读回，当前稿件保持原样。",
+        "en": "Saved and captured through the installed 0.8.5 candidate (8e99f2b) entry, bound to version 973651d128cf340a0b108d1b682b4ee0bbc779fc. The old draft also passed interactive preview and recovery readback; the current draft stayed unchanged."
+      }
+    },
     {
       "kind": "image",
       "path": "assets/reprise-0.8.4-settings-zh.png",
@@ -20,8 +49,8 @@
         "en": "0.8.4 project settings with compact language controls and Advanced management."
       },
       "caption": {
-        "zh": "0.8.4 安装后实拍，使用两稿合成网页；界面文件与最终发布包逐字节一致。高级管理支持平滑展开和收起。",
-        "en": "Captured from installed 0.8.4 using a synthetic two-draft website. UI files match the final package byte for byte; Advanced management opens and closes smoothly."
+        "zh": "0.8.4 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "zh"
     },
@@ -34,8 +63,8 @@
         "en": "0.8.4 project settings with compact language controls and Advanced management."
       },
       "caption": {
-        "zh": "0.8.4 安装后实拍，使用两稿合成网页；界面文件与最终发布包逐字节一致。高级管理支持平滑展开和收起。",
-        "en": "Captured from installed 0.8.4 using a synthetic two-draft website. UI files match the final package byte for byte; Advanced management opens and closes smoothly."
+        "zh": "0.8.4 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "en"
     },
@@ -48,8 +77,8 @@
         "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "0.8.2 留存界面样例；0.8.4 设置变化见本页新截图。当前工作台的版本缩略图列表，使用合成个人网页。",
-        "en": "Retained 0.8.2 workbench example; see the new screenshots for 0.8.4 settings. Current picture history using a synthetic personal webpage."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "zh"
     },
@@ -62,8 +91,8 @@
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "0.8.2 留存界面样例；0.8.4 设置变化见本页新截图。当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
-        "en": "Retained 0.8.2 workbench example; see the new screenshots for 0.8.4 settings. Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "zh"
     },
@@ -76,8 +105,8 @@
         "en": "Current picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "0.8.2 留存界面样例；0.8.4 设置变化见本页新截图。当前工作台的版本缩略图列表，使用合成个人网页。",
-        "en": "Retained 0.8.2 workbench example; see the new screenshots for 0.8.4 settings. Current picture history using a synthetic personal webpage."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "en"
     },
@@ -90,8 +119,8 @@
         "en": "Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "0.8.2 留存界面样例；0.8.4 设置变化见本页新截图。当前固定紧凑 Git 关系图，九个真实合成提交及其对应画面。",
-        "en": "Retained 0.8.2 workbench example; see the new screenshots for 0.8.4 settings. Current fixed compact Git graph with nine real synthetic commits and their matching pictures."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.5 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.5 package."
       },
       "locale": "en"
     },
@@ -115,7 +144,7 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "Retained 0.8.4 and 0.8.2 assets remain labelled with their original build. The 0.8.5 final installed-package demonstration is pending."
+    "note": "The installed 0.8.5 candidate (8e99f2b) saved and captured two exact synthetic drafts. Historical preview interaction and CLI/UI recovery readback passed while the current source stayed unchanged. New images are the actual product captures; older workbench screenshots remain labelled historical. No private project data is shown."
   },
   "previous_verified_package": {
     "version": "0.8.4",

@@ -38,6 +38,32 @@ test('running exact-version preview opens immediately without any new run reques
  assert.equal(h.requests.length,0);assert.match(h.dialogs.at(-1).body,/<iframe/);
  assert.match(h.dialogs.at(-1).body,/http:\/\/127\.0\.0\.1:45678\//);
  assert.match(h.dialogs.at(-1).footer,/返回版本/);
+ assert.match(h.dialogs.at(-1).footer,/data-action="stop-runtime" data-runtime="runtime"/);
+});
+
+function stopHarness(h){
+ Object.assign(h.context,{manualDialog(){},saveManualEvidence(){},closeDialog(){h.dialog.open=false;h.state.dialogRequest++;}});
+ vm.runInContext(fs.readFileSync(path.join(web,'live-features.js'),'utf8').split('// Named handlers')[1].replace(/^[\s\S]*?const featureActions/,'const featureActions')+'\nglobalThis.stopPreview=featureActions["stop-runtime"];',h.context);
+ return ()=>h.context.stopPreview({dataset:{runtime:'runtime'}});
+}
+test('stopping an exact running preview closes its dialog after confirmed cleanup',async()=>{
+ const h=harness({ready:true});await h.context.startWorkspaceAction('run');
+ await stopHarness(h)();
+ assert.equal(h.dialog.open,false);
+ assert.equal(h.requests.at(-1).url,'/api/runtimes/runtime/stop');
+});
+test('a failed stop leaves the preview available for retry',async()=>{
+ const h=harness({ready:true});await h.context.startWorkspaceAction('run');
+ h.context.api=async()=>{throw Error('Cleanup unconfirmed');};
+ await assert.rejects(stopHarness(h)(),/Cleanup unconfirmed/);
+ assert.equal(h.dialog.open,true);
+});
+test('a late stop cannot close a newer dialog',async()=>{
+ let resolve;const response=new Promise(done=>{resolve=done;});
+ const h=harness({ready:true,postResponse:response});await h.context.startWorkspaceAction('run');
+ const stopping=stopHarness(h)();h.context.dialogShell('Settings','Settings content','');
+ resolve({running:false});await stopping;
+ assert.equal(h.dialog.open,true);assert.equal(h.dialogs.at(-1).body,'Settings content');
 });
 
 test('completed queued run replaces its progress dialog with the interactive page',async()=>{

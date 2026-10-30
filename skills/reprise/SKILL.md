@@ -1,6 +1,6 @@
 ---
 name: reprise
-description: "倒带 / Reprise：保存本地网页稿、按画面找旧版、浏览已有 Git 版本关系并取出新副本。Use to open Reprise, save webpage drafts, browse their pictures or real Git relationships, and recover a chosen version."
+description: "倒带 / Reprise：保存本地网页稿、按画面找回旧版、管理版本历史，以及明确选择后的版本删除与环境释放。Use to save, find and recover webpage versions, inspect Git history, or explicitly remove managed versions and release preview resources."
 license: MIT
 metadata:
   version: "0.8.5"
@@ -52,4 +52,8 @@ Keep the agreed **画面 / 版本关系** interface: picture thumbnails and one 
 
 For existing Git branches/merges, use `python3 "$REPRISE" open /known/repository --lang zh --no-browser`. This is a read-only Git project, separate from folder checkpoints. Folder save order never impersonates source branches. Images belong to exact versions; never fill a missing picture from another revision. Do not checkout, reset, commit or install into an imported source.
 
-For detailed comparison/recovery, read [workbench tasks](references/workspace-tasks.md). Only for requested legacy import, backup, migration, deletion or environment maintenance, read [advanced workflows](references/advanced-workflows-0.8.md) or [folder imports](references/folder-imports.md). Preserve existing files, media, runtimes and failed diagnostics. General feature expansion is frozen; do not turn a draft task into cleanup or another AI setup.
+## Delete or release resources
+
+For requested deletion, disk usage or memory relief, read [version management](references/version-management.md). Distinguish stopping a preview process (memory), releasing verified generated dependencies (disk), deleting a managed saved draft, and removing read-only Git/archive entries from Reprise. Inspect the exact scope and use existing authorization; never infer deletion permission from saving or browsing.
+
+For detailed comparison/recovery, read [workbench tasks](references/workspace-tasks.md). For requested legacy import, backup, migration or advanced maintenance, read [advanced workflows](references/advanced-workflows-0.8.md) or [folder imports](references/folder-imports.md). Preserve existing data and diagnostics outside an explicitly authorized deletion scope. General feature expansion is frozen; do not turn a draft task into cleanup or another AI setup.

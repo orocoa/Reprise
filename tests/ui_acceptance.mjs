@@ -119,7 +119,8 @@ try{
  await fs.copyFile(fixture.source+'/index.html',noSource+'/index.html');
  // Project entry is agent-led; use the on-demand picker for this fixture's
  // second project instead of assuming a global header switcher exists.
- await page.evaluate(()=>projectPicker());
+ // Wait for rendered picker readiness, not a cross-CDP async promise.
+ await page.evaluate(()=>{projectPicker();});
  await page.waitForSelector('[data-project-picker]');
  await page.click('#manual-folder-path > summary');
  await page.fill('#content-import-path',noSource);
@@ -138,7 +139,8 @@ try{
  await page.waitForFunction(()=>state.commits.length===2);
  assert.equal(await page.locator('#dialog').evaluate(e=>e.open),false,'Later files-only saves need no dialog');
  assert.equal(await page.locator('#draft-list img').count(),0);
- await page.evaluate(()=>projectPicker());
+ // Wait for rendered picker readiness, not a cross-CDP async promise.
+ await page.evaluate(()=>{projectPicker();});
  await page.waitForSelector(`[data-action=content-open][data-project="${project}"]`);
  await page.click(`[data-action=content-open][data-project="${project}"]`);
  await page.waitForFunction(id=>state.project?.id===id&&state.commits.length===1,project);

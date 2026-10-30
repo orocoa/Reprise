@@ -1,8 +1,16 @@
 # Understand what removing an old version will lose
 
-**Version: 0.7.0 local candidate. The default walkthrough inspects plans and retains every version.**
+**Version: 0.8.5. The sample walkthrough can stop at planning; execution requires explicit review and confirmation.**
 
-Your task is to distinguish losing a historical state, reclaiming unique content, and changing free disk space. Deletion here applies only to Reprise-managed folder snapshots, not external Git commits or older named archives.
+Distinguish deleting a saved state, removing a local entry, releasing generated dependencies and stopping a preview. Managed folder drafts can be deleted. External Git and archive entries can be removed from Reprise while their source history remains.
+
+## Current interface and scope
+
+Select a version, click **Delete**, review the scope and confirm. Folder-draft deletion removes its saved state, owned runtime copies and exact-version media. **Remove from Reprise** for Git/archive entries removes local membership and managed attachments while retaining source commits and original archives. Original folders, external backups and recovered copies remain. **Clear environment only** is available only for a registered, verified generated environment. Active previews must be stopped before reviewing the scope again.
+
+Memory and disk are separate: **Stop preview** in the running-preview dialog ends that instance’s processes and retains saved files. **Back to version** only closes the dialog. **Stop Reprise** in settings stops that data directory’s service and previews. Releasing an environment removes verified generated dependencies and mainly affects disk usage; it is not proof of an overall RAM or speed improvement.
+
+The joint CLI deletion below removes saved content while retaining pictures and runtime copies. Its scope differs from single-version attachment deletion in the interface.
 
 ## Prerequisites
 

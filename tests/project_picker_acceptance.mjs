@@ -8,7 +8,8 @@ const browser=await chromium.launch({headless:true,...(process.env.REPRISE_BROWS
 const page=await browser.newPage({viewport:{width:1360,height:900}}),errors=[];
 async function openProjectPicker(){
  // The toolbar entry was removed; exercise the retained dialog and its choices.
- await page.evaluate(()=>projectPicker());
+ // Wait for rendered picker readiness, not a cross-CDP async promise.
+ await page.evaluate(()=>{projectPicker();});
  await page.waitForSelector('[data-project-picker]');
 }
 page.on('pageerror',e=>errors.push(e.message));

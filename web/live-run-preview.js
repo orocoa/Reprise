@@ -36,7 +36,8 @@ function openRuntimePreview(runtime){
  versionPreviews.view=null;
  dialogShell(contentText('运行预览','Running preview'),
   `<div class="running-preview-heading"><p data-user-content>${esc(versionTitle(commit(target.sha)))}</p><a class="text-button" href="${esc(url.href)}" target="_blank" rel="noopener">${contentText('在浏览器打开 ↗','Open in browser ↗')}</a></div><iframe class="live-preview-frame" title="${contentText('运行预览','Running preview')}" sandbox="allow-scripts allow-forms allow-same-origin allow-downloads" src="${esc(url.href)}"></iframe>`,
-  `<button class="secondary-button" data-action="close">${contentText('返回版本','Back to version')}</button>`,true,null,'runtime');
+  `<button class="text-button" data-action="stop-runtime" data-runtime="${esc(runtime.id)}">${contentText('停止预览','Stop preview')}</button><button class="secondary-button" data-action="close">${contentText('返回版本','Back to version')}</button>`,true,null,'runtime');
+ $('#dialog').dataset.previewRuntime=runtime.id;
  return true;
 }
 function previewProgress(target,job=null){

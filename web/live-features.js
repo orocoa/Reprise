@@ -209,7 +209,11 @@ const featureActions={
  'cancel-job':b=>api(`/api/jobs/${b.dataset.job}/cancel`,{method:'POST',body:'{}'}),
  'dismiss-job':b=>{state.jobs.find(j=>j.id===b.dataset.job).dismissed=true;renderDetail();refreshSettingsManagement();},
  'stop-runtime':async b=>{
-  try{await api(`/api/runtimes/${b.dataset.runtime}/stop`,{method:'POST',body:'{}'});}
+  const id=b.dataset.runtime,generation=state.dialogRequest;
+  try{
+   await api(`/api/runtimes/${id}/stop`,{method:'POST',body:'{}'});
+   if(state.dialogRequest===generation&&$('#dialog').open&&$('#dialog').dataset.previewRuntime===id)closeDialog();
+  }
   finally{await refreshWorkspace();renderDetail();}
  },
  media:b=>showMedia(b.dataset.record,b.dataset.index)
