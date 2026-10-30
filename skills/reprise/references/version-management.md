@@ -14,4 +14,6 @@ For joint deletion of folder snapshots, use `version-delete-plan PROJECT --sha F
 
 Use `storage` only when disk accounting is requested. It is an explicit scan of Reprise's data directory, not a background scan of the computer. Logical bytes, allocated blocks and free volume space have different meanings; none proves exclusive physical space freed on APFS. Stopping a process releases its process resources, not saved files. Do not call disk cleanup “RAM optimization” or promise a measured memory/CPU improvement without measuring it.
 
+For runtime accounting use `process_state: alive | exited | unknown` with the status, not the legacy `running` flag alone. `cleanup_failed` can keep that flag true conservatively while process observation is unconfirmed; it does not prove a process is consuming memory. Valid records from a previous system boot are exited; their files and diagnostic records remain. Record counts are not process counts, and several previews can refer to the same saved version.
+
 If the plan changes, re-plan before execution. If cleanup reports partial failure, retain the receipt and report what actually completed; do not retry broadly or call the result complete. A missing screenshot never authorizes borrowing another version's image.

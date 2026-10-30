@@ -178,8 +178,11 @@ class RuntimeManager:
                             pass  # A live owner must still be cancelled through its job.
                     try:
                         state['running'] = self._alive(state)
+                        state['process_state'] = 'alive' if state['running'] else 'exited'
                     except ProcessCleanupError as error:
-                        state.update(status='cleanup_failed', running=True, cleanup_error=str(error))
+                        # `running` remains conservative for older safety checks.
+                        # Observation failure is not evidence of a live process.
+                        state.update(status='cleanup_failed', running=True, process_state='unknown', cleanup_error=str(error))
                     if state['status'] == 'running' and not state['running']:
                         state['status'] = 'exited'
                     states.append(state)
