@@ -28,6 +28,10 @@ def commit_repo(path):
     subprocess.run(['git', 'init', '-q', str(path)], check=True)
     subprocess.run(['git', '-C', str(path), 'config', 'user.name', 'Reprise test'], check=True)
     subprocess.run(['git', '-C', str(path), 'config', 'user.email', 'test@example.invalid'], check=True)
+    # Fixture writes must finish before read-only byte fingerprints begin.
+    # A detached Git maintenance task can otherwise add/remove its own lock.
+    subprocess.run(['git', '-C', str(path), 'config', 'maintenance.auto', 'false'], check=True)
+    subprocess.run(['git', '-C', str(path), 'config', 'gc.auto', '0'], check=True)
     (path / 'index.html').write_text('<!doctype html><title>first</title><h1>first</h1>')
     (path / 'clip.bin').write_bytes(b'0123456789')
     subprocess.run(['git', '-C', str(path), 'add', '.'], check=True)

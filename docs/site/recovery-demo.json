@@ -4,7 +4,8 @@
   "version": "0.8.5",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "7beabe1c2042dbe256e87b024cb363726e762960f2705d6564f8567ca2e96dfa"
+    "sha256": "31429f459250f71b4a0f2fadaedb594df1b21354d31f17f42a39a305c08a69b9",
+    "source_commit": "32a55077b85bf77d175d015b04694af1d5683e36"
   },
   "verification": {
     "exact_version": true,
@@ -16,28 +17,28 @@
       "kind": "image",
       "path": "assets/reprise-0.8.5-draft-before.png",
       "sha256": "44119e0ca58cd52197deb04441b2cde0c3100588d0efc7fe3789968f738ecb4d",
-      "version_sha": "00dc255884bc797f787dd7d346f33faca9e15bb6",
+      "version_sha": "4fccea1d35b66385c33589b21a77e5c3e83ce606",
       "alt": {
-        "zh": "0.8.5 预发布安装包（8e99f2b）保存的第一稿合成网页画面。",
-        "en": "Synthetic webpage first draft captured by the installed 0.8.5 candidate (8e99f2b) package."
+        "zh": "最终 0.8.5 源码 Skill 包实际保存并采集的合成网页画面。",
+        "en": "Synthetic webpage saved and captured through the final 0.8.5 source Skill package."
       },
       "caption": {
-        "zh": "由0.8.5 预发布安装入口（8e99f2b）保存并采集，绑定完整版本 00dc255884bc797f787dd7d346f33faca9e15bb6。旧稿另经交互运行与恢复读回，当前稿件保持原样。",
-        "en": "Saved and captured through the installed 0.8.5 candidate (8e99f2b) entry, bound to version 00dc255884bc797f787dd7d346f33faca9e15bb6. The old draft also passed interactive preview and recovery readback; the current draft stayed unchanged."
+        "zh": "通过最终包入口保存与采集，绑定完整版本 4fccea1d35b66385c33589b21a77e5c3e83ce606；旧稿经交互预览、停止与恢复读回，当前源文件保持。",
+        "en": "Saved and captured through the final package, bound to version 4fccea1d35b66385c33589b21a77e5c3e83ce606. The old draft passed interactive preview, explicit stop and recovery readback while current source files remained unchanged."
       }
     },
     {
       "kind": "image",
       "path": "assets/reprise-0.8.5-draft-after.png",
       "sha256": "660f7650a7e8e446b081e1547da6f5cd7599a0d6defe7d7704443a43e751d2a1",
-      "version_sha": "973651d128cf340a0b108d1b682b4ee0bbc779fc",
+      "version_sha": "6f5367fda5cac6b3bcd7be1f8b6f8a652b9d1683",
       "alt": {
-        "zh": "0.8.5 预发布安装包（8e99f2b）保存的第二稿合成网页画面。",
-        "en": "Synthetic webpage second draft captured by the installed 0.8.5 candidate (8e99f2b) package."
+        "zh": "最终 0.8.5 源码 Skill 包实际保存并采集的合成网页画面。",
+        "en": "Synthetic webpage saved and captured through the final 0.8.5 source Skill package."
       },
       "caption": {
-        "zh": "由0.8.5 预发布安装入口（8e99f2b）保存并采集，绑定完整版本 973651d128cf340a0b108d1b682b4ee0bbc779fc。旧稿另经交互运行与恢复读回，当前稿件保持原样。",
-        "en": "Saved and captured through the installed 0.8.5 candidate (8e99f2b) entry, bound to version 973651d128cf340a0b108d1b682b4ee0bbc779fc. The old draft also passed interactive preview and recovery readback; the current draft stayed unchanged."
+        "zh": "通过最终包入口保存与采集，绑定完整版本 6f5367fda5cac6b3bcd7be1f8b6f8a652b9d1683；旧稿经交互预览、停止与恢复读回，当前源文件保持。",
+        "en": "Saved and captured through the final package, bound to version 6f5367fda5cac6b3bcd7be1f8b6f8a652b9d1683. The old draft passed interactive preview, explicit stop and recovery readback while current source files remained unchanged."
       }
     },
     {
@@ -144,7 +145,7 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "The installed 0.8.5 candidate (8e99f2b) saved and captured two exact synthetic drafts. Historical preview interaction and CLI/UI recovery readback passed while the current source stayed unchanged. New images are the actual product captures; older workbench screenshots remain labelled historical. No private project data is shown."
+    "note": "The final clean source Skill package (32a5507) saved and freshly captured both exact synthetic drafts. The new captures are byte-identical to the retained image assets, whose bytes were read back and compared. Historical preview interaction, explicit stop and recovery readback passed. The same package is installed locally with manifest integrity verified; existing user previews remain. Earlier workbench screenshots stay labelled historical; no private project data is shown."
   },
   "previous_verified_package": {
     "version": "0.8.4",
