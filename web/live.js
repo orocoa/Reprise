@@ -110,12 +110,27 @@ function renderPreview(d,{comparison=false,pairedTarget=null}={}){
  const diagnostics=renderCaptureDiagnostics(d);
  return (comparison?'':renderRuntimes(d))+(items.length?diagnostics+content:content+diagnostics);
 }
+function emptyVersionContent(){
+ let title,description,actions;
+ if(state.filter==='starred'||state.commits.length){
+  const starred=state.filter==='starred';
+  title=contentText(starred?'还没有收藏版本':'没有匹配版本',starred?'No starred versions':'No matching versions');
+  description=contentText(starred?'点击版本右侧的星标，即可在这里定位。':'清空搜索或切换到全部版本，即可继续查看。',starred?'Star a version to find it here.':'Clear the search or show all versions to continue.');
+  actions=`<button class="secondary-button" data-action="clear-search">${contentText('查看全部版本','Show all versions')}</button>`;
+ }else{
+  const kind=state.project?.kind;
+  title=contentText(kind==='folder'?'还没有保存稿件':kind==='archive'?'没有可显示的归档版本':'这个项目还没有提交',kind==='folder'?'No drafts saved yet':kind==='archive'?'No archive versions to display':'This project has no commits');
+  description=contentText(kind==='folder'?'保存一稿，留下当前网页的文件和画面。':kind==='archive'?'原始归档继续保留，可以选择其他项目查看。':'首次提交后刷新，版本历史会出现在这里。',kind==='folder'?'Save a draft to keep the website files and their appearance.':kind==='archive'?'The original archive remains saved. Choose another project to continue browsing.':'Refresh after the first commit to see its history here.');
+  actions=(kind==='folder'?`<button class="primary-button" data-action="content-snapshot">${contentText('保存第一稿','Save your first draft')}</button>`:'')+`<button class="secondary-button" data-action="content-projects">${contentText('选择项目','Choose a project')}</button>`;
+ }
+ return `<div class="empty-content"><h3>${title}</h3><p>${description}</p><div class="content-empty-actions">${actions}</div></div>`;
+}
 function renderDetail(){
  const focus=captureViewFocus($('#detail'));
  const opened=openDisclosures($('#detail')),top=$('#detail').scrollTop;
- const c=commit(state.selected);if(!c&&state.project?.kind==='folder'){$('#detail').innerHTML=`<div class="empty-content"><h3>${contentText('还没有保存稿件','No drafts saved yet')}</h3><p>${contentText('保存一稿，留下当前网页的文件和画面。','Save a draft to keep the website files and their appearance.')}</p><div class="content-empty-actions"><button class="primary-button" data-action="content-snapshot">${contentText('保存第一稿','Save your first draft')}</button><button class="secondary-button" data-action="content-projects">${uiText('选择项目')}</button></div></div>`;return;}if(!c){$('#detail').innerHTML=`<div class="empty-content"><h3>${state.filter==='starred'?'还没有收藏版本':state.commits.length?'没有匹配版本':'这个项目还没有提交'}</h3><p>${state.filter==='starred'?'点击版本右侧的星标，即可在这里定位。':state.commits.length?'清空搜索或切换到全部版本，即可继续查看。':'首次提交后刷新，版本历史会出现在这里。'}</p>${state.commits.length?'<button class="secondary-button" data-action="clear-search">查看全部版本</button>':''}</div>`;return;}
+ const c=commit(state.selected);if(!c){$('#detail').innerHTML=emptyVersionContent();return;}
  const d=detail(c.sha),starred=state.prefs.stars.includes(c.sha),items=d?mediaItems(d):[],notes=versionNotes(c);
- $('#detail').innerHTML=`<div class="detail-head"><div class="detail-topline"><div class="eyebrow"><span class="version-tag">${esc(versionLabel(c))}</span><span class="eyebrow-line"></span><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at,true))}</time></div><div class="detail-actions"><button class="primary-button" data-action="recovery" ${d?'':'disabled'}>${contentText('取出这一稿','Recover this draft')}</button>${state.tab==='compare'||!d||!visualPresentation(d)?'':`<button class="secondary-button" data-action="run">${contentText('运行预览','Run preview')}</button>`}</div></div><div class="detail-title"><div class="version-name"><h2 data-user-content>${esc(versionTitle(c))}</h2><button class="edit-entry edit-primary" data-action="edit-version" ${d?'':'disabled'} aria-label="编辑版本信息" title="编辑版本信息">${icon('pencil')}</button></div><button class="star-button ${starred?'starred':''}" data-action="star" aria-label="${starred?'取消收藏':'收藏此版本'}" aria-pressed="${starred}">${icon('star')}</button></div><div class="release-intro-row editable-region"><p class="release-intro" data-user-content>${d?esc(notes?.summary||summary(d)):uiText('正在读取此提交的变化…')}</p>${d?``:''}</div><div class="detail-subline">${c.parents.length?c.parents.map((p,i)=>`<button data-action="parent" data-id="${p}" data-user-label title="${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}"><span>${uiText(i?'合并版本':'上一版')}</span> · <span data-user-content>${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}</span></button>`).join(''):'<span>项目起点</span>'}<span>·</span><span data-user-content>${esc(c.author)}</span></div><div class="detail-tabs" role="tablist" aria-label="查看内容">${[['updates',d&&visualPresentation(d)?contentText('本次更新','Updates'):contentText('文件变化','File changes'),d?.diff.counts.total??'…'],['preview',state.project?.kind==='folder'?(d&&visualPresentation(d)?contentText('这一稿的画面','This draft’s appearance'):contentText('全部文件','All files')):contentText('版本预览','Version preview'),state.project?.kind==='folder'?(d?.content?.stats.files??'…'):items.length],['compare',contentText('比较版本','Compare versions'),null]].map(([tab,label,count])=>`<button id="tab-${tab}" data-action="tab" data-tab="${tab}" role="tab" tabindex="${state.tab===tab?0:-1}" aria-selected="${state.tab===tab}" aria-controls="live-content" class="${state.tab===tab?'active':''}">${label}${count===null?'':`<span class="tab-count">${count}</span>`}</button>`).join('')}</div></div><div id="live-content" class="detail-content" role="tabpanel" aria-labelledby="tab-${state.tab}">${versionSelectionNotice()}${typeof importReturnNotice==='function'?importReturnNotice():''}${d?(state.tab==='compare'?renderComparison():state.tab==='preview'?renderPreview(d):renderChanges(d)):'<div class="load-state">正在读取文件变化…</div>'}</div>`;
+ $('#detail').innerHTML=`<div class="detail-head"><div class="detail-topline"><div class="eyebrow"><span class="version-tag">${esc(versionLabel(c))}</span><span class="eyebrow-line"></span><time datetime="${esc(c.committed_at)}">${esc(formatDate(c.committed_at,true))}</time></div><div class="detail-actions"><button class="primary-button" data-action="run" ${d?'':'disabled'}>${versionPreviewLabel(d)}</button><button class="secondary-button" data-action="delete-version" ${d?'':'disabled'}>${contentText('删除版本','Delete version')}</button></div></div><div class="detail-title"><div class="version-name"><h2 data-user-content>${esc(versionTitle(c))}</h2><button class="edit-entry edit-primary" data-action="edit-version" ${d?'':'disabled'} aria-label="编辑版本信息" title="编辑版本信息">${icon('pencil')}</button></div><button class="star-button ${starred?'starred':''}" data-action="star" aria-label="${starred?'取消收藏':'收藏此版本'}" aria-pressed="${starred}">${icon('star')}</button></div><div class="release-intro-row editable-region"><p class="release-intro" data-user-content>${d?esc(notes?.summary||summary(d)):uiText('正在读取此提交的变化…')}</p>${d?``:''}</div><div class="detail-subline">${c.parents.length?c.parents.map((p,i)=>`<button data-action="parent" data-id="${p}" data-user-label title="${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}"><span>${uiText(i?'合并版本':'上一版')}</span> · <span data-user-content>${esc(versionTitle(commit(p)||{sha:p,subject:uiText('历史版本')}))}</span></button>`).join(''):'<span>项目起点</span>'}<span>·</span><span class="version-author"><span data-user-content>${esc(d?.notes?.author??c.notes?.author??c.author)}</span><button class="edit-entry" data-action="edit-author" ${d?'':'disabled'} aria-label="${contentText('编辑显示作者','Edit display author')}" title="${contentText('编辑显示作者','Edit display author')}">${icon('pencil')}</button></span><button class="text-button detail-recover" data-action="recovery" ${d?'':'disabled'}>${contentText('取出这一稿','Recover this draft')}</button></div><div class="detail-tabs" role="tablist" aria-label="查看内容">${[['updates',d&&visualPresentation(d)?contentText('本次更新','Updates'):contentText('文件变化','File changes'),d?.diff.counts.total??'…'],['preview',state.project?.kind==='folder'?(d&&visualPresentation(d)?contentText('这一稿的画面','This draft’s appearance'):contentText('全部文件','All files')):contentText('版本预览','Version preview'),state.project?.kind==='folder'?(d?.content?.stats.files??'…'):items.length],['compare',contentText('比较版本','Compare versions'),null]].map(([tab,label,count])=>`<button id="tab-${tab}" data-action="tab" data-tab="${tab}" role="tab" tabindex="${state.tab===tab?0:-1}" aria-selected="${state.tab===tab}" aria-controls="live-content" class="${state.tab===tab?'active':''}">${label}${count===null?'':`<span class="tab-count">${count}</span>`}</button>`).join('')}</div></div><div id="live-content" class="detail-content" role="tabpanel" aria-labelledby="tab-${state.tab}">${versionSelectionNotice()}${typeof importReturnNotice==='function'?importReturnNotice():''}${d?(state.tab==='compare'?renderComparison():state.tab==='preview'?renderPreview(d):renderChanges(d)):'<div class="load-state">正在读取文件变化…</div>'}</div>`;
  restoreDisclosures($('#detail'),opened);restoreViewFocus(focus,$('#detail'));$('#detail').scrollTop=top;
  if(d&&state.tab==='updates')requestAnimationFrame(enhanceUpdateVisuals);
 }
@@ -175,34 +190,44 @@ async function loadProject(id,{preserve=false}={}){
  $('#content-save').hidden=s.project.kind!=='folder';if(s.project.kind==='folder'){$('#source-status').textContent=uiLanguage==='en'?`${current} saved versions · ${s.status.available===false?'source unavailable':count+' changed entries'}`:`${current} 个已保存版本 · ${s.status.available===false?'原文件夹不可用':count+' 项变化'}`;$('#snapshot-status').textContent=uiText('本地内容版本');}if(s.project.kind==='archive'){$('#source-status').textContent=uiLanguage==='en'?`${current} archived snapshots`:`${current} 个归档快照`;$('#snapshot-status').textContent=uiLanguage==='en'?'Original archive preserved':'原始归档已保留';}refreshContentStatus();const u=new URL(location.href);u.searchParams.set('project',id);history.replaceState(null,'',u);renderHistory();renderDetail();if(state.selected)await choose(state.selected);else renderDetail();if(typeof loadDraftImages==='function')loadDraftImages();
  }catch(e){if(n!==projectRequest)return;state.loading=false;$('#source-status').textContent='读取失败';$('#detail').innerHTML=`<div class="empty-content"><h3>无法读取项目</h3><p>${esc(e.message)}</p><button class="secondary-button" data-action="refresh">重试</button></div>`;notify(e.message);}
 }
-let dialogParent=null;
+let dialogParent=null,dialogActionOrigin=null;
+function installFocusBehavior(doc=document){
+ // WebKit can match :focus-visible after a pointer-opened modal. Record the
+ // actual input method instead of relying on engine-specific focus heuristics.
+ const root=doc.documentElement;root.dataset.inputModality='pointer';
+ doc.addEventListener('pointerdown',()=>{root.dataset.inputModality='pointer';},true);
+ doc.addEventListener('keydown',event=>{
+  if(!event.altKey&&!event.ctrlKey&&!event.metaKey&&!['Alt','Control','Meta','Shift'].includes(event.key))root.dataset.inputModality='keyboard';
+ },true);
+}
 function pauseDialogMedia(){for(const media of $$('#dialog video, #dialog audio'))media.pause();}
-function dialogShell(title,content,footer='',wide=false,parent=null){
- state.dialogRequest++;returnFocus=document.activeElement;dialogParent=parent;
- pauseDialogMedia();
- const dialog=$('#dialog');dialog.classList.remove('settings-dialog','content-dialog','version-dialog');dialog.classList.toggle('file-dialog',wide);
- for(const name of ['previewPreferences','fileComparison','recoveryForm','recoveryResult','quickPreview'])delete dialog.dataset[name];
- dialog.innerHTML=`<div class="dialog-header"><div><h2 id="dialog-title">${esc(title)}</h2></div><button class="icon-button" data-action="close" aria-label="${parent?uiText('返回上一页'):uiText('关闭')}">${icon('close')}</button></div><div class="dialog-body">${content}</div><div class="dialog-footer"><span id="dialog-status" role="status"></span>${footer||'<button class="secondary-button" data-action="close">返回</button>'}</div>`;
- if(!dialog.open)dialog.showModal();
+let dialogController=null;
+function dialogs(){
+ if(!dialogController)dialogController=RepriseDialogs.create({
+  element:()=>$('#dialog'),beforeChange:pauseDialogMedia,
+  onTransition:()=>{state.dialogRequest++;},
+  origin:()=>returnFocus?.isConnected?returnFocus:returnFocus?.dataset.action?$(`[data-action="${returnFocus.dataset.action}"]`):null,
+  onRestore:parent=>{
+   returnFocus=parent.origin;dialogParent=parent.parent||null;
+   if($('#dialog').dataset.fileComparison)renderFileComparison();
+   refreshSettingsManagement();localizeDOM();
+   if(parent.focused?.isConnected)parent.focused.focus({preventScroll:true});
+   else restoreViewFocus(parent.focus,$('#dialog'));
+  }
+ });
+ return dialogController;
+}
+function dialogShell(title,content,footer='',wide=false,parent=null,view=''){
+ if(!$('#dialog').open)returnFocus=dialogActionOrigin?.isConnected?dialogActionOrigin:document.activeElement;
+ dialogParent=parent;
+ const markup=`<div class="dialog-header"><div><h2 id="dialog-title" tabindex="-1">${esc(title)}</h2></div><button class="icon-button" data-action="close" aria-label="${parent?uiText('返回上一页'):uiText('关闭')}">${icon('close')}</button></div><div class="dialog-body">${content}</div><div class="dialog-footer"><span id="dialog-status" role="status"></span>${footer||'<button class="secondary-button" data-action="close">返回</button>'}</div>`;
+ return dialogs().open(markup,{className:[wide?'file-dialog':'',view==='runtime'?'runtime-preview-dialog':''].filter(Boolean).join(' '),dataset:view?{dialogView:view}:{}});
 }
 function closeDialog({returnToParent=true}={}){
- const dialog=$('#dialog'),parent=dialogParent;dialogParent=null;
- const recoveryJob=dialog.querySelector('[data-recovery-job]')?.dataset.recoveryJob;
+ const parent=returnToParent?dialogParent:null;dialogParent=null;
+ const recoveryJob=$('#dialog').querySelector('[data-recovery-job]')?.dataset.recoveryJob;
  if(recoveryJob)state.recoveryParents?.delete(recoveryJob);
- pauseDialogMedia();state.dialogRequest++;
- if(returnToParent&&parent){
-  dialog.replaceChildren(...parent.nodes);dialog.className=parent.className;returnFocus=parent.origin;dialogParent=parent.parent||null;
-  for(const name of ['previewPreferences','fileComparison','recoveryForm','recoveryResult','quickPreview'])delete dialog.dataset[name];Object.assign(dialog.dataset,parent.dataset||{});
-  if(dialog.dataset.fileComparison)renderFileComparison();
-  refreshSettingsManagement();localizeDOM();dialog.scrollTop=parent.scrollTop;
-  if(parent.focused.isConnected)parent.focused.focus({preventScroll:true});
-  else restoreViewFocus(parent.focus,dialog);
-  return;
- }
- dialog.close();dialog.replaceChildren();
- for(const name of ['previewPreferences','fileComparison','recoveryForm','recoveryResult','quickPreview'])delete dialog.dataset[name];
- if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});
- else if(returnFocus?.dataset.action)$(`[data-action="${returnFocus.dataset.action}"]`)?.focus({preventScroll:true});
+ dialogs().close(parent);
 }
 function conditions(){recipeDialog();}
 async function settings(){
@@ -269,9 +294,13 @@ const coreActions={
 async function action(button){
  const name=button.dataset.action;
  const handler=[workspaceActions,coreActions,featureActions,parityActions].find(handlers=>Object.hasOwn(handlers,name))?.[name];
- if(handler)await handler(button);
+ // macOS does not always focus a button clicked with the mouse. Preserve the
+ // actual invoking control across asynchronous dialog preparation as well.
+ const previous=dialogActionOrigin;dialogActionOrigin=button;
+ try{if(handler)await handler(button);}finally{if(dialogActionOrigin===button)dialogActionOrigin=previous;}
 }
 document.addEventListener('click',e=>{const summary=e.target.closest('.settings-advanced>summary');if(summary){e.preventDefault();toggleSettingsDisclosure(summary.parentElement);return;}const diffButton=e.target.closest('[data-text-diff-action]');if(diffButton&&RepriseTextDiff.handleAction(diffButton,$('#dialog'))){e.preventDefault();return;}const b=e.target.closest('[data-action]');if(!b||b.disabled)return;const saving=b.dataset.action.startsWith('save-');if(saving)b.disabled=true;action(b).catch(e=>{if($('#dialog').open&&$('#dialog-status'))$('#dialog-status').textContent=e.message;else notify(e.message);}).finally(()=>{if(saving&&b.isConnected)b.disabled=false;});});
+installFocusBehavior();
 const settingsReducedMotion=typeof matchMedia==='function'?matchMedia('(prefers-reduced-motion: reduce)'):null;
 settingsReducedMotion?.addEventListener('change',event=>{
  if(event.matches)for(const details of document.querySelectorAll('.settings-advanced'))settingsDisclosureMotion.get(details)?.animations.forEach(animation=>animation.finish());

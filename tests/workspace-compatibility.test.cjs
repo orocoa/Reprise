@@ -16,6 +16,7 @@ function harness(language = 'zh') {
     uiLanguage: language, uiText: value => value, localizeDOM() {},
     contentText: (zh, en) => language === 'en' ? en : zh,
     document: {
+      documentElement: {dataset: {}},
       addEventListener() {},
       querySelector(selector) {
         if (!elements.has(selector)) elements.set(selector, {addEventListener() {}, textContent: '', innerHTML: ''});

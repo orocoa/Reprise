@@ -16,11 +16,10 @@ async function openVersionManager(){
  await page.click('#settings-toggle');
  await page.waitForSelector('#dialog.settings-dialog');
  assert.equal(await page.locator('#dialog [data-action=ai-settings]').count(),0);
- assert.equal(await page.locator('#dialog [data-action=content-storage]:visible,#dialog [data-action=content-transfer]:visible').count(),0,'Advanced tools stay collapsed initially');
+ assert.equal(await page.locator('#dialog .advanced-actions [data-action=backup-export]:visible').count(),0,'Advanced tools stay collapsed initially');
  await page.locator('#dialog details[data-keep-open="saved-drafts"] > summary').click();
- await page.waitForFunction(()=>!document.querySelector('.settings-advanced').hasAttribute('data-motion-expanded'));
- assert.equal(await page.locator('#dialog [data-action=content-storage]').isVisible(),true);
- assert.equal(await page.locator('#dialog [data-action=content-transfer]').isVisible(),true);
+ assert.equal(await page.locator('#dialog [data-action=backup-export]').isVisible(),true);
+ assert.equal(await page.locator('#dialog [data-action=backup-import]').isVisible(),true);
  await page.click('#dialog [data-action=versions-manage]');
 }
 try{
@@ -88,10 +87,11 @@ try{
  await page.setViewportSize({width:1360,height:900});
  await page.click('[data-action=run]');
  await page.waitForFunction(sha=>state.runtimes.some(r=>r.sha===sha&&r.running&&r.url),fixture.retained,{timeout:30000});
- await page.click('#tab-preview');await page.click('[data-action=inline-preview]');
- await page.frameLocator('.live-preview-frame').locator('h1').waitFor();
- assert.equal(await page.frameLocator('.live-preview-frame').locator('h1').innerText(),'Current layout');
+ await page.waitForSelector('#dialog.runtime-preview-dialog[open] .live-preview-frame');
+ await page.frameLocator('#dialog .live-preview-frame').locator('h1').waitFor();
+ assert.equal(await page.frameLocator('#dialog .live-preview-frame').locator('h1').innerText(),'Current layout');
  await shot('retained-version-runs');
+ await page.click('#dialog [data-action=close]');
  await open('en',fixture.git_project);await openVersionManager();
  assert.match(await page.locator('#dialog').innerText(),/Original Git history is read-only/);
  assert.equal(await page.locator('#version-delete-submit,[data-version-choice]').count(),0);
@@ -100,16 +100,20 @@ try{
  await page.waitForFunction(sha=>state.selected===sha&&document.querySelector('[data-action=run]:not([disabled])'),fixture.environment_sha);
  await page.click('[data-action=run]');
  await page.waitForFunction(sha=>state.runtimes.some(r=>r.sha===sha&&r.running&&r.url),fixture.environment_sha,{timeout:30000});
+ await page.waitForSelector('#dialog.runtime-preview-dialog[open] .live-preview-frame');
+ await page.click('#dialog [data-action=close]');
  await openVersionManager();await page.click('[data-action=version-environments]');
  await page.waitForSelector('[data-action=environment-check]');await page.click('[data-action=environment-check]');
  await page.waitForSelector('#environment-release-submit');
  assert.equal(await page.locator('#environment-release-submit').isDisabled(),true);
  assert.equal(await page.locator('#environment-release-confirm').count(),0,'An active environment cannot be confirmed for release');
  await shot('active-environment-blocked');await page.click('#dialog [data-action=close]');
- await page.click('#settings-toggle');await page.waitForSelector('#dialog.settings-dialog');
- await page.evaluate(async sha=>{await refreshWorkspace();const runtime=state.runtimes.find(r=>r.sha===sha&&r.running);await api(`/api/runtimes/${runtime.id}/stop`,{method:'POST',body:'{}'});await refreshWorkspace();},fixture.environment_sha);
+ assert.equal(await page.locator('#dialog').evaluate(e=>e.classList.contains('settings-dialog')),true);
+ await page.click('#dialog [data-action=save-settings]');
+ await page.click('#tab-preview');
+ await page.click('.runtime-row [data-action=stop-runtime]');
  await page.waitForFunction(sha=>!state.runtimes.some(r=>r.sha===sha&&r.running),fixture.environment_sha);
- await page.click('#dialog [data-action=close]');await openVersionManager();await page.click('[data-action=version-environments]');
+ await openVersionManager();await page.click('[data-action=version-environments]');
  await page.waitForSelector('[data-action=environment-check]');await page.click('[data-action=environment-check]');
  await page.waitForSelector('#environment-release-confirm');assert.equal(await page.locator('#environment-release-submit').isDisabled(),true);
  await page.locator('#environment-release-confirm').check();await page.click('#environment-release-submit');
@@ -119,9 +123,9 @@ try{
  assert.match(await page.locator('#dialog').innerText(),/Outputs released; rebuild on run/);
  const beforeRuns=await page.evaluate(()=>state.runtimes.length);await page.click('[data-action=environment-run]');
  await page.waitForFunction(({sha,count})=>state.runtimes.length>count&&state.runtimes.some(r=>r.sha===sha&&r.running&&r.url),{sha:fixture.environment_sha,count:beforeRuns},{timeout:30000});
- await page.waitForSelector('[data-action=inline-preview]');await page.click('[data-action=inline-preview]');
- await page.frameLocator('.live-preview-frame').locator('h1').waitFor();
- assert.equal(await page.frameLocator('.live-preview-frame').locator('h1').innerText(),'Rebuilt environment');await shot('environment-rebuilt-preview');
+ await page.waitForSelector('#dialog.runtime-preview-dialog[open] .live-preview-frame');
+ await page.frameLocator('#dialog .live-preview-frame').locator('h1').waitFor();
+ assert.equal(await page.frameLocator('#dialog .live-preview-frame').locator('h1').innerText(),'Rebuilt environment');await shot('environment-rebuilt-preview');
  assert.deepEqual(errors,[]);
  await fs.writeFile(fixture.root+'/browser-result.json',JSON.stringify({ok:true,errors,receipt,checked:['zero exclusive bytes still lose history','selection survives inspecting exact evidence','selected set unique and shared content','stale confirmation cannot execute','explicit confirmation','English','390px dialog','retained version runs','imported Git read-only','active environment release blocked','environment released and rebuilt through UI']},null,2));
  console.log('Version deletion UI passed: zero-byte loss, selection, preview, deletion receipt, retained runtime, English, mobile and Git boundary');

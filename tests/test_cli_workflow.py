@@ -123,13 +123,13 @@ class DraftCLITests(unittest.TestCase):
                 store.assert_not_called()
         self.assertFalse(self.data.exists())
 
-    def test_bare_and_pathless_open_do_not_import_current_folder(self):
+    def test_bare_and_pathless_open_resolve_current_project(self):
         for arguments in ((), ('open', '--no-browser')):
             with self.subTest(arguments=arguments), \
-                    patch('reprise.launcher.open_workbench', return_value={'project_id': None}) as opening, \
+                    patch('reprise.launcher.open_current_project', return_value={'project_id': 'current'}) as opening, \
                     patch('reprise.launcher.open_repository') as importing:
                 self.cli(*arguments)
-                opening.assert_called_once_with(str(self.data), 0, not arguments, None)
+                opening.assert_called_once_with(str(self.data), None, 0, not arguments, None)
                 importing.assert_not_called()
 
     def test_project_options_without_a_path_are_rejected_before_opening(self):

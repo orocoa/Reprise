@@ -7,8 +7,8 @@ const transferJobLabels={
  'data-restore':['恢复数据目录','Restore data directory']
 };
 function transferLabel(operation){const pair=transferJobLabels[operation];return pair?contentText(...pair):operation;}
-function versionNotes(c){return detail(c.sha)?.notes?.localizations?.[uiLanguage]||c.notes?.localizations?.[uiLanguage];}
-function versionTitle(c){return versionNotes(c)?.title||c.subject||'无提交说明';}
+function versionNotes(c){return detail(c?.sha)?.notes?.localizations?.[uiLanguage]||c?.notes?.localizations?.[uiLanguage];}
+function versionTitle(c){return versionNotes(c)?.title||c?.subject||uiText('无提交说明');}
 function versionLabel(c){return c.archived?uiText('历史存档'):c.parents.length?'历史版本':'项目起点';}
 function versionCaption(c){return versionNotes(c)?.summary||(detail(c.sha)?summary(detail(c.sha)):uiText('选择版本查看实际文件变化'));}
 function updateExplanations(d){const notes=versionNotes(d.commit);return `<section class="release-notes editable-region"><div class="release-notes-heading"><h3>更新说明</h3><button class="edit-entry edit-notes" data-action="edit-release-notes" aria-label="编辑更新说明" title="编辑更新说明">${icon('pencil')}</button></div>${notes?.changes?.length?`<ul data-user-content>${notes.changes.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:'<p class="snapshot-message">暂无更新说明。</p>'}${d.notes?.source?`<p class="snapshot-message">${esc(d.notes.source)}</p>`:''}</section>`;}
@@ -41,7 +41,12 @@ function renderJobs(){return state.jobs.filter(job=>!job.dismissed&&(workspacePr
  const status=capture&&result?captureResultText(result):uiText(captureStatus(job));
  return `<div class="job-row"><span role="status">${esc(uiText({...Object.fromEntries(Object.keys(transferJobLabels).map(k=>[k,transferLabel(k)])),'verify':contentText('版本完整性检查','Version integrity check'),'storage':contentText('本机存储统计','Local storage report'),'version-estimate':contentText('\u6a21\u62df\u7a7a\u95f4\u4f30\u7b97','Simulate storage savings'),'version-delete':contentText('删除版本并回收','Delete versions and reclaim'),'organize':'整理副本','folder-import-preflight':contentText('空间预检','Storage cost preview'),'import-folders':contentText('导入版本合集','Import version collection'),'folder-import-review':contentText('复核原件报告','Recheck originals'),'snapshot':'记录版本','run':'运行版本','capture':'采集预览','ai/suggest':contentText('AI 分析（历史任务）','AI analysis (historical task)'),'restore':'恢复版本','export':'导出 ZIP'}[job.operation]||job.operation))} · <span data-user-content>${esc(['storage','backup-check','data-restore'].includes(job.operation)?contentText('应用数据目录','Application data directory'):['import-folders','folder-import-review','folder-import-preflight'].includes(job.operation)?(job.request?.name||contentText('版本合集','Version collection')):versionTitle(commit(job.request?.sha)||{sha:job.request?.sha,subject:uiText('历史版本')}))}</span> · ${esc(status)}${job.error?`<br><span data-user-content>${esc(job.error)}</span>`:''}</span>${['queued','running'].includes(job.status)&&job.cancellable?`<button class="text-button" data-action="cancel-job" data-job="${esc(job.id)}">取消任务</button>`:''}${['failed','cancelled'].includes(job.status)&&job.request?.sha&&!['restore','export','ai/suggest'].includes(job.operation)?`<button class="text-button" data-action="retry-job" data-job="${esc(job.id)}">重试</button>`:''}${terminal&&['restore','export'].includes(job.operation)?`<button class="text-button" data-action="recovery-result" data-job="${esc(job.id)}">查看结果</button>`:''}${job.status==='complete'&&job.operation==='organize'?`<button class="text-button" data-action="content-plan" data-plan="${esc(job.result.id)}">${contentText('查看副本选择','Review copies')}</button>`:''}${terminal&&['verify','storage'].includes(job.operation)?`<button class="text-button" data-action="content-maintenance-result" data-job="${esc(job.id)}">${contentText('查看结果','View result')}</button>`:''}${terminal&&transferOperations.includes(job.operation)?`<button class="text-button" data-action="transfer-result" data-job="${esc(job.id)}">${contentText('查看回执','View receipt')}</button>`:''}${terminal&&['version-delete','version-estimate'].includes(job.operation)?`<button class="text-button" data-action="${job.operation==='version-estimate'?'version-estimate-result':'version-delete-result'}" data-job="${esc(job.id)}">${job.operation==='version-estimate'?contentText('\u67e5\u770b\u4f30\u7b97','View estimate'):contentText('\u67e5\u770b\u5220\u9664\u56de\u6267','View deletion receipt')}</button>`:''}${terminal&&job.operation==='folder-import-preflight'?`<button class="text-button" data-action="import-cost-result" data-job="${esc(job.id)}">${contentText('查看空间预检','View cost preview')}</button>`:''}${terminal&&['import-folders','folder-import-review'].includes(job.operation)?`<button class="text-button" data-action="import-job-report" data-job="${esc(job.id)}">${contentText('查看原件与空间报告','View originals and space report')}</button>`:''}${terminal?`<button class="text-button" data-action="dismiss-job" data-job="${esc(job.id)}">收起</button>`:''}${capture&&terminal?captureDiagnostics(result,{error:job.error,key:job.id,force:true}):''}</div>`;
  }).join('');}
-function renderRuntimes(d){return state.runtimes.filter(r=>r.project_id===revisionProject(d.commit.sha)&&r.sha===d.commit.sha&&runtimeInfo(r).running&&r.url).map(r=>`<div class="runtime-row"><span>运行中</span><a class="text-button" href="${esc(r.url)}" target="_blank" rel="noopener">打开运行预览 ↗</a><button class="text-button" data-action="inline-preview" data-runtime="${esc(r.id)}">嵌入预览</button></div>`).join('');}
+function renderRuntimes(d){
+ const project=revisionProject(d.commit.sha),sha=d.commit.sha;
+ const pending=state.jobs.filter(j=>j.project_id===project&&j.request?.sha===sha&&['run','capture'].includes(j.operation)&&['queued','running'].includes(j.status));
+ const tasks=pending.map(j=>`<div class="runtime-task" role="status"><span>${contentText(j.operation==='run'?'正在准备运行预览…':'正在保存画面…',j.operation==='run'?'Preparing runtime preview…':'Saving preview images…')}</span>${j.cancellable?`<button class="text-button" data-action="cancel-job" data-job="${esc(j.id)}">${uiText('取消任务')}</button>`:''}</div>`).join('');
+ return tasks+state.runtimes.filter(r=>r.project_id===project&&r.sha===sha&&runtimeInfo(r).running&&r.url).map(r=>`<div class="runtime-row"><span>运行中</span><a class="text-button" href="${esc(r.url)}" target="_blank" rel="noopener">打开运行预览 ↗</a><button class="text-button" data-action="inline-preview" data-runtime="${esc(r.id)}">嵌入预览</button><button class="text-button" data-action="stop-runtime" data-runtime="${esc(r.id)}">${contentText('停止预览','Stop preview')}</button></div>`).join('');
+}
 function recipeDialog(){state.recipeReturnToSettings=$('#dialog').classList.contains('settings-dialog');const d=detail(state.selected);if(!d)return;const candidates=d.detection?.candidates||[];state.recipeTarget={project:revisionProject(),sha:state.selected};state.recipeCandidates=candidates;const initial=d.recipe;dialogShell('运行与采集配置',`<p class="project-path">${esc(versionTitle(commit(state.selected)))}</p><p>核对并保存此版本的配置后，再点击运行或采集。项目命令在独立副本中执行。</p>${state.project?.preview_preferences?.pending_recipe?`<p>${contentText('本项目已选择后续留稿都保存画面；这次确认的配置也会作为后续模板。配置变更时需要另行确认。','This project is set to include images on future saves. These reviewed settings also become its future template; changes need another review.')}</p>`:''}${candidates.filter(c=>c.recipe).length?`<label class="field">识别到的入口<select id="recipe-candidate"><option value="">当前配置 / 手工填写</option>${candidates.map((c,i)=>c.recipe?`<option value="${i}">${esc(c.root)} · ${esc(c.label)}</option>`:'').join('')}</select></label>`:''}<details class="recipe-advanced" ${initial?.adapter==='command-web'?'open':''}><summary>高级配置 JSON</summary><label class="field">配置 JSON<textarea id="recipe-json" rows="14" spellcheck="false">${esc(JSON.stringify(initial||{schema:1,adapter:'manual',root:'.',commands:{},readiness:{path:'/',timeout_ms:15000},captures:[],network:'local'},null,2))}</textarea></label></details><p class="snapshot-message">${d.recipe_approved?'此版本已有保存的配置。':'此版本尚未保存配置。'} 保存本身不会运行项目。</p>`,`<button class="secondary-button" data-action="${state.recipeReturnToSettings?'settings':'close'}">${state.recipeReturnToSettings?'返回设置':'返回'}</button><button class="primary-button" data-action="save-recipe">保存此版本配置</button>`,true);}
 function notesDialog(){const d=detail(state.selected);if(!d)return;state.notesDraft=d.notes?.localizations||{zh:{title:commit(state.selected).subject,summary:summary(d),changes:[summary(d)]},en:{title:commit(state.selected).subject,summary:`${d.diff.counts.total||0} changed files in this commit.`,changes:[`${d.diff.counts.total||0} changed files in this commit.`]}};dialogShell('编辑版本说明',`<p>说明保存到当前版本的本机资料。Git 原始提交信息始终保留。</p><div class="notes-columns">${[['zh','中文'],['en','English']].map(([lang,label])=>`<section><h3>${label}</h3><label class="field">标题<input id="notes-${lang}-title" maxlength="120" value="${esc(state.notesDraft[lang]?.title)}"></label><label class="field">摘要<textarea id="notes-${lang}-summary" rows="3">${esc(state.notesDraft[lang]?.summary)}</textarea></label><label class="field">更新内容（每行一条）<textarea id="notes-${lang}-changes" rows="5">${esc(state.notesDraft[lang]?.changes?.join('\n'))}</textarea></label></section>`).join('')}</div>`,`<button class="secondary-button" data-action="close">返回</button><button class="primary-button" data-action="save-notes">保存版本说明</button>`,true);}
 function manualDialog(){
@@ -91,7 +96,18 @@ async function refreshRuntimeProgress(){
  })();
  try{await runtimeProgress;}finally{runtimeProgress=null;}
 }
-async function startWorkspaceAction(operation){if(!['run','capture'].includes(operation))throw Error(contentText('工作台仅支持运行与采集任务。','The workbench only starts run and capture tasks.'));const d=detail(state.selected);if(!d)return;if(!d.recipe_approved){recipeDialog();$('#dialog-status').textContent='先核对并保存此版本的运行配置，再执行。';return;}const project=operation==='capture'&&state.tab==='compare'&&state.comparison&&$('#capture-both')?.checked?state.comparison.source_project_id:revisionProject(),sha=state.selected;const body={sha};if(operation==='capture'&&state.comparison&&$('#capture-both')?.checked)body.base=state.comparison.base;const job=await api(`/api/projects/${project}/${operation}`,{method:'POST',body:JSON.stringify(body)});state.jobs.push(job);renderDetail();refreshSettingsManagement();notify('任务已启动，可在设置中查看进度。');pollWorkspaceJob(job.id);return job;}
+async function startWorkspaceAction(operation){
+ if(!['run','capture'].includes(operation))throw Error(contentText('工作台仅支持运行与采集任务。','The workbench only starts run and capture tasks.'));
+ const d=detail(state.selected);if(!d)return;
+ if(operation==='run')return startVersionPreview(d);
+ if(!d.recipe_approved){recipeDialog();$('#dialog-status').textContent=contentText('先核对并保存此版本的运行配置，再执行。','Review and save this version’s runtime settings before running.');return;}
+ const paired=state.tab==='compare'&&state.comparison&&$('#capture-both')?.checked;
+ const project=paired?state.comparison.source_project_id:revisionProject(),body={sha:state.selected};
+ if(paired)body.base=state.comparison.base;
+ const job=await api(`/api/projects/${project}/capture`,{method:'POST',body:JSON.stringify(body)});
+ state.jobs.push(job);renderDetail();refreshSettingsManagement();
+ notify('任务已启动，可在设置中查看进度。');pollWorkspaceJob(job.id);return job;
+}
 const pollingJobs=new Set();
 async function pollWorkspaceJob(id){
  if(pollingJobs.has(id))return;
@@ -109,6 +125,7 @@ async function pollWorkspaceJob(id){
    if(job.operation==='organize'){await organizationFinished(job);break;}
    if(job.operation==='snapshot'){await folderSnapshotFinished(job);break;}
    if(job.operation==='version-delete'){await versionDeletionFinished(job);break;}
+   if(job.operation==='version-cleanup'){await versionCleanupFinished(job);break;}
    if(job.operation==='version-estimate'){versionEstimateFinished(job);break;}
    if(['import-folders','folder-import-review','folder-import-preflight'].includes(job.operation)){await importFoldersFinished(job);break;}
    // Partial and cancelled captures can already contain saved artifacts. Invalidate
@@ -131,7 +148,7 @@ async function pollWorkspaceJob(id){
     if(project===state.project?.id){
      if(job.operation==='capture'){notify(captureJobNotice(job));if(typeof loadDraftImages==='function')loadDraftImages();}
      else if(job.status==='complete'&&['restore','export'].includes(job.operation))notify('恢复 / 导出已完成，可在设置中查看结果。');
-     else if(job.status==='complete'&&job.operation==='run')notify('版本已运行，可打开预览。');
+     else if(job.operation==='run'){if(!finishRunPreview(job))notify(job.error||contentText('版本已运行，可点击运行预览打开。','This version is running. Click Run preview to open it.'));}
      else if(job.error)notify(job.error);
     }
    }
@@ -156,6 +173,7 @@ async function showMedia(record,index){
 // Named handlers keep each operation inspectable without a cross-file switch chain.
 const featureActions={
  'edit-version':()=>inlineNotesDialog('metadata'),
+ 'edit-author':()=>inlineNotesDialog('author'),
  'edit-summary':()=>inlineNotesDialog('summary'),
  'edit-release-notes':()=>inlineNotesDialog('changes'),
  'save-inline-notes':()=>saveInlineNotes(),

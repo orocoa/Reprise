@@ -11,6 +11,11 @@ Bundled third-party assets retain their original licenses and notices:
 | 正格点黑 (ZhengGeDianHei) | SIL Open Font License 1.1 | `web/fonts/ZhengGeDianHei-OFL.txt` |
 | Feather edit-2 icon and derived inline path | MIT | `web/icons/feather-LICENSE` |
 | Tabler pencil icon | MIT | `web/icons/tabler-LICENSE` |
+| Ionicons play-back icon, used as the Reprise logo | MIT | `web/icons/ionicons-LICENSE` |
+
+The Reprise logo retains the original filled `play-back` path from
+[Ionicons](https://github.com/ionic-team/ionicons/blob/main/src/svg/play-back.svg),
+with black paint and the original geometry retained.
 
 For source/Python-package installations, Playwright is an optional dependency
 installed separately, and Git, Python, Node and browsers come from the user's

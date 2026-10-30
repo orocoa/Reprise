@@ -25,12 +25,12 @@ try{
  await page.waitForFunction(()=>!document.querySelector('#dialog').open);
  await page.click('[data-action=run]');
  await page.waitForFunction(sha=>state.runtimes.some(r=>r.sha===sha&&r.running&&r.url),fixture.base);
- await page.click('#tab-preview');
- await page.waitForSelector('[data-action=inline-preview]');
- await page.click('[data-action=inline-preview]');
- await page.frameLocator('.live-preview-frame').locator('h1').waitFor();
- assert.equal(await page.frameLocator('.live-preview-frame').locator('h1').innerText(),'first');
+ await page.waitForSelector('#dialog.runtime-preview-dialog[open] .live-preview-frame');
+ await page.frameLocator('#dialog .live-preview-frame').locator('h1').waitFor();
+ assert.equal(await page.frameLocator('#dialog .live-preview-frame').locator('h1').innerText(),'first');
  await page.screenshot({animations:'disabled',path:output+'/historical-preview.png'});
+ await page.click('#dialog [data-action=close]');
+ assert.equal(await page.locator('#dialog').evaluate(e=>getComputedStyle(e).display),'none');
  await page.click('[data-action=recovery]');
  await page.waitForSelector('#dialog [data-action=save-restore]:not([disabled])');
  assert.equal(await page.locator('#recovery-change-location').evaluate(element=>element.open),false,'Default recovery needs no path entry');

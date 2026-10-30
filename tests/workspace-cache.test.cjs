@@ -133,7 +133,7 @@ test('live startup processes cannot be opened or stopped as ready previews',()=>
  vm.runInContext(fs.readFileSync(path.join(web,'live.js'),'utf8').split("document.addEventListener('click'")[0],context);
  for(const name of ['live-focus.js','live-parity.js','live-features.js'])vm.runInContext(fs.readFileSync(path.join(web,name),'utf8'),context);
  const result=vm.runInContext(`(()=>{
-  globalThis.uiText=value=>value;state.project={id:'fixture'};
+  globalThis.uiText=value=>value;globalThis.contentText=zh=>zh;state.project={id:'fixture'};
   const d={commit:{sha:'revision'}},record={id:'runtime',sha:'revision',project_id:'fixture',running:true,url:'http://127.0.0.1:1234/',path:'/copies/<old>&',log_path:'/logs/run.log'};
   const pending=['preparing','install','build','starting'].map(status=>{
    state.runtimes=[{...record,status}];

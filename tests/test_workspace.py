@@ -70,6 +70,21 @@ class WorkspaceTests(unittest.TestCase):
             self.app.projects.save_histories(self.project['id'], [imported['id']])
         self.assertNotIn('history_project_ids', self.app.projects.record(self.project['id']))
 
+    def test_removed_git_parent_stays_a_boundary_and_is_not_reimported_from_archive(self):
+        from reprise.version_cleanup import plan, execute
+        archive = self.root / 'removed-parent-archive.git'
+        git(self.root, 'clone', '--bare', str(self.repo.work_tree), str(archive))
+        saved = self.app.projects.add(str(archive))
+        self.app.projects.save_histories(self.project['id'], [saved['id']])
+        old = project_snapshot(self.app, self.project['id'])['snapshot']
+        review = plan(self.app, self.project['id'], self.first, 'all')
+        execute(self.app, self.project['id'], review['id'], True)
+        result = project_snapshot(self.app, self.project['id'])
+        self.assertEqual([c['sha'] for c in result['commits']], [self.second])
+        self.assertEqual(result['commits'][0]['parents'], [self.first])
+        self.assertNotEqual(old, result['snapshot'])
+        self.assertEqual(self.repo.resolve(self.first), self.first)
+
     def test_snapshot_reads_each_tip_once_and_tracks_metadata_changes(self):
         original = project_snapshot(self.app, self.project['id'])['snapshot']
         notes = {lang: {'title': 'custom', 'summary': 'saved', 'changes': ['change']} for lang in ('zh', 'en')}

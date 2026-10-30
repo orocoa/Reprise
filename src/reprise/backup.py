@@ -632,13 +632,18 @@ def _failure_receipt(path, value, error):
 
 def create_backup(data_directory, destination, cancel=None):
     """Create an offline self-contained managed-data backup at a new directory."""
+    return _create_backup(data_directory, destination, cancel, DataLease(_root(data_directory), exclusive=True))
+
+
+def _create_backup(data_directory, destination, cancel, lease):
+    """Shared implementation. Service callers already hold an exclusive lease."""
     report = {'schema': SCHEMA, 'format': FORMAT, 'status': 'running', 'operation': 'backup',
               'created_at': now(), 'limitations': list(LIMITATIONS), 'excluded_root_files': sorted(EXCLUDED)}
     target = None
     try:
         _check(cancel)
         root = _root(data_directory)
-        with DataLease(root, exclusive=True):
+        with lease:
             before = _inventory(root, cancel)
             roots, external = _external(root)
             candidate = _destination(destination, [root, *roots])

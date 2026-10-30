@@ -10,4 +10,5 @@ global-exclude __pycache__ *.py[cod] .DS_Store
 recursive-include skills *.md *.py
 recursive-include desktop *.swift *.plist *.json
 include desktop/macos/reprise skills/reprise/scripts/reprise
+include setup.py skills/reprise/assets/Reprise.icns skills/reprise/assets/reprise-icon-1024.png
 recursive-include skills *.yaml

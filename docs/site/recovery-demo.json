@@ -1,15 +1,14 @@
 {
   "schema": 1,
-  "status": "verified",
-  "version": "0.8.4",
+  "status": "pending",
+  "version": "0.8.5",
   "package": {
-    "filename": "Reprise-Skill.zip",
-    "sha256": "346093f733b9e59e7f0edcfd47b6c20e729c483d7ff50ad980164a613544d3e4"
+    "filename": "Reprise-Skill.zip"
   },
   "verification": {
-    "exact_version": true,
-    "source_unchanged": true,
-    "recovery_readback": true
+    "exact_version": false,
+    "source_unchanged": false,
+    "recovery_readback": false
   },
   "assets": [
     {
@@ -116,6 +115,11 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "Synthetic two-draft webpage saved and captured through an installed 0.8.4 entry. All 103 functional files match the final package byte for byte; only manifest/provenance receipts differ. Recovery through the final installed entry was byte-checked again. Older 0.8.2 images are labelled and retained."
+    "note": "Retained 0.8.4 and 0.8.2 assets remain labelled with their original build. The 0.8.5 final installed-package demonstration is pending."
+  },
+  "previous_verified_package": {
+    "version": "0.8.4",
+    "filename": "Reprise-Skill.zip",
+    "sha256": "346093f733b9e59e7f0edcfd47b6c20e729c483d7ff50ad980164a613544d3e4"
   }
 }

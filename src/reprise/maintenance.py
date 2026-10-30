@@ -8,6 +8,7 @@ import fcntl
 import os
 from pathlib import Path
 import stat
+from contextlib import contextmanager
 
 
 LEASE_FILE = '.data-lease.lock'
@@ -75,6 +76,24 @@ class DataLease:
                 fcntl.flock(fd, fcntl.LOCK_UN)
             finally:
                 os.close(fd)
+
+    @contextmanager
+    def exclusive_scope(self):
+        """Temporarily promote the service lease while its requests/jobs are idle.
+
+        Other CLI/service leases still block maintenance. The caller must hold
+        its in-process request gate, reject active jobs and keep server.lock.
+        """
+        if self.exclusive or len(self._fds) != 1:
+            raise DataLeaseError('无法升级当前数据租约。')
+        try:
+            try:
+                fcntl.flock(self._fds[0], fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise DataLeaseError('另一个 Reprise 操作正在使用资料，请稍后再备份。') from None
+            yield
+        finally:
+            fcntl.flock(self._fds[0], fcntl.LOCK_SH)
 
     def __exit__(self, *unused):
         self.close()

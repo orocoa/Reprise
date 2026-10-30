@@ -159,11 +159,11 @@ def command(argv, cwd, log, env=None):
         raise RuntimeError('Command failed (%s); see %s' % (result.returncode, log))
 
 
-def build(source, output, kind, log):
+def build(source, output, kind, log, interpreter):
     output.mkdir()
     code = ('import setuptools.build_meta as backend, sys; '
             'print(backend.build_%s(sys.argv[1]))' % kind)
-    command([sys.executable, '-c', code, output], source, log)
+    command([interpreter, '-c', code, output], source, log)
     suffix = '*.whl' if kind == 'wheel' else '*.tar.gz'
     files = list(output.glob(suffix))
     if len(files) != 1:
@@ -173,6 +173,13 @@ def build(source, output, kind, log):
 
 def check_wheel(wheel, expected):
     with zipfile.ZipFile(wheel) as archive:
+        for name, source in {
+            'SourceWindow.swift': ROOT / 'desktop/macos/SourceWindow.swift',
+            'Reprise.icns': ROOT / 'skills/reprise/assets/Reprise.icns',
+            'reprise-icon-1024.png': ROOT / 'skills/reprise/assets/reprise-icon-1024.png',
+        }.items():
+            if archive.read('reprise/' + name) != source.read_bytes():
+                raise RuntimeError('Native asset differs in wheel: ' + name)
         for name, digest in expected.items():
             actual = hashlib.sha256(archive.read('reprise/web/' + name)).hexdigest()
             if actual != digest:
@@ -281,21 +288,27 @@ def main():
                         help='Parent for a new retained test directory')
     parser.add_argument('--local-candidate', action='store_true',
                         help='Label build artifacts as local candidates without changing package versions')
+    parser.add_argument('--build-python', type=Path,
+                        help='Optional Python with setuptools>=61 and wheel; install checks still use this base Python')
     args = parser.parse_args()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     output = args.output.expanduser().resolve() / ('distribution-' + stamp + '-' + uuid.uuid4().hex[:8])
     output.mkdir(parents=True)
     report = {'status': 'running', 'python': sys.executable, 'artifacts': str(output), 'cases': []}
     try:
-        import setuptools
-        import wheel  # noqa: F401: validate offline build prerequisites
-        if int(setuptools.__version__.split('.')[0]) < 61:
-            raise RuntimeError('Build checks require setuptools >= 61; installed ' + setuptools.__version__)
         if sys.prefix != sys.base_prefix:
             raise RuntimeError('Run with a base Python interpreter so --user installation can be checked.')
+        build_python = str(args.build_python.expanduser().absolute()) if args.build_python else sys.executable
+        probe = subprocess.run([build_python, '-c',
+            "import setuptools, wheel; assert int(setuptools.__version__.split('.')[0]) >= 61; print(setuptools.__version__)"],
+            env=clean_environment(), capture_output=True, text=True, timeout=30)
+        if probe.returncode:
+            raise RuntimeError('Build Python needs setuptools>=61 and wheel: ' + probe.stderr.strip())
+        report['build_python'] = build_python
+        report['setuptools'] = probe.stdout.strip()
         source = output / 'source'
         source.mkdir()
-        for name in ('pyproject.toml', 'MANIFEST.in', 'README.md', 'CHANGELOG.md', 'AGENTS.md',
+        for name in ('pyproject.toml', 'setup.py', 'MANIFEST.in', 'README.md', 'CHANGELOG.md', 'AGENTS.md',
                      'LICENSE', 'THIRD-PARTY-NOTICES.md', 'run.py', 'package.json', 'Reprise.command'):
             shutil.copy2(ROOT / name, source / name)
         for path in sorted(ROOT.glob('README*.md')):
@@ -303,7 +316,7 @@ def main():
                 shutil.copy2(path, source / path.name)
         if (ROOT / 'CONTRIBUTING.md').is_file():
             shutil.copy2(ROOT / 'CONTRIBUTING.md', source / 'CONTRIBUTING.md')
-        for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts', 'skills'):
+        for name in ('src', 'web', 'tests', 'examples', 'docs', 'scripts', 'skills', 'desktop'):
             if args.local_candidate and name == 'docs':
                 continue
             shutil.copytree(ROOT / name, source / name,
@@ -356,10 +369,10 @@ def main():
         caller = output / 'outside-source'
         caller.mkdir()
         expected = {name: hashlib.sha256((source / 'web' / name).read_bytes()).hexdigest() for name in ASSETS}
-        direct = build(source, output / 'wheel', 'wheel', output / 'build-wheel.log')
-        archive = build(source, output / 'sdist', 'sdist', output / 'build-sdist.log')
+        direct = build(source, output / 'wheel', 'wheel', output / 'build-wheel.log', build_python)
+        archive = build(source, output / 'sdist', 'sdist', output / 'build-sdist.log', build_python)
         unpacked = unpack_sdist(archive, output / 'unpacked-sdist')
-        rebuilt = build(unpacked, output / 'sdist-wheel', 'wheel', output / 'build-sdist-wheel.log')
+        rebuilt = build(unpacked, output / 'sdist-wheel', 'wheel', output / 'build-sdist-wheel.log', build_python)
         if args.local_candidate:
             report['archive_export_audits'] = {}
             for label, artifact in (('wheel', direct), ('sdist', archive), ('sdist-wheel', rebuilt)):

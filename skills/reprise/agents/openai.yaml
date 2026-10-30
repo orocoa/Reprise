@@ -1,4 +1,6 @@
 interface:
   display_name: "Reprise · 倒带"
   short_description: "打开倒带，保存网页稿、按画面找回旧版 · Local webpage drafts"
-  default_prompt: "Use $reprise to open the workbench in the language of our conversation."
+  icon_small: "./assets/reprise-icon-256.png"
+  icon_large: "./assets/reprise-icon-1024.png"
+  default_prompt: "Use $reprise to open this conversation's current webpage project, in its standalone window on macOS and in the language of our conversation."
