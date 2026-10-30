@@ -22,7 +22,7 @@ Final source: 626 Python/Chromium checks passed without skips, plus 134 JavaScri
 
 ## 平台证据 / Platform evidence
 
-最终平台检查：[PR #4 checks](https://github.com/orocoa/Reprise/pull/4/checks)。测试隔离修复只禁止合成 Git 写入后的自动维护，不改变功能载荷；完整源字节比较继续保留。矩阵包含 Linux/Python 3.9、Linux/Python 3.13/Chromium 和 macOS/Python 3.9/Chromium；发布以该检查实际成功为准。Linux 3.9 的浏览器项目按矩阵设计跳过，不能把它称为全平台浏览器验证。Windows、全新物理机器和其他原生客户端未由这些结果证明。
+最终平台检查：[GitHub Actions 41092988797](https://github.com/orocoa/Reprise/actions/runs/41092988797)。测试隔离修复只禁止合成 Git 写入后的自动维护，不改变功能载荷；完整源字节比较继续保留。矩阵包含 Linux/Python 3.9、Linux/Python 3.13/Chromium 和 macOS/Python 3.9/Chromium；三组均已实际通过。Linux 3.9 的浏览器项目按矩阵设计跳过，不能把它称为全平台浏览器验证。Windows、全新物理机器和其他原生客户端未由这些结果证明。
 
 先前候选曾通过本机 624 项与之后 38 项专项、131 项 JavaScript；其 macOS CI 曾因测试脚本等待跨 CDP Promise 被回收而失败。最终脚本改为触发后等待已渲染选择器，32a 候选的两个 Linux 检查通过，macOS 唯一失败是合成 Git 提交后的后台 maintenance.lock 在源字节采样之间变化；仅修改测试样本的命令/本地配置，未更改产品 Git 读取层或用户配置。保留两次原失败记录。旧候选结果不替代最终平台检查。
 
@@ -31,3 +31,9 @@ Final source: 626 Python/Chromium checks passed without skips, plus 134 JavaScri
 此前 UiWeb 的 38 个动作、两个代表性网页和六个归档入口已有逐项记录；完整 32 个网页运行与 33 个不同版本恢复来自更早验证。最终安装复核保持项目入口与既有运行实例。不同构建的这些证据分开保留，不声称每个真实版本都在最终包重新运行。
 
 五份大归档此前通过清单、路径、大小与内容对象校验，没有逐份完整展开恢复。所有框架、任意历史提交、外部服务和未来依赖可用性均不在保证范围；无多 TB 删除压力结论。同盘版本不是独立备份，停止进程、释放生成依赖、删除保存状态和移除只读历史条目是不同操作。
+
+## 公开发布 / Public release
+
+2026-10-31（Asia/Shanghai）已发布 [v0.8.5](https://github.com/orocoa/Reprise/releases/tag/v0.8.5)，[PR #4](https://github.com/orocoa/Reprise/pull/4) 已合并。发布标签为 `f1112cfd6774b7eb31d642c2a69d59f94b472dac`，仅追加测试隔离与证据文档；Skill 功能载荷来源为上述干净 32a5507，运行代码、网页与 Skill 源逐项相同。wheel/sdist 从标签提交重新构建并通过四条全新安装，sdist 包含修复后的测试。ARTIFACTS.json 逐包列来源，避免以标签替代下载身份。
+
+六个公开附件均经匿名下载流式计算 SHA-256，与本地发布物的散列完全相同。标准包散列与当前本地安装清单对应；原生窗口和本机服务已核对加载这一功能载荷，121 个文件的清单完整性通过，既有用户预览保留。
