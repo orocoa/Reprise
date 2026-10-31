@@ -37,3 +37,7 @@ Final source: 626 Python/Chromium checks passed without skips, plus 134 JavaScri
 2026-10-31（Asia/Shanghai）已发布 [v0.8.5](https://github.com/orocoa/Reprise/releases/tag/v0.8.5)，[PR #4](https://github.com/orocoa/Reprise/pull/4) 已合并。发布标签为 `f1112cfd6774b7eb31d642c2a69d59f94b472dac`，仅追加测试隔离与证据文档；Skill 功能载荷来源为上述干净 32a5507，运行代码、网页与 Skill 源逐项相同。wheel/sdist 从标签提交重新构建并通过四条全新安装，sdist 包含修复后的测试。ARTIFACTS.json 逐包列来源，避免以标签替代下载身份。
 
 六个公开附件均经匿名下载流式计算 SHA-256，与本地发布物的散列完全相同。标准包散列与当前本地安装清单对应；原生窗口和本机服务已核对加载这一功能载荷，121 个文件的清单完整性通过，既有用户预览保留。
+
+## 2026-10-31 状态口径更正
+
+上文“保留 45 个用户预览”的准确含义是保留 45 条历史运行登记。后续逐项核验表明，它们的进程已在此前系统重启时结束；旧版因启动身份不匹配把它们保守标为待确认，不能据此称有 45 个活进程。0.8.6 修复此识别问题，见 [本次验证范围](VALIDATION-0.8.6.md)。原先的包散列与验证记录继续保留。

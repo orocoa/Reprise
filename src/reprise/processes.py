@@ -13,6 +13,7 @@ import functools
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -140,6 +141,51 @@ def boot_identity():
     if result.returncode or not result.stdout.strip():
         raise ProcessCleanupError('Cannot establish the current boot identity')
     return 'darwin:' + result.stdout.strip()
+
+
+def _previous_boot(record, current):
+    """Recognize valid retired boot epochs without authorizing any signal.
+
+    macOS appends a localized date to kern.boottime; the kernel seconds/useconds
+    identify the boot, not that display text. Invalid, future or cross-platform
+    identities remain errors rather than being guessed to mean "exited".
+    """
+    saved = record['boot_identity']
+    if saved == current:
+        return False
+
+    def key(value):
+        if not isinstance(value, str):
+            raise ValueError('invalid boot identity')
+        if value.startswith('linux:'):
+            identifier = value[6:]
+            if str(uuid.UUID(identifier)) != identifier:
+                raise ValueError('invalid Linux boot identity')
+            return ('linux', identifier)
+        match = re.fullmatch(r'darwin:\{\s*sec\s*=\s*(\d+),\s*usec\s*=\s*(\d+)\s*\}[^\n]*', value)
+        if match:
+            seconds, micros = map(int, match.groups())
+            if seconds > 0 and 0 <= micros < 1000000:
+                return ('darwin', seconds, micros)
+        raise ValueError('invalid boot identity')
+
+    old, present = key(saved), key(current)
+    if old[0] != present[0]:
+        raise ValueError('boot identity platform mismatch')
+    if old == present:
+        return False
+    if old[0] == 'darwin':
+        if old[1:] >= present[1:]:
+            raise ValueError('boot identity is not from an earlier boot')
+        # A current process identity combined with an older boot is corrupt,
+        # not proof that the process exited. Never retire that combination.
+        for member in record['members']:
+            if (not member['identity'].startswith('ps:') or
+                    _identity_time(member['identity']) >= present[1]):
+                raise ValueError('process identity conflicts with recorded boot')
+    elif any(not re.fullmatch(r'linux:\d+', member['identity']) for member in record['members']):
+        raise ValueError('process identity platform mismatch')
+    return True
 
 
 def _linux_info(pid):
@@ -326,6 +372,7 @@ class OwnedProcessTree:
         self._closed = threading.Event()
         self._observer = None
         self._boot = None
+        self._previous_boot = False
 
     @classmethod
     def from_record(cls, record_path):
@@ -352,6 +399,8 @@ class OwnedProcessTree:
         with tree._locked():
             if tree.record_path.exists():
                 state = tree._read()
+                if tree._previous_boot:
+                    raise ProcessCleanupError('Cannot adopt a record from a previous system boot')
                 if state['root_pid'] != pid or state['root_identity'] != expected_identity:
                     raise ProcessCleanupError('Existing ownership record belongs to another process')
             else:
@@ -382,7 +431,7 @@ class OwnedProcessTree:
                 raise ValueError('symlink')
             state = json.loads(self.record_path.read_text())
             if (state['schema'] != 1 or state['uid'] != os.getuid() or
-                    state['boot_identity'] != self._boot or not isinstance(state['members'], list) or
+                    not isinstance(state['members'], list) or
                     not any(row['pid'] == state['root_pid'] and row['identity'] == state['root_identity']
                             for row in state['members'])):
                 raise ValueError('identity mismatch')
@@ -392,6 +441,7 @@ class OwnedProcessTree:
             if state.get('owner_marker') and (len(state['owner_marker']) != 32 or
                     any(c not in '0123456789abcdef' for c in state['owner_marker'])):
                 raise ValueError('invalid ownership marker')
+            self._previous_boot = _previous_boot(state, self._boot)
             return state
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise ProcessCleanupError('Cannot verify the retained process ownership record: %s' % error) from error
@@ -464,6 +514,8 @@ class OwnedProcessTree:
     def refresh(self):
         with self._locked():
             state = self._read()
+            if self._previous_boot:
+                return False  # Old boot processes cannot survive into this one.
             before = json.dumps(state, sort_keys=True)
             try:
                 living, state = self._advance(state)
@@ -557,6 +609,8 @@ class OwnedProcessTree:
                 _invalidate_snapshot()
                 with self._locked():
                     state = self._read()
+                    if self._previous_boot:
+                        return False  # Preserve the old record; never target reused PIDs.
                     living, state = self._advance(state)
                     self._recover_observation(state, living)
                     if not living and state['status'] != 'stopped':
