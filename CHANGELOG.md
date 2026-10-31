@@ -1,5 +1,14 @@
 # 更新记录
 
+## 0.8.6 · 2026-10-31 · 跨重启预览状态修复
+
+- 识别合法的上一系统启动周期的进程记录，将其视为已退出；停止操作不向可能已复用的旧 PID 发送信号，原运行文件、所有权记录和诊断保留。
+- macOS 使用内核启动时间的秒与微秒识别同一次启动，忽略附带日期显示文本的变化；Linux 使用内核 boot ID。无效、未来、跨平台或身份矛盾的记录继续保守拒绝。
+- 运行列表新增 `process_state: alive | exited | unknown`。旧 `running` 字段仍供保守安全检查兼容使用，不能单独据此统计真实活进程。
+- 补齐旧启动记录、PID 复用保护、显示文本变化、未知状态及重复停止回归；修正 Skill 的进程统计说明，统一发行版本元数据。
+
+English: recognizes retired system-boot process records without signalling reused PIDs, preserves historical files and diagnostics, and exposes explicit alive/exited/unknown states. See [0.8.6 validation](docs/VALIDATION-0.8.6.md).
+
 ## 0.8.5 · 2026-10-31 · 统一版本操作与可靠预览恢复
 
 - 后端统一给出运行、核对配置、查看保存画面和取出资料等动作。前端不再重复判断归档类型与运行能力；画面继续绑定确切项目和完整 SHA。
