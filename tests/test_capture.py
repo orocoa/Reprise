@@ -17,6 +17,22 @@ from test_runtime import commit_repo, fixture
 
 
 class CaptureOwnershipTests(unittest.TestCase):
+    def test_version_records_include_exact_comparison_baseline_but_never_other_projects(self):
+        root = fixture('capture-baseline-history')
+        captures = CaptureService(root, None)
+        first, second, third = ('a' * 40, 'b' * 40, 'c' * 40)
+        for record in [
+                {'id': 'pair', 'project_id': 'p', 'sha': second, 'base': first},
+                {'id': 'single', 'project_id': 'p', 'sha': first},
+                {'id': 'other-version', 'project_id': 'p', 'sha': third, 'base': second},
+                {'id': 'other-project', 'project_id': 'q', 'sha': second, 'base': first}]:
+            folder = captures.directory / record['id']
+            folder.mkdir()
+            (folder / 'record.json').write_text(json.dumps(record))
+        self.assertEqual({r['id'] for r in captures.list('p', first)}, {'pair', 'single'})
+        self.assertEqual({r['id'] for r in captures.list('p', second)}, {'pair', 'other-version'})
+        self.assertEqual({r['id'] for r in captures.list('p')}, {'pair', 'single', 'other-version'})
+
     def test_failed_observation_is_not_reported_as_an_exited_browser(self):
         root = fixture('capture-observation-denied')
         record = root / 'browser.json'

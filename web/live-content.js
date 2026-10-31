@@ -34,8 +34,9 @@ function refreshDraftSaveControl(){
  button.title=contentText('保存一稿：Ctrl / ⌘ + S；命名保存：Ctrl / ⌘ + Shift + S','Save a draft: Ctrl / ⌘ + S; name a draft: Ctrl / ⌘ + Shift + S');
 }
 function rememberCaptureControl(d){
- const sha=d.commit?.sha,mode=state.project?.preview_preferences?.mode;
- if(state.project?.kind!=='folder'||sha!==state.selected||['auto','none','manual'].includes(mode)||!d.recipe_approved||!['static-web','command-web'].includes(d.recipe?.adapter))return '';
+ const sha=d.commit?.sha,preference=state.project?.preview_preferences,mode=preference?.mode;
+ const automaticReady=mode==='auto'&&!!preference.recipe&&!preference.pending_recipe;
+ if(state.project?.kind!=='folder'||sha!==state.selected||automaticReady||['none','manual'].includes(mode)||!d.recipe_approved||!['static-web','command-web'].includes(d.recipe?.adapter))return '';
  const captured=(d.evidence||[]).some(record=>record.sha===sha&&record.status==='complete'&&!record.errors?.length&&record.source!=='manual'&&(record.items||[]).some(item=>!['base','before'].includes(item.side)&&(!item.sha||item.sha===sha)&&!item.missing&&!item.error&&item.url&&item.media_type?.startsWith('image/')));
  return captured?`<div class="draft-preference-hint"><p>${contentText('这一稿的画面已保存。记住配置后，下次点击「保存一稿」即可直接留稿。','This draft’s image is saved. Remember these settings to save your next draft in one click.')}</p><button class="secondary-button" data-action="remember-draft-preview" data-sha="${esc(sha)}">${contentText('记住画面设置…','Remember image settings…')}</button></div>`:'';
 }
@@ -95,8 +96,19 @@ function previewPreferenceFields(mode=state.project?.preview_preferences?.mode||
 }
 function previewPreferenceRequest(){
  const mode=$('#preview-preference-mode')?.value||state.project?.preview_preferences?.mode||'remind';
- if(mode!=='auto'||state.project?.preview_preferences?.mode==='auto')return {mode};
+ const stored=state.project?.preview_preferences;
+ if(mode!=='auto'||stored?.mode==='auto'&&stored.recipe&&!stored.pending_recipe)return {mode};
  return {mode,...(detail(state.selected)?.recipe_approved&&detail(state.selected)?.recipe?.adapter!=='manual'?{recipe_sha:state.selected}:{pending_recipe:true})};
+}
+function previewPreferenceSummary(){
+ const preference=state.project?.preview_preferences;
+ if(preference?.mode==='auto')return preference.recipe&&!preference.pending_recipe?
+  contentText('已记住画面设置；后续留稿会一起保存画面。','Image settings remembered. Future saves include an image.'):
+  contentText('已记住保存画面的选择；仍需确认运行与截图配置。','Your image choice is remembered; run and capture settings still need confirmation.');
+ if(preference?.mode==='none')return contentText('已记住仅存文件的选择；后续直接留稿，按时间命名。','Files-only preference remembered. Future saves use a time-based name.');
+ if(preference?.mode==='manual')return contentText('留稿时保存文件，画面由你提供。','Saves files; you provide the images.');
+ if(preference?.mode==='remind')return contentText('留稿后提醒补画面，文件会先保存。','Reminds you to add an image after saving the files.');
+ return contentText('首次留稿会询问是否保存画面，选择后持续沿用；可随时更改。','The first save asks whether to include images. Your choice is remembered and can be changed anytime.');
 }
 function previewPreferencesDialog(draft={}){
  state.previewPreferenceTarget=state.project.id;
@@ -194,7 +206,7 @@ Object.assign(workspaceActions,{
  'save-preview-preferences':async()=>{
   if(state.previewPreferenceTarget!==state.project?.id)throw Error(contentText('项目已经变化。','The project has changed.'));
   const result=await api(`/api/projects/${state.project.id}/preview-preferences`,{method:'PUT',body:JSON.stringify(previewPreferenceRequest())});
-  state.project.preview_preferences=result;await settings();
+  state.project.preview_preferences=result;renderDetail();await settings();
  },
  'saved-preview-manual':async b=>{await choose(b.dataset.sha);manualDialog();},
  'saved-preview-capture':async b=>{await choose(b.dataset.sha);closeDialog();await quickPreviewDialog();},
