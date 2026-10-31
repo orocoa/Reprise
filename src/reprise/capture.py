@@ -79,7 +79,7 @@ class CaptureService:
         for path in self.directory.glob('*/record.json'):
             try:
                 record = read_json(path)
-                if record.get('project_id') == project_id and (sha is None or record.get('sha') == sha):
+                if record.get('project_id') == project_id and (sha is None or sha in (record.get('sha'), record.get('base'))):
                     records.append(record)
             except (OSError, ValueError):
                 continue

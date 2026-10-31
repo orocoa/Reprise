@@ -126,3 +126,16 @@ test('comparison baseline renders paired evidence retained only on the target re
  })()`,workspace());
  assert.match(result,/src="\/before"/);assert.doesNotMatch(result,/src="\/after"/);assert.doesNotMatch(result,/没有预览/);
 });
+
+test('opening an older draft shows its exact before-image without the newer draft image',()=>{
+ const result=vm.runInContext(`(()=>{
+  const d={commit:{sha:'base'},evidence:[{id:'pair',sha:'target',base:'base',items:[
+   {sha:'base',side:'before',kind:'image',url:'/before',title:'Earlier draft'},
+   {sha:'target',side:'after',kind:'image',url:'/after',title:'Later draft'},
+   {sha:'base',side:'after',kind:'image',url:'/wrong-binding'}]}]};
+  return {items:mediaItems(d),preview:renderPreview(d)};
+ })()`,workspace());
+ assert.equal(result.items.length,1);assert.equal(result.items[0].sha,'base');
+ assert.match(result.preview,/src="\/before"/);
+ assert.doesNotMatch(result.preview,/src="\/after"|wrong-binding/);
+});

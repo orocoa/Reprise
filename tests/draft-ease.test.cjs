@@ -64,6 +64,26 @@ test('remembering capture settings is offered only for a complete exact capture 
  for(const broken of [{...d,recipe_approved:false},{...d,evidence:[{...d.evidence[0],sha:'b'.repeat(40)}]},{...d,evidence:[{...d.evidence[0],status:'partial'}]},{...d,evidence:[{...d.evidence[0],source:'manual'}]}])assert.equal(c.rememberCaptureControl(broken),'');
  state.project.preview_preferences={mode:'none'};assert.equal(c.rememberCaptureControl(d),'');
 });
+test('pending automatic capture can confirm the reviewed recipe without re-asking the image choice',()=>{
+ const sha='a'.repeat(40),recipe={adapter:'command-web'};
+ const {c,state}=context({detail:()=>({recipe_approved:true,recipe}),$:()=>({value:'auto'})});
+ state.selected=sha;state.project.preview_preferences={mode:'auto',pending_recipe:true};
+ assert.deepEqual(JSON.parse(JSON.stringify(c.previewPreferenceRequest())),{mode:'auto',recipe_sha:sha});
+ assert.match(c.previewPreferenceSummary(),/仍需确认/);
+ const d={commit:{sha},recipe_approved:true,recipe,evidence:[{sha,status:'complete',source:'capture',items:[{url:'/a.png',media_type:'image/png'}]}]};
+ assert.match(c.rememberCaptureControl(d),/remember-draft-preview/);
+ state.project.preview_preferences={mode:'auto',recipe,source_sha:'b'.repeat(40)};
+ assert.deepEqual(JSON.parse(JSON.stringify(c.previewPreferenceRequest())),{mode:'auto'},'keep the existing template even when browsing another version');
+ assert.equal(c.rememberCaptureControl(d),'');
+ assert.doesNotMatch(c.previewPreferenceSummary(),/仍需确认/);
+});
+test('pending capture never promotes detected or manual recipes to execution approval',()=>{
+ for(const detail of [{recipe_approved:false,recipe:{adapter:'command-web'}},{recipe_approved:true,recipe:{adapter:'manual'}},{}]){
+  const {c,state}=context({detail:()=>detail,$:()=>({value:'auto'})});
+  state.selected='a'.repeat(40);state.project.preview_preferences={mode:'auto',pending_recipe:true};
+  assert.deepEqual(JSON.parse(JSON.stringify(c.previewPreferenceRequest())),{mode:'auto',pending_recipe:true});
+ }
+});
 function recoveryContext(language='zh'){
  const c=vm.createContext({workspaceActions:{},uiCopy:{},contentText:(zh,en)=>language==='en'?en:zh});
  vm.runInContext(read('live-workspace.js'),c);return c;
