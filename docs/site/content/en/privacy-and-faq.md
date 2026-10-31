@@ -22,7 +22,7 @@ File saving and capture are separate outcomes. Successfully saved files remain; 
 
 ## Were Codex, WorkBuddy and TRAE all tested?
 
-Installation, discovery, actual draft/picture calls and browser recovery passed in this Mac’s Codex. Fresh-machine dependency setup, native selector/composer actions and native WorkBuddy/TRAE use remain unverified. 0.8.6 passed remote regression and fresh package-install checks on macOS/Python 3.9 and Linux/Python 3.9 and 3.13. This does not verify WSL desktop or native use in other clients.
+Installation, discovery, actual draft/picture calls and browser recovery passed in this Mac’s Codex. Fresh-machine dependency setup, native selector/composer actions and native WorkBuddy/TRAE use remain unverified. 0.8.7 passed remote regression and fresh package-install checks on macOS/Python 3.9 and Linux/Python 3.9 and 3.13. This does not verify WSL desktop or native use in other clients.
 
 ## How does it differ from Git or editor history?
 

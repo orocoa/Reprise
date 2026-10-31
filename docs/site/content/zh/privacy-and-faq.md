@@ -22,7 +22,7 @@ Reprise 核心的版本与工作台操作在本机完成。调用 Agent 时，�
 
 ## Codex、WorkBuddy、TRAE 都验证了吗？
 
-本机 macOS + Codex 的安装、技能发现、实际保存/出图和网页恢复已验证。新机器自动补齐环境、原生选择器/输入框及 WorkBuddy/TRAE 原生接入仍未验证。0.8.6 的 macOS/Python 3.9、Linux/Python 3.9 与 3.13 远端回归和全新包安装检查已通过；这不等于 WSL 桌面或其他客户端原生接入验证。
+本机 macOS + Codex 的安装、技能发现、实际保存/出图和网页恢复已验证。新机器自动补齐环境、原生选择器/输入框及 WorkBuddy/TRAE 原生接入仍未验证。0.8.7 的 macOS/Python 3.9、Linux/Python 3.9 与 3.13 远端回归和全新包安装检查已通过；这不等于 WSL 桌面或其他客户端原生接入验证。
 
 ## 和 Git、编辑器历史有什么区别？
 

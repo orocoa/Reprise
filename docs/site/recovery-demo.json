@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "status": "verified",
-  "version": "0.8.6",
+  "version": "0.8.7",
   "package": {
     "filename": "Reprise-Skill.zip",
-    "sha256": "03c0e11e20081ce3f6d9b2274b16a97aa6083564b4efade2832cf2f9d0776aab",
-    "source_commit": "b941b09a3be8ff61efe08004ace02248f9b44ebf"
+    "sha256": "a1b5aed4df8bfe91efb54c8c5571f2b9771c29184acd146ad438c02fcd4e4874",
+    "source_commit": "64450b8b6c1b4e4396a4d79bf8823e04bc0c0888"
   },
   "verification": {
     "exact_version": true,
@@ -15,30 +15,30 @@
   "assets": [
     {
       "kind": "image",
-      "path": "assets/reprise-0.8.6-draft-before.png",
+      "path": "assets/reprise-0.8.7-draft-before.png",
       "sha256": "44119e0ca58cd52197deb04441b2cde0c3100588d0efc7fe3789968f738ecb4d",
-      "version_sha": "a204332a53080851e688c800f50fe6cb1bcb5529",
+      "version_sha": "4ef321a0e8c7ca01297247bf53669187655fadf6",
       "alt": {
-        "zh": "最终 0.8.6 源码 Skill 包实际保存并采集的合成网页画面。",
-        "en": "Synthetic webpage saved and captured through the final 0.8.6 source Skill package."
+        "zh": "最终 0.8.7 源码 Skill 包实际保存并采集的合成网页画面。",
+        "en": "Synthetic webpage saved and captured through the final 0.8.7 source Skill package."
       },
       "caption": {
-        "zh": "通过最终 0.8.6 包保存与采集，绑定完整版本 a204332a53080851e688c800f50fe6cb1bcb5529；旧稿通过实际预览、明确停止与恢复读回，当前源文件保持原样。",
-        "en": "Saved and captured through the final 0.8.6 package, bound to version a204332a53080851e688c800f50fe6cb1bcb5529. The earlier draft passed a real preview, explicit stop and recovery readback; current source files stayed unchanged."
+        "zh": "通过最终 0.8.7 包保存与采集，绑定完整版本 4ef321a0e8c7ca01297247bf53669187655fadf6；旧稿通过实际预览、明确停止与恢复读回，当前源文件保持原样。",
+        "en": "Saved and captured through the final 0.8.7 package, bound to version 4ef321a0e8c7ca01297247bf53669187655fadf6. Historical preview, explicit stop and recovery readback passed while current source files stayed unchanged."
       }
     },
     {
       "kind": "image",
-      "path": "assets/reprise-0.8.6-draft-after.png",
+      "path": "assets/reprise-0.8.7-draft-after.png",
       "sha256": "660f7650a7e8e446b081e1547da6f5cd7599a0d6defe7d7704443a43e751d2a1",
-      "version_sha": "1acb063e3a42e9ea2a851eb9c23831a071985c4b",
+      "version_sha": "561250fd43ecc66ef02e042f49196e45549a6e68",
       "alt": {
-        "zh": "最终 0.8.6 源码 Skill 包实际保存并采集的合成网页画面。",
-        "en": "Synthetic webpage saved and captured through the final 0.8.6 source Skill package."
+        "zh": "最终 0.8.7 源码 Skill 包实际保存并采集的合成网页画面。",
+        "en": "Synthetic webpage saved and captured through the final 0.8.7 source Skill package."
       },
       "caption": {
-        "zh": "通过最终 0.8.6 包保存与采集，绑定完整版本 1acb063e3a42e9ea2a851eb9c23831a071985c4b；旧稿通过实际预览、明确停止与恢复读回，当前源文件保持原样。",
-        "en": "Saved and captured through the final 0.8.6 package, bound to version 1acb063e3a42e9ea2a851eb9c23831a071985c4b. The earlier draft passed a real preview, explicit stop and recovery readback; current source files stayed unchanged."
+        "zh": "通过最终 0.8.7 包保存与采集，绑定完整版本 561250fd43ecc66ef02e042f49196e45549a6e68；旧稿通过实际预览、明确停止与恢复读回，当前源文件保持原样。",
+        "en": "Saved and captured through the final 0.8.7 package, bound to version 561250fd43ecc66ef02e042f49196e45549a6e68. Historical preview, explicit stop and recovery readback passed while current source files stayed unchanged."
       }
     },
     {
@@ -50,8 +50,8 @@
         "en": "0.8.4 project settings with compact language controls and Advanced management."
       },
       "caption": {
-        "zh": "0.8.4 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.4 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "zh"
     },
@@ -64,8 +64,8 @@
         "en": "0.8.4 project settings with compact language controls and Advanced management."
       },
       "caption": {
-        "zh": "0.8.4 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.4 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.4 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "en"
     },
@@ -78,8 +78,8 @@
         "en": "Historical picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "0.8.2 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "zh"
     },
@@ -92,8 +92,8 @@
         "en": "Historical fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "0.8.2 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "zh"
     },
@@ -106,8 +106,8 @@
         "en": "Historical picture history using a synthetic personal webpage."
       },
       "caption": {
-        "zh": "0.8.2 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "en"
     },
@@ -120,22 +120,22 @@
         "en": "Historical fixed compact Git graph with nine real synthetic commits and their matching pictures."
       },
       "caption": {
-        "zh": "0.8.2 历史工作台界面示例；本次 0.8.6 安装包采集的画面见上方。",
-        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.6 package."
+        "zh": "0.8.2 历史工作台界面示例；本次 0.8.7 安装包采集的画面见上方。",
+        "en": "Retained 0.8.2 workbench example. The captures above come from the installed 0.8.7 package."
       },
       "locale": "en"
     },
     {
       "kind": "download",
-      "path": "assets/reprise-two-drafts-0.8.6.zip",
-      "sha256": "62cd12762b99920df972fcf6c7287ac69e821b04555cfa50a5dad591feb1c1ce",
+      "path": "assets/reprise-two-drafts-0.8.7.zip",
+      "sha256": "03d9cc5b55781b7837e60c5e8357e4cfed96151c44a34815b45937e8bd655d98",
       "alt": {
-        "zh": "0.8.6 最终包实际保存的两稿合成静态网页，附版本与文件散列，不含私人内容。",
-        "en": "Two synthetic static webpage drafts actually saved by the final 0.8.6 package, with version and file hashes; no private content."
+        "zh": "0.8.7 最终包实际保存的两稿合成静态网页，附版本与文件散列，不含私人内容。",
+        "en": "Two synthetic static webpage drafts actually saved by the final 0.8.7 package, with version and file hashes; no private content."
       },
       "caption": {
-        "zh": "0.8.6 最终包实际保存的两稿合成静态网页，附版本与文件散列，不含私人内容。",
-        "en": "Two synthetic static webpage drafts actually saved by the final 0.8.6 package, with version and file hashes; no private content."
+        "zh": "0.8.7 最终包实际保存的两稿合成静态网页，附版本与文件散列，不含私人内容。",
+        "en": "Two synthetic static webpage drafts actually saved by the final 0.8.7 package, with version and file hashes; no private content."
       }
     }
   ],
@@ -145,11 +145,11 @@
     "existing_host": true,
     "fresh_machine_installation": false,
     "native_selector_composer": false,
-    "note": "The final clean 0.8.6 source Skill package (b941b09) saved and freshly captured both exact synthetic drafts. Their bytes match the retained earlier sample images, but the new evidence binds each capture to its own full SHA and inputs. A real historical preview, explicit stop and recovery readback passed. A disposable live probe survived a stop against a simulated prior-boot record. No physical machine reboot was performed. The same public package is installed locally with manifest integrity verified. All 104 user runtime records remain; no previews are active. Earlier workbench screenshots remain labelled historical; no private project data is shown."
+    "note": "The final clean 0.8.7 source Skill package (64450b8) saved and freshly captured both exact synthetic drafts. Their bytes match earlier retained sample images, but new evidence binds each capture to its own full SHA and inputs. Historical preview HTTP readback, explicit stop and recovery readback passed. A separate real capture containing only a before/after pair was checked through the final package: older-draft details read the before-image, and its production renderer excludes the newer after-image. The same public package is installed locally with manifest integrity verified. Historical workbench screenshots remain labelled as historical. No private project data is shown."
   },
   "previous_verified_package": {
-    "version": "0.8.5",
+    "version": "0.8.6",
     "filename": "Reprise-Skill.zip",
-    "sha256": "31429f459250f71b4a0f2fadaedb594df1b21354d31f17f42a39a305c08a69b9"
+    "sha256": "03c0e11e20081ce3f6d9b2274b16a97aa6083564b4efade2832cf2f9d0776aab"
   }
 }

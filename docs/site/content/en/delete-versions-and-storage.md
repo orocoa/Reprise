@@ -1,6 +1,6 @@
 # Understand what removing an old version will lose
 
-**Version: 0.8.6. The sample walkthrough can stop at planning; execution requires explicit review and confirmation.**
+**Version: 0.8.7. The sample walkthrough can stop at planning; execution requires explicit review and confirmation.**
 
 Distinguish deleting a saved state, removing a local entry, releasing generated dependencies and stopping a preview. Managed folder drafts can be deleted. External Git and archive entries can be removed from Reprise while their source history remains.
 

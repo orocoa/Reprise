@@ -1,6 +1,6 @@
 # Keep the source and rebuild an old environment when needed
 
-**Version: 0.8.6. Inspect environment status first; release generated outputs only after explicit review.**
+**Version: 0.8.7. Inspect environment status first; release generated outputs only after explicit review.**
 
 Your task is to understand what a version needs to run. A written install command, a previously successful build and start, and a currently running application are different states. Only registered generated outputs that pass a new check can enter a separate explicit release operation.
 
