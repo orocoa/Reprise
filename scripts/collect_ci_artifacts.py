@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy bounded CI evidence without deleting source diagnostics or user data."""
+"""Copy purpose-selected CI evidence without truncating or deleting originals."""
 import argparse
 from collections import Counter
 import hashlib
@@ -7,8 +7,7 @@ import json
 import os
 from pathlib import Path
 
-MIB = 1024 * 1024
-LIMITS = {'success': 10 * MIB, 'failure': 20 * MIB, 'cancelled': 20 * MIB}
+STATUSES = {'success', 'failure', 'cancelled'}
 PRUNED = {'.git', '.venv', 'venv', 'env', 'user-site', 'site-packages',
           'node_modules', '__pycache__', '.cache', 'source', 'unpacked-sdist',
           'ci-upload', 'ci-artifact'}
@@ -18,15 +17,12 @@ PACKAGES = {'ci/reprise-skill.zip', 'ci/reprise-workbuddy.zip'}
 MEDIA = {'.png', '.jpg', '.jpeg', '.webp', '.webm', '.mp4'}
 
 
-def collect(root, output, status, include_packages=False, limit_bytes=None):
-    if status not in LIMITS:
+def collect(root, output, status, include_packages=False):
+    if status not in STATUSES:
         raise ValueError('Unknown job status')
     root, output = Path(root).resolve(), Path(output).resolve()
     if output == root or root in output.parents or output in root.parents:
         raise ValueError('Evidence output must be separate from the input tree')
-    limit = LIMITS[status] if limit_bytes is None else limit_bytes
-    reserve = min(128 * 1024, limit // 4)
-    budget = limit - reserve
     output.mkdir(parents=True, exist_ok=False)
     selected, candidates, counts, examples = [], [], Counter(), []
 
@@ -60,41 +56,29 @@ def collect(root, output, status, include_packages=False, limit_bytes=None):
 
     total = 0
     for _, relative, path, kind in sorted(candidates):
-        if len(selected) >= 200:
-            omit(relative, 'file count limit')
-            continue
         size = path.stat().st_size
-        file_limit = {'log': MIB, 'report': 2 * MIB,
-                      'package': 8 * MIB, 'failure-media': 4 * MIB}[kind]
-        if kind != 'log' and size > file_limit:
-            omit(relative, 'per-file size limit')
-            continue
-        length = min(size, file_limit)
-        if total + length > budget:
-            omit(relative, 'total size limit')
-            continue
-        with path.open('rb') as stream:
-            if size > length:
-                stream.seek(size - length)
-            data = stream.read(length)
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
+        digest = hashlib.sha256()
+        copied = 0
+        with path.open('rb') as source, target.open('wb') as destination:
+            for chunk in iter(lambda: source.read(1024 * 1024), b''):
+                destination.write(chunk)
+                digest.update(chunk)
+                copied += len(chunk)
         selected.append({'path': relative, 'kind': kind, 'sourceBytes': size,
-                         'bytes': len(data), 'truncated': size != len(data),
-                         'sha256': hashlib.sha256(data).hexdigest()})
-        total += len(data)
+                         'bytes': copied, 'truncated': False,
+                         'sha256': digest.hexdigest()})
+        total += copied
 
     report = {'schema': 1, 'jobStatus': status,
               'sourceCommit': os.environ.get('GITHUB_SHA', ''),
               'runId': os.environ.get('GITHUB_RUN_ID', ''),
               'runnerOS': os.environ.get('RUNNER_OS', ''),
-              'limitBytes': limit, 'payloadBytes': total, 'files': selected,
+              'payloadBytes': total, 'files': selected,
               'omittedCounts': dict(counts), 'omittedExamples': examples,
               'policy': 'CI evidence only; official releases and rollback packages remain in GitHub Releases. Originals are never modified.'}
     manifest = (json.dumps(report, indent=2) + '\n').encode()
-    if total + len(manifest) > limit:
-        raise ValueError('Evidence manifest exceeds the total size limit')
     (output / 'ci-artifact-manifest.json').write_bytes(manifest)
     return report
 
@@ -103,16 +87,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--status', choices=sorted(LIMITS), required=True)
+    parser.add_argument('--status', choices=sorted(STATUSES), required=True)
     parser.add_argument('--include-packages', action='store_true')
     args = parser.parse_args()
     report = collect(args.root, args.out, args.status, args.include_packages)
-    summary = ('### CI evidence\n\nJob status: %s. Copied %s files, %s bytes; '
-               'limit %s bytes. Omitted counts: `%s`.\n\n'
-               'Success evidence expires after 7 days; failed-job evidence after 14 days. '
-               'Release downloads and rollback packages are unchanged.\n' %
+    summary = ('### CI evidence\n\nJob status: %s. Copied %s files, %s bytes in full. '
+               'Omitted counts: `%s`.\n\n'
+               'No custom size, file-count, truncation or expiry limits. '
+               'Superseded artifacts are cleaned only after a verified replacement; '
+               'GitHub platform retention still applies. Release downloads are unchanged.\n' %
                (report['jobStatus'], len(report['files']), report['payloadBytes'],
-                report['limitBytes'], json.dumps(report['omittedCounts'], sort_keys=True)))
+                json.dumps(report['omittedCounts'], sort_keys=True)))
     print(summary, flush=True)
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:

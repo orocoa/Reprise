@@ -1,0 +1,48 @@
+name: Clean superseded Reprise CI artifacts
+on:
+  workflow_run:
+    workflows: [Reprise checks]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Delete only artifacts with a verified complete replacement (default is plan only)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: reprise-artifact-lifecycle
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    steps:
+      # Always execute reviewed default-branch code, never pull-request code or artifacts.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - name: Verify cleanup safety contracts
+        run: python -m unittest discover -s tests -p test_ci_artifact_cleanup.py -v
+      - name: Clean verified replacements or show the plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APPLY_CLEANUP: ${{ github.event_name == 'workflow_run' || inputs.apply }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$APPLY_CLEANUP" == "true" ]]; then args+=(--apply); fi
+          python scripts/cleanup_ci_artifacts.py --output "$RUNNER_TEMP/ci-lifecycle" "${args[@]}"
