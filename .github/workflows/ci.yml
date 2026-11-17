@@ -79,17 +79,27 @@ jobs:
         run: |
           python scripts/build_skill.py --output work/test-artifacts/ci/reprise-skill.zip
           python scripts/build_skill.py --profile workbuddy --output work/test-artifacts/ci/reprise-workbuddy.zip
-      - name: Package diagnostics
-        if: always()
+      - name: Package bounded CI evidence
+        if: ${{ always() && !cancelled() }}
+        env:
+          JOB_STATUS: ${{ job.status }}
+          CI_EVENT: ${{ github.event_name }}
+          CI_REF: ${{ github.ref }}
+          CI_PYTHON: ${{ matrix.python }}
         shell: bash
         run: |
-          mkdir -p work/test-artifacts/ci-upload
-          tar --exclude=./ci-upload -czf work/test-artifacts/ci-upload/reprise-diagnostics.tar.gz -C work/test-artifacts .
-      - name: Retain diagnostics
-        if: always()
+          args=()
+          if [[ "$JOB_STATUS" == "success" && "$CI_EVENT" == "push" && "$CI_REF" == "refs/heads/main" && "$RUNNER_OS" == "Linux" && "$CI_PYTHON" == "3.9" ]]; then
+            args+=(--include-packages)
+          fi
+          python scripts/collect_ci_artifacts.py --root work/test-artifacts --out "$RUNNER_TEMP/reprise-ci-artifact" --status "$JOB_STATUS" "${args[@]}"
+      - name: Retain bounded CI evidence
+        if: ${{ always() && !cancelled() }}
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: reprise-${{ matrix.os }}-py${{ matrix.python }}-${{ github.run_attempt }}
-          path: work/test-artifacts/ci-upload/reprise-diagnostics.tar.gz
-          if-no-files-found: warn
-          retention-days: 90
+          path: ${{ runner.temp }}/reprise-ci-artifact
+          if-no-files-found: error
+          retention-days: ${{ job.status == 'success' && 7 || 14 }}
+          compression-level: 9
