@@ -57,7 +57,8 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: _site
-          retention-days: 7
+          # Zero delegates to the repository default, rather than imposing a short expiry.
+          retention-days: 0
 
   deploy:
     # This job is unreachable on the default publish=false manual run.

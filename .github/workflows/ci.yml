@@ -79,7 +79,7 @@ jobs:
         run: |
           python scripts/build_skill.py --output work/test-artifacts/ci/reprise-skill.zip
           python scripts/build_skill.py --profile workbuddy --output work/test-artifacts/ci/reprise-workbuddy.zip
-      - name: Package bounded CI evidence
+      - name: Package CI evidence
         if: ${{ always() && !cancelled() }}
         env:
           JOB_STATUS: ${{ job.status }}
@@ -93,7 +93,7 @@ jobs:
             args+=(--include-packages)
           fi
           python scripts/collect_ci_artifacts.py --root work/test-artifacts --out "$RUNNER_TEMP/reprise-ci-artifact" --status "$JOB_STATUS" "${args[@]}"
-      - name: Retain bounded CI evidence
+      - name: Retain CI evidence
         if: ${{ always() && !cancelled() }}
         continue-on-error: true
         uses: actions/upload-artifact@v7
@@ -101,5 +101,4 @@ jobs:
           name: reprise-${{ matrix.os }}-py${{ matrix.python }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/reprise-ci-artifact
           if-no-files-found: error
-          retention-days: ${{ job.status == 'success' && 7 || 14 }}
           compression-level: 9

@@ -55,22 +55,24 @@ class CiArtifactsTests(unittest.TestCase):
         self.assertEqual(len(report['files']), 2)
         self.assertTrue(all(len(f['sha256']) == 64 for f in report['files']))
 
-    def test_logs_are_tailed_with_explicit_truncation_and_originals_preserved(self):
-        path = self.write('ci/python.log', b'a' * ci.MIB + b'final failure')
+    def test_logs_are_preserved_in_full_without_truncation(self):
+        path = self.write('ci/python.log', b'a' * (1024 * 1024 + 1) + b'final failure')
         before = path.read_bytes()
         report = ci.collect(self.source, self.output, 'failure')
-        self.assertTrue(report['files'][0]['truncated'])
-        self.assertEqual((self.output / 'ci/python.log').stat().st_size, ci.MIB)
+        self.assertFalse(report['files'][0]['truncated'])
+        self.assertEqual((self.output / 'ci/python.log').stat().st_size, len(before))
         self.assertTrue((self.output / 'ci/python.log').read_bytes().endswith(b'final failure'))
         self.assertEqual(path.read_bytes(), before)
 
-    def test_size_bound_omits_large_binary_and_records_the_reason(self):
-        self.write('ci/python.log', b'a' * 5000)
-        self.write('failure/one.png', b'b' * 5000)
-        self.write('failure/two.png', b'c' * 5000)
-        report = ci.collect(self.source, self.output, 'failure', limit_bytes=16000)
-        self.assertIn('total size limit', report['omittedCounts'])
-        self.assertLessEqual(sum(p.stat().st_size for p in self.output.rglob('*') if p.is_file()), 16000)
+    def test_no_task_file_count_or_media_size_limit(self):
+        for index in range(205):
+            self.write('logs/%03d.log' % index)
+        media = b'complete frame' * (400000)
+        self.write('failure/large.png', media)
+        report = ci.collect(self.source, self.output, 'failure')
+        self.assertEqual(len(report['files']), 206)
+        self.assertEqual((self.output / 'failure/large.png').read_bytes(), media)
+        self.assertNotIn('limitBytes', report)
 
     def test_symlinks_cannot_copy_data_outside_test_artifacts(self):
         outside = self.root / 'outside.log'
